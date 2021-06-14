@@ -1,0 +1,3 @@
+TODOs:
+- add enum types
+- add more tests
