@@ -108,7 +108,9 @@ type ExpressRouterInternalStruct = {
   name: 'router'
   regexp: RegExp
   keys: { name: string; optional: boolean; offset: number }[]
+  // sometimes express expose handle, sometimes __handle...
   __handle: ExpressRouteInternalStruct
+  handle: ExpressRouteInternalStruct
   route: {
     stack: {
       handle: (...any: any[]) => any
@@ -148,7 +150,12 @@ const resolveRouteHandlersAndExtractAPISchema = (
         stack.keys ?? []
       )
       const routerFullPath = mergePaths(path, parsedRouterRelativePath)
-      resolveRouteHandlersAndExtractAPISchema(stack.__handle, routerFullPath, urlsMethodDocs)
+      resolveRouteHandlersAndExtractAPISchema(
+        // pretty weird... sometimes express expose __handle, sometimes handle
+        stack.handle ?? stack.__handle,
+        routerFullPath,
+        urlsMethodDocs
+      )
     })
 
   // lazy resolve handlers of API requests
@@ -202,7 +209,7 @@ type SwaggerShape = DeepPartial<{
 
 export const initApiDocs = (
   expressApp: { _router: ExpressRouteInternalStruct },
-  customSwaggerType: SwaggerShape
+  customSwaggerType: SwaggerShape = {}
 ) => {
   return deepMerge(
     {

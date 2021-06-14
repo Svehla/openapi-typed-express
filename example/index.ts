@@ -1,10 +1,14 @@
 import express from 'express'
 import { apiDoc, initApiDocs, tNonNullable, tString } from '../src'
+import { router } from './userRouter'
 import packageJSON from '../package.json'
 import swaggerUi from 'swagger-ui-express'
 
 const app = express()
 const port = 3000
+
+app.use(express.urlencoded({ extended: true }))
+app.use(express.json())
 
 app.get(
   '/',
@@ -17,6 +21,8 @@ app.get(
     res.send(`Hello ${req.query.name}!`)
   })
 )
+
+app.use('/users', router)
 
 const swaggerJSON = initApiDocs(app, {
   info: {
