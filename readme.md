@@ -16,7 +16,7 @@ So you just simply wrap your endpoint with the apiDoc() function and initialize 
 
 ```typescript
 import express from 'express'
-import { apiDoc, initApiDocs, tNonNullable, tString } from '../src'
+import { apiDoc, initApiDocs, tNonNullable, tString } from 'swagger-typed-express-docs'
 import swaggerUi from 'swagger-ui-express'
 
 const app = express()
