@@ -29,15 +29,15 @@ export const generateSwaggerPath = (schemas: GenerateSwaggerPathArg) => {
         schema: v,
       })),
 
-      ...(isObject(schemas.bodySchema)
+      isObject(schemas.bodySchema)
         ? {
             in: 'body',
             name: 'body',
             required: true,
             schema: schemas.bodySchema,
           }
-        : ([] as any)),
-    ],
+        : null,
+    ].filter(Boolean),
     responses: {
       ...(isObject(schemas.returnsSchema)
         ? {

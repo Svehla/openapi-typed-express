@@ -1,6 +1,6 @@
-# typed-express-wrapper
+# swagger-typed-express-docs
 
-Typed-express-wrapper keep you simple document your endpoints with just one single source of truth which
+swagger-typed-express-docs keep you simple document your endpoints with just one single source of truth which
 
 - infer static typescript types out of the box
 - generate Swagger API documentation out of the box
