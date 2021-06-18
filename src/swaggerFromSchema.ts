@@ -18,14 +18,14 @@ export const generateSwaggerPath = (schemas: GenerateSwaggerPathArg) => {
       ...Object.entries(schemas.pathSchema?.properties ?? {}).map(([k, v]) => ({
         in: 'path',
         name: k,
-        required: true,
+        required: v.required,
         schema: v,
       })),
 
       ...Object.entries(schemas.querySchema?.properties ?? {}).map(([k, v]) => ({
         in: 'query',
         name: k,
-        required: true,
+        required: v.required,
         schema: v,
       })),
 
@@ -33,7 +33,7 @@ export const generateSwaggerPath = (schemas: GenerateSwaggerPathArg) => {
         ? {
             in: 'body',
             name: 'body',
-            required: true,
+            required: schemas.bodySchema!.required,
             schema: schemas.bodySchema,
           }
         : null,

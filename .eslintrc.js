@@ -12,5 +12,6 @@ module.exports = {
     '@typescript-eslint/explicit-module-boundary-type': 0,
     '@typescript-eslint/explicit-module-boundary-types': 0,
     '@typescript-eslint/ban-ts-comment': 0,
+    '@typescript-eslint/no-non-null-assertion': 0,
   },
 }

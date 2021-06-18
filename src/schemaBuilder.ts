@@ -45,6 +45,7 @@ export type SchemaCustomScalar = {
 
 export type SchemaAny = {
   type: 'any'
+  required: boolean
 }
 
 // TODO: should I support oneOf `object type`?
@@ -85,6 +86,7 @@ export const tString = {
 
 export const tAny = {
   type: 'any' as const,
+  required: false as const,
 }
 
 // TODO: should it be called enum or union
