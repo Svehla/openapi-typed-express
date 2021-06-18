@@ -3,12 +3,19 @@ import { apiDoc, initApiDocs, tNonNullable, tString } from '../src'
 import { router } from './userRouter'
 import packageJSON from '../package.json'
 import swaggerUi from 'swagger-ui-express'
+import { queryParser } from 'express-query-parser'
 
 const app = express()
 const port = 3000
 
 app.use(express.urlencoded({ extended: true }))
 app.use(express.json())
+app.use(
+  queryParser({
+    parseNull: true,
+    parseBoolean: true,
+  })
+)
 
 app.get(
   '/',

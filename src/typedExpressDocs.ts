@@ -26,6 +26,13 @@ type UseEmptyObjectAsDefault<T> = T extends Record<any, any> ? T : {}
 
 type WrapToObject<T> = { type: 'object'; required: true; properties: T }
 
+/**
+ * yup errors are stringified into stack trace
+ * thanks to this function we extract JSON which describe error with better
+ * programming API
+ */
+const convertYupErrToObj = (obj: any) => JSON.parse(JSON.stringify(obj))
+
 export const apiDoc = <C extends Config>(docs: C) => (
   handle: (
     // express by default binds empty object for params/body/query
@@ -75,7 +82,15 @@ export const apiDoc = <C extends Config>(docs: C) => (
         const paramsErrors = urlValidation.status === 'rejected' ? urlValidation.reason : null
         const queryErrors = queryValidation.status === 'rejected' ? queryValidation.reason : null
         const bodyErrors = bodyValidation.status === 'rejected' ? bodyValidation.reason : null
-        res.status(400).send({ errors: { paramsErrors, queryErrors, bodyErrors } })
+
+        const errObj = {
+          errors: {
+            paramsErrors: convertYupErrToObj(paramsErrors),
+            queryErrors: convertYupErrToObj(queryErrors),
+            bodyErrors: convertYupErrToObj(bodyErrors),
+          },
+        }
+        res.status(400).send(errObj)
         return
       }
 

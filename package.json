@@ -25,6 +25,7 @@
   },
   "scripts": {
     "test": "jest",
+    "test:watch": "jest --watch",
     "prepare": "npm run clean && npm run build",
     "build": "tsc",
     "clean": "tsc --build --clean",
@@ -56,6 +57,7 @@
   },
   "dependencies": {
     "@types/express": "^4.17.12",
+    "express-query-parser": "^1.2.0",
     "yup": "^0.32.9"
   }
 }

@@ -2,3 +2,4 @@ TODOs:
 - add enum types
 - add more tests
 - swagger shown that non required field is required
+- check runtime consistency with null/undefined

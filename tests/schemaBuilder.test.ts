@@ -20,7 +20,7 @@ describe('schemaBuilder', () => {
     e: tNumber,
     f: tAny,
     g: tUnion(['a', 'b', 'c', 'd']),
-    // todo: add more tests for tCustomScalar
+    // TODO: add more tests for tCustomScalar
   })
 
   test('1', () => {
