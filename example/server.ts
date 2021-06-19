@@ -1,9 +1,10 @@
 import express from 'express'
-import { apiDoc, initApiDocs, tNonNullable, tString } from '../src'
+import { apiDoc, initApiDocs, tNonNullable, tString, tUnion } from '../src'
 import { router } from './userRouter'
 import packageJSON from '../package.json'
 import swaggerUi from 'swagger-ui-express'
 import { queryParser } from 'express-query-parser'
+import { tList } from '../src/schemaBuilder'
 
 const app = express()
 const port = 3000
@@ -22,10 +23,18 @@ app.get(
   apiDoc({
     query: {
       name: tNonNullable(tString),
+      header: tList(tNonNullable(tUnion(['a', 'b', 'c'] as const))),
+    },
+    body: {
+      header: tList(tNonNullable(tUnion(['a', 'b', 'c'] as const))),
+      message: tNonNullable(tString),
+      footer: tString,
     },
     returns: tString,
   })((req, res) => {
-    res.send(`Hello ${req.query.name}!`)
+    const body = req.body
+
+    res.send(`Hello ${body.header} ${body.message} ${body.footer ?? ''}!`)
   })
 )
 

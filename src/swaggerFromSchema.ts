@@ -8,6 +8,31 @@ type GenerateSwaggerPathArg = {
   returnsSchema: Schema | null | undefined
 }
 
+const toSwaggerSchema = (schema: Schema): any => {
+  switch (schema.type) {
+    case 'enum':
+      return {
+        type: 'string',
+        enum: schema.options,
+      }
+
+    case 'object':
+      return {
+        ...schema,
+        properties: mapEntries(([k, v]) => [k, toSwaggerSchema(v)], schema.properties),
+      }
+
+    case 'array':
+      return {
+        ...schema,
+        items: toSwaggerSchema(schema.items),
+      }
+
+    default:
+      return schema
+  }
+}
+
 /**
  * TODO: add support for enum/union type
  * TODO: add smarter support for customizing of swagger documentations
@@ -26,7 +51,7 @@ export const generateSwaggerPath = (schemas: GenerateSwaggerPathArg) => {
         in: 'query',
         name: k,
         required: v.required,
-        schema: v,
+        schema: toSwaggerSchema(v),
       })),
 
       isObject(schemas.bodySchema)
@@ -34,7 +59,7 @@ export const generateSwaggerPath = (schemas: GenerateSwaggerPathArg) => {
             in: 'body',
             name: 'body',
             required: schemas.bodySchema!.required,
-            schema: schemas.bodySchema,
+            schema: toSwaggerSchema(schemas.bodySchema!),
           }
         : null,
     ].filter(Boolean),

@@ -2,10 +2,9 @@
 
 swagger-typed-express-docs keep you simple document your endpoints with just one single source of truth which
 
-- infer static typescript types out of the box
-- generate Swagger API documentation out of the box
-- runtime validations of your HTTP handlers out of the box
-- If you pass call method with bad arguments it give you user-friendly error log
+- Generate Swagger API documentation
+- Compile time validations - Infer Typescript static types out of the box
+- Runtime validate each of your HTTP request with user-friendly error messages
 
 to do that there is just simple high-order-function API.
 So you just simply wrap your endpoint with the apiDoc() function and initialize project via `initApiDocs()`
@@ -46,3 +45,20 @@ if you want to parser body, you have to setup body parser express middleware:
 ```typescript
 app.use(express.json())
 ```
+
+## Query parsing
+
+```typescript
+import { queryParser } from 'express-query-parser'
+
+app.use(
+  queryParser({
+    parseNull: true,
+    parseBoolean: true,
+  })
+)
+```
+
+## Example
+
+[ts preview](./docs/preview-1.png)

@@ -1,5 +1,5 @@
 TODOs:
-- add enum types
 - add more tests
-- swagger shown that non required field is required
 - check runtime consistency with null/undefined
+- fix bad error messages: "name must be a `string` type, but the final value was: `null`.\n If \"null\" is intended as an empty value be sure to mark the schema as `.nullable()`"
+- number | string
