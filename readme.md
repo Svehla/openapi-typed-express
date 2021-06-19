@@ -61,4 +61,4 @@ app.use(
 
 ## Example
 
-[ts preview](./docs/preview-1.png)
+![ts preview](./docs/preview-1.png)
