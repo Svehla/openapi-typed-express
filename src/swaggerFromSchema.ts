@@ -44,7 +44,7 @@ export const generateSwaggerPath = (schemas: GenerateSwaggerPathArg) => {
         in: 'path',
         name: k,
         required: v.required,
-        schema: v,
+        schema: toSwaggerSchema(v),
       })),
 
       ...Object.entries(schemas.querySchema?.properties ?? {}).map(([k, v]) => ({
@@ -67,7 +67,7 @@ export const generateSwaggerPath = (schemas: GenerateSwaggerPathArg) => {
       ...(isObject(schemas.returnsSchema)
         ? {
             '200': {
-              schema: schemas.returnsSchema,
+              schema: toSwaggerSchema(schemas.returnsSchema!),
             },
           }
         : ({} as any)),

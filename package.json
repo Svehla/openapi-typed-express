@@ -1,7 +1,14 @@
 {
   "name": "swagger-typed-express-docs-test",
-  "version": "0.0.1-alpha.4",
+  "version": "0.0.1-alpha.9",
   "description": "Simple express runtime parser and documentation swagger generator with 100% support of Typescript static types",
+  "keywords": [
+    "express",
+    "envs",
+    "typescript",
+    "inferring",
+    "runtime-validation"
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/Svehla/swagger-typed-express-docs"
@@ -11,18 +18,11 @@
   "contributors": [
     "Jakub Švehla"
   ],
-  "keywords": [
-    "express",
-    "envs",
-    "typescript",
-    "inferring",
-    "runtime-validation"
-  ],
   "main": "dist/index.js",
-  "types": "dist/index.d.ts",
   "browser": {
     "fs": false
   },
+  "types": "dist/index.d.ts",
   "scripts": {
     "test": "jest",
     "test:watch": "jest --watch",
@@ -34,10 +34,13 @@
     "dev": "ts-node-dev --respawn example/server.ts",
     "ts:check-types": "tsc",
     "ts:check-types:watch": "tsc --watch",
-    "check-code": "npm run test && npm run lint && npm run ts:check-types"
+    "check-code": "npm run test && npm run lint && npm run ts:check-types",
+    "publish-lib": "npm run prepare && npm publish"
   },
-  "peerDependencies": {
-    "express": "^4.17.1"
+  "dependencies": {
+    "@types/express": "^4.17.12",
+    "express-query-parser": "^1.2.0",
+    "yup": "^0.32.9"
   },
   "devDependencies": {
     "@types/jest": "^26.0.21",
@@ -55,9 +58,7 @@
     "ts-node-dev": "^1.1.6",
     "typescript": "^4.2.3"
   },
-  "dependencies": {
-    "@types/express": "^4.17.12",
-    "express-query-parser": "^1.2.0",
-    "yup": "^0.32.9"
+  "peerDependencies": {
+    "express": "^4.17.1"
   }
 }

@@ -4,7 +4,7 @@ import { router } from './userRouter'
 import packageJSON from '../package.json'
 import swaggerUi from 'swagger-ui-express'
 import { queryParser } from 'express-query-parser'
-import { tList } from '../src/schemaBuilder'
+import { tList, tNumber, tObject } from '../src/schemaBuilder'
 
 const app = express()
 const port = 3000
@@ -18,23 +18,34 @@ app.use(
   })
 )
 
+const tBody = {
+  header: tList(tNonNullable(tUnion(['a', 'b', 'c'] as const))),
+  message: tNonNullable(tString),
+  footer: tString,
+}
+
+const tQuery = {
+  name: tNonNullable(tString),
+  header: tList(tNonNullable(tUnion(['a', 'b', 'c'] as const))),
+}
+
 app.get(
   '/',
   apiDoc({
-    query: {
-      name: tNonNullable(tString),
-      header: tList(tNonNullable(tUnion(['a', 'b', 'c'] as const))),
-    },
-    body: {
-      header: tList(tNonNullable(tUnion(['a', 'b', 'c'] as const))),
-      message: tNonNullable(tString),
-      footer: tString,
-    },
-    returns: tString,
+    query: tQuery,
+    body: tBody,
+    returns: tObject({
+      enhancedBody: tObject(tBody),
+      enhancedQuery: tObject(tQuery),
+    }),
   })((req, res) => {
     const body = req.body
+    const query = req.query
 
-    res.send(`Hello ${body.header} ${body.message} ${body.footer ?? ''}!`)
+    res.send({
+      body,
+      query,
+    })
   })
 )
 
