@@ -1,5 +1,5 @@
 import { __expressSwaggerHack__, apiDoc } from '../src/typedExpressDocs'
-import { tBoolean, tNonNullable, tNumber, tObject, tString } from '../src/schemaBuilder'
+import { tBoolean, tNonNullable, tNumber, tObject, tString, tUnion } from '../src/schemaBuilder'
 
 describe('typedExpressDocs', () => {
   describe('apiDoc', () => {
@@ -154,7 +154,7 @@ describe('typedExpressDocs', () => {
           },
           returns: tString,
         })(() => {
-          expect('you should not').toBe('pass')
+          expect('you shall not').toBe('pass')
         })
 
         const metadata = lazyFn(__expressSwaggerHack__)
@@ -163,8 +163,6 @@ describe('typedExpressDocs', () => {
           {
             status: () => ({
               send: (errorObj: any) => {
-                console.log(errorObj)
-                // console.log(JSON.stringify(errorObj))
                 expect(errorObj).toStrictEqual({
                   errors: {
                     paramsErrors: {
@@ -247,6 +245,65 @@ describe('typedExpressDocs', () => {
                         },
                       ],
                       message: '3 errors occurred',
+                    },
+                  },
+                })
+              },
+            }),
+          } as any,
+          () => null
+        )
+      })
+      test('2 - enum error validation', () => {
+        const reqData = {
+          body: {
+            enum: 'b',
+          },
+        }
+
+        const lazyFn = apiDoc({
+          body: {
+            enum: tUnion(['a'] as const),
+          },
+          returns: tString,
+        })(() => {
+          expect('you shall not').toBe('pass')
+        })
+
+        const metadata = lazyFn(__expressSwaggerHack__)
+        metadata.handle(
+          reqData as any,
+          {
+            status: () => ({
+              send: (errorObj: any) => {
+                expect(errorObj).toStrictEqual({
+                  errors: {
+                    paramsErrors: null,
+                    queryErrors: null,
+                    bodyErrors: {
+                      name: 'ValidationError',
+                      value: {
+                        enum: 'b',
+                      },
+                      errors: ['enum must be one of the following values: a'],
+                      inner: [
+                        {
+                          name: 'ValidationError',
+                          value: 'b',
+                          path: 'enum',
+                          type: 'oneOf',
+                          errors: ['enum must be one of the following values: a'],
+                          inner: [],
+                          message: 'enum must be one of the following values: a',
+                          params: {
+                            value: 'b',
+                            originalValue: 'b',
+                            path: 'enum',
+                            values: 'a',
+                          },
+                        },
+                      ],
+                      message: 'enum must be one of the following values: a',
                     },
                   },
                 })
