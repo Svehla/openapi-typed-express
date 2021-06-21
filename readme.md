@@ -178,7 +178,9 @@ to make fully work `tNonNullable` you have to setup `tsconfig.json` properly.
 
 ![static type helper preview](./docs/preview-1.png)
 
-![Swagger preview](./docs/preview-2.png)
+![static type helper preview](./docs/preview-2.png)
+
+![Swagger preview](./docs/preview-3.png)
 
 ## Decorators vs High order function
 
