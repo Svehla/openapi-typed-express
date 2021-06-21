@@ -187,4 +187,4 @@ to make fully work `tNonNullable` you have to setup `tsconfig.json` properly.
 Author of the library decide to use simple pure Javascript High-order-function instead of fancy pants
 class based decorators API to simple keep good old express API of endpoints and not to be dependent on
 compilers options.
-(If you want to know more about it, check this article)[https://dev.to/svehla/why-reflect-metadata-suc-s-5fal]
+[If you want to know more about it, check this article](https://dev.to/svehla/why-reflect-metadata-suc-s-5fal)
