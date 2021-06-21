@@ -77,8 +77,6 @@ This method takes a swagger metadata which will be deeply merged into generated 
 
 [example usage](https://github.com/Svehla/swagger-typed-express-docs/blob/main/tests/schemaBuilder.test.ts#L15)
 
-[]
-
 ```typescript
 const swaggerJSON = initApiDocs(app, { info: { title: 'my application' } })
 ```
@@ -107,8 +105,8 @@ app.get(
       footer: tString,
     },
     returns: tObject({
-      enhancedBody: tObject({
-        data: tUnion(['a', 'b', 'c'] as const),
+      data: tObject({
+        nestedData: tUnion(['a', 'b', 'c'] as const),
       }),
     }),
   })((req, res) => {
@@ -166,7 +164,7 @@ app.use(
 
 to make fully work `tNonNullable` you have to setup `tsconfig.json` properly.
 
-```
+```json
 {
   ...
   "compilerOptions": {
@@ -176,9 +174,11 @@ to make fully work `tNonNullable` you have to setup `tsconfig.json` properly.
 }
 ```
 
-## Example preview
+## Example library preview
 
-![ts preview](./docs/preview-1.png)
+![static type helper preview](./docs/preview-1.png)
+
+![Swagger preview](./docs/preview-2.png)
 
 ## Decorators vs High order function
 
