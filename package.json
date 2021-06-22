@@ -1,12 +1,14 @@
 {
   "name": "swagger-typed-express-docs-test",
-  "version": "0.0.1-alpha.10",
+  "version": "0.0.1-beta.1",
   "description": "Simple express runtime parser and documentation swagger generator with 100% support of Typescript static types",
   "keywords": [
     "express",
-    "envs",
     "typescript",
+    "swagger",
+    "documentation",
     "inferring",
+    "http",
     "runtime-validation"
   ],
   "repository": {
