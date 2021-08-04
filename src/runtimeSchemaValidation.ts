@@ -18,7 +18,10 @@ export const convertSchemaToYupValidationObject = (schema: Schema): MixedSchema<
       return schema.required ? yupObj.required() : yupObj.notRequired()
     }
     case 'boolean':
-      return schema.required ? yup.boolean().required() : yup.boolean().notRequired()
+      // yup `.boolean()` & `.bool()` makes string 'true' and string 'false' valid
+      // so we have to specify custom union for only true & false values
+      const validator = yup.mixed().oneOf([true, false])
+      return schema.required ? validator.required() : validator.notRequired()
     case 'number':
       return schema.required ? yup.number().required() : yup.number().notRequired()
     case 'string':

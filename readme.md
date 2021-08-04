@@ -32,7 +32,7 @@ app.get(
   apiDoc({
     params: {
       userId: tNonNullable(tString),
-    }
+    },
     query: {
       name: tNonNullable(tString),
       header: tList(tNonNullable(tUnion(['a', 'b', 'c'] as const))),
