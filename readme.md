@@ -123,14 +123,14 @@ app.get(
 
 The library exposes many functions and objects which help you to create schema as you want.
 
-- tBoolean
-- tNumber
-- tUnion
-- tNonNullable
-- tAny
-- tObject
-- tCustomScalar
-- tString
+- `tBoolean(...)`
+- `tNumber(...)`
+- `tUnion(...)`
+- `tNonNullable(...)`
+- `tAny(...)`
+- `tObject(...)`
+- `tCustomScalar(...)`
+- `tString(...)`
 
 if you want to see more examples on how to build schema structure by function compositions
 you can check the tests
@@ -182,9 +182,3 @@ to make fully work `tNonNullable` you have to setup `tsconfig.json` properly.
 
 ![Swagger preview](./docs/preview-swagger-docs.png)
 
-## Decorators vs High order function
-
-Author of the library decide to use simple pure Javascript High-order-function instead of fancy pants
-class based decorators API to simple keep good old express API of endpoints and not to be dependent on
-compilers options.
-[If you want to know more about it, check this article](https://dev.to/svehla/why-reflect-metadata-suc-s-5fal)

@@ -1,28 +1,29 @@
-# Typed-express-swagger-docs
+# Typed express swagger-docs
 
 ## TLDR:
  
-I was missing some simple and minimalist library which will enhance express API and solve some common problems with defining interfaces of backend applications. We want to solve static type analysis, API documentation and runtime validations from single source of truth.
+I was missing some simple and minimalist libraries that will enhance express API and solve some common problems with defining interfaces of my backend applications. I want to solve static type analysis, API documentation, and runtime validations from a single source of truth.
 
-So I did proof of concept of my dreamed library (now it's publish in the alpha version).
-Library enable you just simple enhance your existing express application endpoint handler and infer handlers static types, add runtime HTTP validations and generate documentation in the swagger format.
-Library can do all of that from just one reusable single-source-of-truth (SSOT) in your codebase. It's just express handler HOF (high-order-function aka decorator for function) as you can see in the example
+So I did proof of concept of my dreamed library (now it's published in the alpha version).
+The library enables you just simply enhance your existing express application endpoint handler and infer static types, add runtime HTTP validations, and generate documentation in the swagger format.
+The library can do all of that from just one reusable single-source-of-truth (SSOT) in your codebase. It's just express handler HOF (high-order-function aka js decorator for functions). Let's check example bellow.
 
 [github repository](https://github.com/Svehla/swagger-typed-express-docs)
 
 [npm package](https://www.npmjs.com/package/swagger-typed-express-docs)
 
 ### Package usage preview
-_Infered typescript types_
 
-you can see that typescript compiler can infer static types directly
+_Infered typescript types from API definition_
 
 ![static type helper preview](https://github.com/Svehla/swagger-typed-express-docs/blob/main/docs/preview-typed-code-query.png?raw=true)
 
-_Genered API documentation_
+_Genered Swagger API documentation from API definition_
 
 ![static type helper preview](https://github.com/Svehla/swagger-typed-express-docs/blob/main/docs/preview-swagger-docs.png?raw=true)
 
+_HTTP 400 bad request runtime validation error from API definition_
+ 
 ![runtime error previewr](https://github.com/Svehla/swagger-typed-express-docs/blob/main/docs/preview-runtime-error.png?raw=true)
 
 
@@ -73,11 +74,9 @@ app.get(
 
 ## Motivation
 
-We all loved simplicity and minimalism behind the express which handle heavy-lifting around the HTTP  and give us awesome tool to.
+The problem with express is that it does not solve HTTP REST-API runtime-validation, static types, and API documentation out of the box. So many programmers who use express create their own "wrapper" around the express and the project starts to be complex because there is not standard express backend approach. It's cool that you can bend express in a way your business logic wants to, but it creates higher complexity of the whole project for other programmers. So I think that there could be some small standard of documenting API directly in your codebase.
 
-Problem with express is that it does not solve HTTP REST-API runtime-validation, static types and API documentation out of the box. So many programmers whose use express create their own "wrapper" around the express and project starts to be complex because there is not standard backend approach. Its cool that you can bend express in a way your business logic want to, but it creates higher complexity of whole project for another programmers. So i think that there could be some small standard of documenting API directly in your codebase.
-
-I tried to look for another libraries in current `npm` ecosystem that could satisfied our need.
+I tried to look for another library in the current `npm` ecosystem that could satisfy our needs.
 
 - 1. Define one SSOT (single source of truth) which do
   - 1. runtime schema validations
@@ -87,38 +86,44 @@ I tried to look for another libraries in current `npm` ecosystem that could sati
 - 3. Nice runtime-error messages
 - 5. Support of REST-API
 
-I tried `hapi.js`, `nest.js` and another libraries but unfortunately I found nothing, so I decide to create my own solution which will fully satisfied our needs.
 
-This article is intended to open disucussion if the API and whole view on the problem is proper and check if other people like same approach as i do.
+I tried `hapi.js`, `nest.js`, and other libraries but unfortunately, I found nothing, so I decide to create my solution which will fully satisfy our needs.
 
+This article is intended to open discussion if the API and whole view on the problem is proper and check if other people like the same approach as I do.
 
-## Phylosophic part behind the architecture
+Thanks to simple APIs you can easily integrate express endpoints one after another without breaking existing functionality with raw express API. 
 
-## SSOT / DRY
+## Patterns used in the package API
 
-Many programers really try-hard to keep the code DRY _(don't repeat yourself)_. I think that much more important pattern for clean code is the SSOT _(single source of truth)_. Its so important to have definition of your business state on the only one place in your codebase. If you duplicate some parts of state on more places you end up that programmes will do bugs because they will forget to update more parts of codebase.
+### SSOT / DRY
 
-## Decorators vs High order function
+Many programmers try hard to keep the code DRY _(don't repeat yourself)_. I think that a much more important pattern for clean code is the SSOT _(single source of truth)_. It's so important to have a definition of your business state in only one place in your codebase. If you duplicate some parts of the state in more places you end up that programs will do bugs because they will forget to update more parts of the codebase.
 
-We decide to use simple pure Javascript high-order-function to decorate handlers instead of fancy pants class based decorators API to simple keep good old express API of endpoints and not to be dependent on fancy experimental compilers options like dekorators and so on.
-[If you want to know more about it, check this article](https://dev.to/svehla/why-reflect-metadata-suc-s-5fal)
+### Decorators vs High order function
 
-## Bright package future
+I decided to use simple pure Javascript high-order-function to decorate handlers instead of fancy pants class-based decorators API to simply keep good old express API of endpoints and not to be dependent on fancy experimental compilers options like decorators and so on.
+[If you want to know more about it, check this article.](https://dev.to/svehla/why-reflect-metadata-suc-s-5fal)
 
-In the future we would like to add few features which could make library more flexible
+## Package future?
 
-### Cyclic dependencies
-- Cyclic dependencies of data types, similar as graphql has
-- Better documentation and helper methods to generate more descriptive swagger documentation
-- Document on how to create custom data types with custom validations
+In the future, I would like to add few features which could add more flexibility to define a schema for express handler endpoint
 
-## Integration
+**Cyclic dependencies**
 
-Thanks to nice APIs you can easily integrate endpoints one after another without breaking existing functionality with raw express API.
+Cyclic dependencies of data types, similar as [graphql](https://www.npmjs.com/package/graphql) have already been defined.
 
+**Better support of creating custom data type**
 
+In the current library there is no official way how to create custom data type with custom validators and custom type inference and you have to use one of pre-defined types `tBoolean` `tNumber` `tUnion` `tNonNullable` `tAny` `tObject` `tCustomScalar` `tString`.
 
 
 ## What do you think?
 
-I would like to know your opinion about 
+In my humble opinion, the `npm` ecosystem is missing some strong Typescript-supported solutions on how to handle that basic stuff like HTTP schema defining.
+
+I would like to know your opinion about this kind of package API.
+
+If you have some topics to discuss don't be shy to say them out loud in the comment section and open discussion.
+
+
+**If you enjoyed reading the article don’t forget to like it to tell me if it makes sense to continue.**
