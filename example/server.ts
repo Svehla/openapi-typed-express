@@ -32,11 +32,22 @@ const tQuery = {
 app.get(
   '/',
   apiDoc({
-    query: tQuery,
-    body: tBody,
+    params: {
+      userId: tNonNullable(tString),
+    },
+    query: {
+      name: tNonNullable(tString),
+      header: tList(tNonNullable(tUnion(['a', 'b', 'c'] as const))),
+    },
+    body: {
+      header: tList(tNonNullable(tUnion(['a', 'b', 'c'] as const))),
+      message: tNonNullable(tString),
+      footer: tString,
+    },
     returns: tObject({
-      enhancedBody: tObject(tBody),
-      enhancedQuery: tObject(tQuery),
+      enhancedBody: tObject({
+        data: tUnion(['a', 'b', 'c'] as const),
+      }),
     }),
   })((req, res) => {
     const body = req.body
