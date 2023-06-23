@@ -7,7 +7,7 @@ import { queryParser } from 'express-query-parser'
 import { tList, tNumber, tObject } from '../src/schemaBuilder'
 
 const app = express()
-const port = 3000
+const port = 5000
 
 app.use(express.urlencoded({ extended: true }))
 app.use(express.json())
@@ -30,7 +30,7 @@ const tQuery = {
 }
 
 app.get(
-  '/',
+  '/userId/:userId',
   apiDoc({
     params: {
       userId: tNonNullable(tString),
@@ -75,12 +75,15 @@ const swaggerJSON = initApiDocs(app, {
   schemes: ['http'],
 })
 
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerJSON))
+app.use('/api-docs/', (req, res) => res.send(swaggerJSON))
+app.use('/swagger-ui/', swaggerUi.serve, swaggerUi.setup(swaggerJSON))
 
 app.listen(port, () => {
   console.info(`
 --------- server is ready now ---------
-GQL URL: http://localhost:${port}/
+ROOT         : http://localhost:${port}/
+Swagger JSON : http://localhost:${port}/api-docs
+Swagger   UI : http://localhost:${port}/swagger-ui
 ---------------------------------------
   `)
 })

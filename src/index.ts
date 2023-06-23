@@ -7,6 +7,7 @@ export {
   tNonNullable,
   tAny,
   tObject,
+  tList,
   tCustomScalar,
   tString,
 } from './schemaBuilder'

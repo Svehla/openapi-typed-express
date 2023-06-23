@@ -230,6 +230,7 @@ export const initApiDocs = (
     {
       swagger: '2.0',
       info: {
+        version: '1.0.0',
         title: 'Swagger documentation',
         termsOfService: 'http://swagger.io/terms/',
       },

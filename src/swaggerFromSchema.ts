@@ -17,19 +17,26 @@ const toSwaggerSchema = (schema: Schema): any => {
       }
 
     case 'object':
+      const required = Object.entries(schema.properties).filter(([k,v]) => v.required === true).map(([k, v]) => k)
       return {
-        ...schema,
+        type: 'object',
+        // ...schema,
+        // TODO: add requires
+        ...(required.length > 0 ? { required } : {}),
         properties: mapEntries(([k, v]) => [k, toSwaggerSchema(v)], schema.properties),
       }
 
     case 'array':
       return {
-        ...schema,
+        type: 'array',
+        // ...schema,
         items: toSwaggerSchema(schema.items),
       }
 
     default:
-      return schema
+      return {
+        type: schema.type,
+      }
   }
 }
 
@@ -44,29 +51,33 @@ export const generateSwaggerPath = (schemas: GenerateSwaggerPathArg) => {
         in: 'path',
         name: k,
         required: v.required,
-        schema: toSwaggerSchema(v),
+        ...toSwaggerSchema(v),
       })),
 
       ...Object.entries(schemas.querySchema?.properties ?? {}).map(([k, v]) => ({
         in: 'query',
         name: k,
         required: v.required,
-        schema: toSwaggerSchema(v),
+        ...toSwaggerSchema(v),
       })),
 
       isObject(schemas.bodySchema)
         ? {
             in: 'body',
             name: 'body',
+            // TODO: missing required object items... read by: schemas.bodySchema
             required: schemas.bodySchema!.required,
             schema: toSwaggerSchema(schemas.bodySchema!),
+            // description: 'xxx'
           }
         : null,
     ].filter(Boolean),
+
     responses: {
       ...(isObject(schemas.returnsSchema)
         ? {
             '200': {
+              description: '',
               schema: toSwaggerSchema(schemas.returnsSchema!),
             },
           }
@@ -91,10 +102,20 @@ export type UrlsMethodDocs = Record<
   >
 >
 
+const regex = /:(\w+)/g;
+
 export const convertUrlsMethodsSchemaToSwagger = (obj: UrlsMethodDocs) => {
   return mapEntries(
     ([url, methods]) => [
-      url,
+      /*
+      make regex with javascript replaceAll that replace all variables in url like :id with {id}
+
+      input:
+      /userId/:userId/xxx
+      to:
+      /userId/{userId}/xxx
+      */
+      url.replaceAll(regex, '{$1}'),
       mapEntries(
         ([method, schema]) => [
           method,
