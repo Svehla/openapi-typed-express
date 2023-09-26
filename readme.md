@@ -37,16 +37,16 @@ app.get(
     },
     query: {
       name: tNonNullable(tString),
-      header: tList(tNonNullable(tUnion(['a', 'b', 'c'] as const))),
+      header: tList(tNonNullable(tUnion('a', 'b', 'c'))),
     },
     body: {
-      header: tList(tNonNullable(tUnion(['a', 'b', 'c'] as const))),
+      header: tList(tNonNullable(tUnion('a', 'b', 'c'))),
       message: tNonNullable(tString),
       footer: tString,
     },
     returns: tObject({
       enhancedBody: tObject({
-        data: tUnion(['a', 'b', 'c'] as const),
+        data: tUnion('a', 'b', 'c'),
       }),
     }),
   })((req, res) => {
@@ -99,16 +99,16 @@ app.get(
   apiDoc({
     query: {
       name: tNonNullable(tString),
-      header: tList(tNonNullable(tUnion(['a', 'b', 'c'] as const))),
+      header: tList(tNonNullable(tUnion('a', 'b', 'c'))),
     },
     body: {
-      header: tList(tNonNullable(tUnion(['a', 'b', 'c'] as const))),
+      header: tList(tNonNullable(tUnion('a', 'b', 'c'))),
       message: tNonNullable(tString),
       footer: tString,
     },
     returns: tObject({
       data: tObject({
-        nestedData: tUnion(['a', 'b', 'c'] as const),
+        nestedData: tUnion('a', 'b', 'c'),
       }),
     }),
   })((req, res) => {

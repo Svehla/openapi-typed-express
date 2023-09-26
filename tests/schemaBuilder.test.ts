@@ -19,7 +19,7 @@ describe('schemaBuilder', () => {
     d: tNonNullable(tList(tNonNullable(tObject({ nestedA: tNonNullable(tString) })))),
     e: tNumber,
     f: tAny,
-    g: tUnion(['a', 'b', 'c', 'd']),
+    g: tUnion('a', 'b', 'c', 'd'),
     // TODO: add more tests for tCustomScalar
   })
 
