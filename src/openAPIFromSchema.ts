@@ -1,14 +1,14 @@
 import { Schema, SchemaObject } from './schemaBuilder'
 import { isObject, mapEntries } from './utils'
 
-type GenerateSwaggerPathArg = {
+type GenerateOpenAPIPathArg = {
   querySchema: SchemaObject | null | undefined
   pathSchema: SchemaObject | null | undefined
   bodySchema: SchemaObject | null | undefined
   returnsSchema: Schema | null | undefined
 }
 
-const toSwaggerSchema = (schema: Schema): any => {
+const toOpenAPISchema = (schema: Schema): any => {
   switch (schema.type) {
     case 'enum':
       return {
@@ -17,20 +17,28 @@ const toSwaggerSchema = (schema: Schema): any => {
       }
 
     case 'object':
-      const required = Object.entries(schema.properties).filter(([k,v]) => v.required === true).map(([k, v]) => k)
+      const required = Object.entries(schema.properties)
+        .filter(([k, v]) => v.required === true)
+        .map(([k, v]) => k)
+
       return {
         type: 'object',
         // ...schema,
         // TODO: add requires
         ...(required.length > 0 ? { required } : {}),
-        properties: mapEntries(([k, v]) => [k, toSwaggerSchema(v)], schema.properties),
+        properties: mapEntries(([k, v]) => [k, toOpenAPISchema(v)], schema.properties),
       }
 
     case 'array':
       return {
         type: 'array',
         // ...schema,
-        items: toSwaggerSchema(schema.items),
+        items: toOpenAPISchema(schema.items),
+      }
+
+    case 'oneOf':
+      return {
+        oneOf: schema.options.map(option => toOpenAPISchema(option)),
       }
 
     default:
@@ -42,46 +50,53 @@ const toSwaggerSchema = (schema: Schema): any => {
 
 /**
  * TODO: add support for enum/union type
- * TODO: add smarter support for customizing of swagger documentations
+ * TODO: add smarter support for customizing of openAPI documentations
  */
-export const generateSwaggerPath = (schemas: GenerateSwaggerPathArg) => {
+export const generateOpenAPIPath = (schemas: GenerateOpenAPIPathArg) => {
   return {
     parameters: [
       ...Object.entries(schemas.pathSchema?.properties ?? {}).map(([k, v]) => ({
         in: 'path',
         name: k,
         required: v.required,
-        ...toSwaggerSchema(v),
+        schema: toOpenAPISchema(v),
       })),
 
       ...Object.entries(schemas.querySchema?.properties ?? {}).map(([k, v]) => ({
         in: 'query',
         name: k,
         required: v.required,
-        ...toSwaggerSchema(v),
+        schema: toOpenAPISchema(v),
       })),
-
-      isObject(schemas.bodySchema)
-        ? {
-            in: 'body',
-            name: 'body',
-            // TODO: missing required object items... read by: schemas.bodySchema
-            required: schemas.bodySchema!.required,
-            schema: toSwaggerSchema(schemas.bodySchema!),
-            // description: 'xxx'
-          }
-        : null,
     ].filter(Boolean),
 
-    responses: {
-      ...(isObject(schemas.returnsSchema)
-        ? {
-            '200': {
-              description: '',
-              schema: toSwaggerSchema(schemas.returnsSchema!),
+    ...(isObject(schemas.bodySchema)
+      ? {
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: toOpenAPISchema(schemas.bodySchema!),
+              },
             },
-          }
-        : ({} as any)),
+          },
+        }
+      : ({} as any)),
+
+    responses: {
+      200: {
+        description: '200 response',
+        ...(isObject(schemas.returnsSchema)
+          ? {
+              content: {
+                'application/json': {
+                  // description: '',
+                  schema: toOpenAPISchema(schemas.returnsSchema!),
+                },
+              },
+            }
+          : ({} as any)),
+      },
     },
   }
 }
@@ -102,9 +117,9 @@ export type UrlsMethodDocs = Record<
   >
 >
 
-const regex = /:(\w+)/g;
+const regex = /:(\w+)/g
 
-export const convertUrlsMethodsSchemaToSwagger = (obj: UrlsMethodDocs) => {
+export const convertUrlsMethodsSchemaToOpenAPI = (obj: UrlsMethodDocs) => {
   return mapEntries(
     ([url, methods]) => [
       /*
@@ -119,7 +134,7 @@ export const convertUrlsMethodsSchemaToSwagger = (obj: UrlsMethodDocs) => {
       mapEntries(
         ([method, schema]) => [
           method,
-          generateSwaggerPath({
+          generateOpenAPIPath({
             pathSchema: schema.pathSchema,
             querySchema: schema.querySchema,
             bodySchema: schema.bodySchema,

@@ -1,4 +1,4 @@
-import { __expressSwaggerHack__, apiDoc } from '../src/typedExpressDocs'
+import { __expressOpenAPIHack__, apiDoc } from '../src/typedExpressDocs'
 import { tBoolean, tNonNullable, tNumber, tObject, tString, tUnion } from '../src/schemaBuilder'
 
 describe('typedExpressDocs', () => {
@@ -23,7 +23,7 @@ describe('typedExpressDocs', () => {
           }).toStrictEqual(reqData)
         })
 
-        const metadata = lazyFn(__expressSwaggerHack__)
+        const metadata = lazyFn(__expressOpenAPIHack__)
         metadata.handle(reqData as any, {} as any, () => null)
       })
     })
@@ -47,7 +47,7 @@ describe('typedExpressDocs', () => {
         }).toStrictEqual(reqData)
       })
 
-      const metadata = lazyFn(__expressSwaggerHack__)
+      const metadata = lazyFn(__expressOpenAPIHack__)
       metadata.handle(reqData as any, {} as any, () => null)
     })
 
@@ -72,7 +72,7 @@ describe('typedExpressDocs', () => {
         }).toStrictEqual(reqData)
       })
 
-      const metadata = lazyFn(__expressSwaggerHack__)
+      const metadata = lazyFn(__expressOpenAPIHack__)
       metadata.handle(reqData as any, {} as any, () => null)
     })
 
@@ -116,7 +116,7 @@ describe('typedExpressDocs', () => {
         }).toStrictEqual(reqData)
       })
 
-      const metadata = lazyFn(__expressSwaggerHack__)
+      const metadata = lazyFn(__expressOpenAPIHack__)
       metadata.handle(reqData as any, {} as any, () => null)
     })
 
@@ -157,7 +157,7 @@ describe('typedExpressDocs', () => {
           expect('you shall not').toBe('pass')
         })
 
-        const metadata = lazyFn(__expressSwaggerHack__)
+        const metadata = lazyFn(__expressOpenAPIHack__)
         metadata.handle(
           reqData as any,
           {
@@ -166,84 +166,130 @@ describe('typedExpressDocs', () => {
                 expect(errorObj).toStrictEqual({
                   errors: {
                     paramsErrors: {
-                      name: 'ValidationError',
                       value: { message: 'hi' },
-                      errors: [
-                        'message must be a `boolean` type, but the final value was: `"hi"`.',
-                      ],
+                      errors: ['message must be one of the following values: true, false'],
                       inner: [
                         {
-                          name: 'ValidationError',
                           value: 'hi',
                           path: 'message',
-                          type: 'typeError',
-                          errors: [
-                            'message must be a `boolean` type, but the final value was: `"hi"`.',
-                          ],
-                          inner: [],
-                          message:
-                            'message must be a `boolean` type, but the final value was: `"hi"`.',
+                          type: 'oneOf',
+                          errors: ['message must be one of the following values: true, false'],
                           params: {
                             value: 'hi',
                             originalValue: 'hi',
                             path: 'message',
-                            type: 'boolean',
+                            spec: {
+                              strip: false,
+                              strict: false,
+                              abortEarly: true,
+                              recursive: true,
+                              disableStackTrace: false,
+                              nullable: false,
+                              optional: false,
+                              coerce: true,
+                            },
+                            values: 'true, false',
+                            resolved: [true, false],
                           },
+                          inner: [],
+                          name: 'ValidationError',
+                          message: 'message must be one of the following values: true, false',
                         },
                       ],
-                      message: 'message must be a `boolean` type, but the final value was: `"hi"`.',
+                      name: 'ValidationError',
+                      message: 'message must be one of the following values: true, false',
                     },
                     queryErrors: null,
                     bodyErrors: {
-                      name: 'ValidationError',
-                      value: { c: { d: 3 }, b: 'text', a: null },
+                      value: { a: true, b: 'text', c: { d: 3 } },
                       errors: [
                         'a must be a `number` type, but the final value was: `NaN` (cast from the value `true`).',
-                        'b must be a `boolean` type, but the final value was: `"text"`.',
-                        'c.d must be a `boolean` type, but the final value was: `3`.',
+                        'b must be one of the following values: true, false',
+                        'c.d must be one of the following values: true, false',
                       ],
                       inner: [
                         {
-                          name: 'ValidationError',
                           value: null,
                           path: 'a',
                           type: 'typeError',
                           errors: [
                             'a must be a `number` type, but the final value was: `NaN` (cast from the value `true`).',
                           ],
+                          params: {
+                            value: null,
+                            originalValue: true,
+                            path: 'a',
+                            spec: {
+                              strip: false,
+                              strict: false,
+                              abortEarly: true,
+                              recursive: true,
+                              disableStackTrace: false,
+                              nullable: false,
+                              optional: false,
+                              coerce: true,
+                            },
+                            type: 'number',
+                          },
                           inner: [],
+                          name: 'ValidationError',
                           message:
                             'a must be a `number` type, but the final value was: `NaN` (cast from the value `true`).',
-                          params: { value: null, originalValue: true, path: 'a', type: 'number' },
                         },
                         {
-                          name: 'ValidationError',
                           value: 'text',
                           path: 'b',
-                          type: 'typeError',
-                          errors: [
-                            'b must be a `boolean` type, but the final value was: `"text"`.',
-                          ],
-                          inner: [],
-                          message: 'b must be a `boolean` type, but the final value was: `"text"`.',
+                          type: 'oneOf',
+                          errors: ['b must be one of the following values: true, false'],
                           params: {
                             value: 'text',
                             originalValue: 'text',
                             path: 'b',
-                            type: 'boolean',
+                            spec: {
+                              strip: false,
+                              strict: false,
+                              abortEarly: true,
+                              recursive: true,
+                              disableStackTrace: false,
+                              nullable: false,
+                              optional: false,
+                              coerce: true,
+                            },
+                            values: 'true, false',
+                            resolved: [true, false],
                           },
+                          inner: [],
+                          name: 'ValidationError',
+                          message: 'b must be one of the following values: true, false',
                         },
                         {
-                          name: 'ValidationError',
                           value: 3,
                           path: 'c.d',
-                          type: 'typeError',
-                          errors: ['c.d must be a `boolean` type, but the final value was: `3`.'],
+                          type: 'oneOf',
+                          errors: ['c.d must be one of the following values: true, false'],
+                          params: {
+                            value: 3,
+                            originalValue: 3,
+                            path: 'c.d',
+                            spec: {
+                              strip: false,
+                              strict: false,
+                              abortEarly: true,
+                              recursive: true,
+                              disableStackTrace: false,
+                              nullable: false,
+                              optional: false,
+                              coerce: true,
+                            },
+                            values: 'true, false',
+                            resolved: [true, false],
+                          },
                           inner: [],
-                          message: 'c.d must be a `boolean` type, but the final value was: `3`.',
-                          params: { value: 3, originalValue: 3, path: 'c.d', type: 'boolean' },
+                          name: 'ValidationError',
+                          message: 'c.d must be one of the following values: true, false',
                         },
                       ],
+                      name: 'ValidationError',
                       message: '3 errors occurred',
                     },
                   },
@@ -270,7 +316,7 @@ describe('typedExpressDocs', () => {
           expect('you shall not').toBe('pass')
         })
 
-        const metadata = lazyFn(__expressSwaggerHack__)
+        const metadata = lazyFn(__expressOpenAPIHack__)
         metadata.handle(
           reqData as any,
           {
@@ -281,28 +327,37 @@ describe('typedExpressDocs', () => {
                     paramsErrors: null,
                     queryErrors: null,
                     bodyErrors: {
-                      name: 'ValidationError',
-                      value: {
-                        enum: 'b',
-                      },
+                      value: { enum: 'b' },
                       errors: ['enum must be one of the following values: a'],
                       inner: [
                         {
-                          name: 'ValidationError',
                           value: 'b',
                           path: 'enum',
                           type: 'oneOf',
                           errors: ['enum must be one of the following values: a'],
-                          inner: [],
-                          message: 'enum must be one of the following values: a',
                           params: {
                             value: 'b',
                             originalValue: 'b',
                             path: 'enum',
+                            spec: {
+                              strip: false,
+                              strict: false,
+                              abortEarly: true,
+                              recursive: true,
+                              disableStackTrace: false,
+                              nullable: true,
+                              optional: true,
+                              coerce: true,
+                            },
                             values: 'a',
+                            resolved: ['a'],
                           },
+                          inner: [],
+                          name: 'ValidationError',
+                          message: 'enum must be one of the following values: a',
                         },
                       ],
+                      name: 'ValidationError',
                       message: 'enum must be one of the following values: a',
                     },
                   },

@@ -55,6 +55,12 @@ export type SchemaEnum = {
   options: any[]
 }
 
+export type SchemaOneOf = {
+  type: 'oneOf'
+  required: boolean
+  options: any[]
+}
+
 // --- TODO: add types
 
 export type Schema =
@@ -66,6 +72,7 @@ export type Schema =
   | SchemaAny
   | SchemaEnum
   | SchemaCustomScalar
+  | SchemaOneOf
 
 // --------- builder functions ---------
 
@@ -89,8 +96,14 @@ export const tAny = {
   required: false as const,
 }
 
-// TODO: should it be called enum or union
+export const tOneOf = <T extends readonly any[] | any[]>(options: T) => ({
+  type: 'oneOf' as const,
+  required: false as const,
+  options: (options as unknown) as DeepWriteable<T>,
+})
+
 export const tUnion = <T extends readonly any[] | any[]>(options: T) => ({
+  // rename from enum to union?
   type: 'enum' as const,
   required: false as const,
   options: (options as unknown) as DeepWriteable<T>,

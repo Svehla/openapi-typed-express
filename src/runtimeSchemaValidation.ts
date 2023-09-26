@@ -1,10 +1,24 @@
 import * as yup from 'yup'
-import { MixedSchema } from 'yup/lib/mixed'
 import { Schema } from './schemaBuilder'
 import { mapEntries } from './utils'
 
+// inspiration:
+// https://stackoverflow.com/a/74322802
+// https://gist.github.com/cb109/8eda798a4179dc21e46922a5fbb98be6
+yup.addMethod(yup.mixed, 'oneOfSchemas', function oneOfSchemas(schemas: any[], message) {
+  return this.test(
+    'one-of-schemas-exact',
+    message || 'Not all items in ${path} match one of the allowed schemas',
+    item => {
+      return schemas.some(schema => schema.isValidSync(item, { strict: true }))
+    }
+  )
+})
+
 // TODO: write tests
-export const convertSchemaToYupValidationObject = (schema: Schema): MixedSchema<any, any, any> => {
+export const convertSchemaToYupValidationObject = (
+  schema: Schema
+): yup.MixedSchema<any, any, any> => {
   switch (schema?.type) {
     case 'array': {
       const yupArr = yup.array().of(convertSchemaToYupValidationObject(schema.items))
@@ -40,6 +54,14 @@ export const convertSchemaToYupValidationObject = (schema: Schema): MixedSchema<
     case 'enum':
       const yupObj = yup.mixed().oneOf(schema.options)
       return schema.required ? yupObj.required() : yupObj.notRequired()
+    case 'oneOf':
+      return (
+        yup
+          .mixed()
+          // @ts-expect-error
+          .oneOfSchemas(schema.options.map(i => convertSchemaToYupValidationObject(i)))
+      )
+
     default:
       throw new Error(`unsupported type ${(schema as any)?.type}`)
   }

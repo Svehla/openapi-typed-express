@@ -15,6 +15,9 @@ export type InferSchemaType<T extends Schema> = T extends {
   ? MakeOptional<boolean, T['required']>
   : T extends { type: 'string' }
   ? MakeOptional<string, T['required']>
+  : T extends { type: 'oneOf' }
+  ? // TODO: TS is working for iterating over union? if yes, than cool af!
+    MakeOptional<InferSchemaType<T['options'][number]>, T['required']>
   : T extends { type: 'enum' }
   ? MakeOptional<T['options'][number], T['required']>
   : T extends { type: 'number' }

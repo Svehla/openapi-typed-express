@@ -2,13 +2,13 @@ import { DeepPartial, deepMerge, mergePaths, syncAllSettled } from './utils'
 import { InferSchemaType } from './InferSchemaType'
 import { NextFunction, Request, Response } from 'express'
 import { Schema, tNonNullable, tObject } from './schemaBuilder'
-import { UrlsMethodDocs, convertUrlsMethodsSchemaToSwagger } from './swaggerFromSchema'
+import { UrlsMethodDocs, convertUrlsMethodsSchemaToOpenAPI } from './openAPIFromSchema'
 import { convertSchemaToYupValidationObject } from './runtimeSchemaValidation'
 import { parseUrlFromExpressRegexp } from './expressRegExUrlParser'
 
 // symbol as a key is not sended via express down to the _routes
-export const __expressSwaggerHack_key__ = '__expressSwaggerHack_key__'
-export const __expressSwaggerHack__ = Symbol('__expressSwaggerHack__')
+export const __expressOpenAPIHack_key__ = '__expressOpenAPIHack_key__'
+export const __expressOpenAPIHack__ = Symbol('__expressOpenAPIHack__')
 
 // --------------------------------------------------------------------------
 // ------------- express handlers runtime validation HOF wrapper ------------
@@ -61,7 +61,7 @@ export const apiDoc = <C extends Config>(docs: C) => (
     // if someone forget to call `initApiDocs()` before server starts to listen
     // each HTTP call to apiDocs()() decorated handler should fails
     // because this fn is synchronous express should return nicely stringified error
-    if (message !== __expressSwaggerHack__) {
+    if (message !== __expressOpenAPIHack__) {
       throw new Error('You probably forget to call `initApiDocs()` for typed-express library')
     }
 
@@ -110,7 +110,7 @@ export const apiDoc = <C extends Config>(docs: C) => (
 
   // make the sign for the function metadata to be sure that resolver is enhanced by this library
   // @ts-expect-error
-  lazyInitializeHandler[__expressSwaggerHack_key__] = __expressSwaggerHack__
+  lazyInitializeHandler[__expressOpenAPIHack_key__] = __expressOpenAPIHack__
 
   return lazyInitializeHandler
 }
@@ -179,9 +179,9 @@ const resolveRouteHandlersAndExtractAPISchema = (
     .map(s => (s as ExpressRouteHandlerInternalStruct).route)
     .forEach(r => {
       r.stack.forEach(s => {
-        if (s.handle?.[__expressSwaggerHack_key__] !== __expressSwaggerHack__) return
+        if (s.handle?.[__expressOpenAPIHack_key__] !== __expressOpenAPIHack__) return
 
-        const routeMetadataDocs = s.handle(__expressSwaggerHack__)
+        const routeMetadataDocs = s.handle(__expressOpenAPIHack__)
 
         const endpointPath = mergePaths(path, r.path)
 
@@ -205,8 +205,8 @@ const resolveRouteHandlersAndExtractAPISchema = (
   return urlsMethodDocs
 }
 
-type SwaggerShape = DeepPartial<{
-  swagger: string
+type OpenAPIShape = DeepPartial<{
+  openapi: '3.0.0'
   info: {
     description: string
     version: string
@@ -216,29 +216,31 @@ type SwaggerShape = DeepPartial<{
       email: string
     }
   }
-  host: string
-  basePath: string
-  schemes: string[]
+  servers: { url: string }[]
   paths: any
 }>
 
 export const initApiDocs = (
   expressApp: { _router: ExpressRouteInternalStruct },
-  customSwaggerType: SwaggerShape = {}
+  customOpenAPIType: OpenAPIShape = {}
 ) => {
   return deepMerge(
     {
-      swagger: '2.0',
+      openapi: '3.0.0',
       info: {
         version: '1.0.0',
-        title: 'Swagger documentation',
-        termsOfService: 'http://swagger.io/terms/',
+        title: 'openapi documentation',
       },
-      schemes: ['https', 'http'],
-      paths: convertUrlsMethodsSchemaToSwagger(
+      servers: [
+        {
+          url: 'http://localhost/',
+        },
+      ],
+      // schemes: ['https', 'http'],
+      paths: convertUrlsMethodsSchemaToOpenAPI(
         resolveRouteHandlersAndExtractAPISchema(expressApp._router)
       ),
     },
-    customSwaggerType
+    customOpenAPIType
   )
 }

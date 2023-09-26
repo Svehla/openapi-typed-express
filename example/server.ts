@@ -4,7 +4,7 @@ import { router } from './userRouter'
 import packageJSON from '../package.json'
 import swaggerUi from 'swagger-ui-express'
 import { queryParser } from 'express-query-parser'
-import { tList, tNumber, tObject } from '../src/schemaBuilder'
+import { tList, tNumber, tObject, tOneOf } from '../src/schemaBuilder'
 
 const app = express()
 const port = 5000
@@ -29,7 +29,7 @@ const tQuery = {
   header: tList(tNonNullable(tUnion(['a', 'b', 'c'] as const))),
 }
 
-app.get(
+app.post(
   '/userId/:userId',
   apiDoc({
     params: {
@@ -37,7 +37,8 @@ app.get(
     },
     query: {
       name: tNonNullable(tString),
-      header: tList(tNonNullable(tUnion(['a', 'b', 'c'] as const))),
+      header: tNonNullable(tUnion(['a', 'b', 'c'] as const)),
+      // header: tList(tNonNullable(tUnion(['a', 'b', 'c'] as const))),
     },
     body: {
       header: tList(tNonNullable(tUnion(['a', 'b', 'c'] as const))),
@@ -60,9 +61,42 @@ app.get(
   })
 )
 
+app.post(
+  '/object-union-type',
+  apiDoc({
+    body: {
+      users: tNonNullable(
+        tList(
+          tNonNullable(
+            tOneOf([
+              tObject({
+                type: tNonNullable(tUnion(['user'] as const)),
+                name: tNonNullable(tString),
+                age: tNumber,
+              }),
+              tObject({
+                type: tNonNullable(tUnion(['company'] as const)),
+                address: tNonNullable(tString),
+              }),
+            ])
+          )
+        )
+      ),
+    },
+  })((req, res) => {
+    const body = req.body
+    const query = req.query
+
+    res.send({
+      body,
+      query,
+    })
+  })
+)
+
 app.use('/users', router)
 
-const swaggerJSON = initApiDocs(app, {
+const openAPIJSON = initApiDocs(app, {
   info: {
     version: packageJSON.version,
     title: 'Example application',
@@ -70,20 +104,17 @@ const swaggerJSON = initApiDocs(app, {
       email: 'user@example.com',
     },
   },
-  host: 'localhost',
-  basePath: '/',
-  schemes: ['http'],
 })
 
-app.use('/api-docs/', (req, res) => res.send(swaggerJSON))
-app.use('/swagger-ui/', swaggerUi.serve, swaggerUi.setup(swaggerJSON))
+app.use('/api-docs/', (req, res) => res.send(openAPIJSON))
+app.use('/swagger-ui/', swaggerUi.serve, swaggerUi.setup(openAPIJSON))
 
 app.listen(port, () => {
   console.info(`
 --------- server is ready now ---------
 ROOT         : http://localhost:${port}/
-Swagger JSON : http://localhost:${port}/api-docs
-Swagger   UI : http://localhost:${port}/swagger-ui
+OpenAPI JSON : http://localhost:${port}/api-docs
+OpenAPI   UI : http://localhost:${port}/swagger-ui
 ---------------------------------------
   `)
 })

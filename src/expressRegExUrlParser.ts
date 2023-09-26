@@ -9,7 +9,7 @@
  * ```
  *
  * internal `app._routes` structure convert routes URL into regular expression
- * So if we want to generate swagger with nice URLs & methods we have to parse
+ * So if we want to generate openAPI with nice URLs & methods we have to parse
  * the regex back to human readable string
  *
  * if you want to see more people struggled with it you can check these links
@@ -18,10 +18,10 @@
  *
  * How does it work?
  * fn takes regexp like this:
- * /^\/swagger-test\/(?:([^\/]+?))\/sec\/(?:([^\/]+?))\/?(?=\/|$)/i
+ * /^\/page-test\/(?:([^\/]+?))\/sec\/(?:([^\/]+?))\/?(?=\/|$)/i
  *
  * will be resolved as:
- * /swagger-test/:param/sec/:param
+ * /page-test/:param/sec/:param
  *
  * TODO:
  * if you pass regex into express path, this function stops to work

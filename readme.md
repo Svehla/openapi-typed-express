@@ -2,7 +2,9 @@
 
 swagger-typed-express-docs keep you simple document your endpoints with just one single source of truth which
 
-- **Generate Swagger API documentation**
+this project generates OpenAPI 3.0.0, not swagger!
+
+- **Generate OpenAPI API documentation**
 - **Compile time validations - Infer Typescript static types out of the box**
 - **Runtime validate each of your HTTP request with user-friendly error messages**
 
@@ -181,4 +183,3 @@ to make fully work `tNonNullable` you have to setup `tsconfig.json` properly.
 ![static type helper preview](./docs/preview-typed-code-query.png)
 
 ![Swagger preview](./docs/preview-swagger-docs.png)
-
