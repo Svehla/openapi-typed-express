@@ -11,6 +11,7 @@ export {
   tCustomScalar,
   tString,
   tOneOf,
+  tSchemaInterfaceBuilder,
 } from './schemaBuilder'
 
 export { apiDoc, initApiDocs } from './typedExpressDocs'

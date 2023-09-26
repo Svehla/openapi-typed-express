@@ -4,7 +4,7 @@ import { router } from './userRouter'
 import packageJSON from '../package.json'
 import swaggerUi from 'swagger-ui-express'
 import { queryParser } from 'express-query-parser'
-import { tList, tNumber, tObject, tOneOf } from '../src/schemaBuilder'
+import { tSchemaInterfaceBuilder as I } from '../src/schemaBuilder'
 
 const app = express()
 const port = 5000
@@ -19,14 +19,14 @@ app.use(
 )
 
 const tBody = {
-  header: tList(tNonNullable(tUnion(['a', 'b', 'c'] as const))),
+  header: I.list.R(tUnion(['a', 'b', 'c'] as const)),
   message: tNonNullable(tString),
   footer: tString,
 }
 
 const tQuery = {
   name: tNonNullable(tString),
-  header: tList(tNonNullable(tUnion(['a', 'b', 'c'] as const))),
+  header: I.list.N(tUnion(['a', 'b', 'c'] as const)),
 }
 
 app.post(
@@ -41,13 +41,13 @@ app.post(
       // header: tList(tNonNullable(tUnion(['a', 'b', 'c'] as const))),
     },
     body: {
-      header: tList(tNonNullable(tUnion(['a', 'b', 'c'] as const))),
+      header: I.list.N(tUnion(['a', 'b', 'c'] as const)),
       message: tNonNullable(tString),
       footer: tString,
     },
-    returns: tObject({
-      enhancedBody: tObject({
-        data: tUnion(['a', 'b', 'c'] as const),
+    returns: I.object.N({
+      enhancedBody: I.object.N({
+        data: I.union.N(['a', 'b', 'c'] as const),
       }),
     }),
   })((req, res) => {
@@ -65,22 +65,18 @@ app.post(
   '/object-union-type',
   apiDoc({
     body: {
-      users: tNonNullable(
-        tList(
-          tNonNullable(
-            tOneOf([
-              tObject({
-                type: tNonNullable(tUnion(['user'] as const)),
-                name: tNonNullable(tString),
-                age: tNumber,
-              }),
-              tObject({
-                type: tNonNullable(tUnion(['company'] as const)),
-                address: tNonNullable(tString),
-              }),
-            ])
-          )
-        )
+      users: I.list.R(
+        I.oneOf.R([
+          I.object.R({
+            type: I.union.R(['user'] as const),
+            name: I.string.R,
+            age: I.number.R,
+          }),
+          I.object.R({
+            type: I.union.R(['company'] as const),
+            address: I.string.R,
+          }),
+        ])
       ),
     },
   })((req, res) => {

@@ -141,3 +141,38 @@ export const tNonNullable = <T extends { required: any }>(
   ...a,
   required: true as const,
 })
+
+export const tSchemaInterfaceBuilder = {
+  number: {
+    R: tNonNullable(tNumber),
+    N: tNumber,
+  },
+  boolean: {
+    R: tNonNullable(tBoolean),
+    N: tBoolean,
+  },
+  string: {
+    R: tNonNullable(tString),
+    N: tString,
+  },
+  any: {
+    R: tNonNullable(tAny),
+    N: tAny,
+  },
+  oneOf: {
+    R: <T extends readonly any[] | any[]>(options: T) => tNonNullable(tOneOf(options)),
+    N: tOneOf,
+  },
+  union: {
+    R: <T extends readonly any[] | any[]>(options: T) => tNonNullable(tUnion(options)),
+    N: tUnion,
+  },
+  object: {
+    R: <T>(args: T) => tNonNullable(tObject(args)),
+    N: tObject,
+  },
+  list: {
+    R: <T extends Schema>(items: T) => tNonNullable(tList(items)),
+    N: tList,
+  },
+}
