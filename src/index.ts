@@ -10,6 +10,7 @@ export {
   tList,
   tCustomScalar,
   tString,
+  tOneOf,
 } from './schemaBuilder'
 
 export { apiDoc, initApiDocs } from './typedExpressDocs'
