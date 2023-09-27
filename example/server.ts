@@ -26,20 +26,20 @@ app.post(
     },
     query: {
       name: T.null_string,
-      header: T.union('a', 'b', 'c'),
+      header: T.union(['a', 'b', 'c'] as const),
     },
     body: {
-      header: T.null_list(T.null_union('a', 'b', 'c')),
+      header: T.null_list(T.null_union(['a', 'b', 'c'] as const)),
       message: T.null_string,
       footer: T.string,
     },
     returns: T.null_object({
       enhancedBody: T.null_object({
-        data: T.null_union('a', 'b', 'c'),
+        data: T.null_union(['a', 'b', 'c'] as const),
       }),
     }),
   })((req, res) => {
-    const body = req.body
+    const body = req.body.header
     const query = req.query
 
     res.send({
@@ -54,17 +54,17 @@ app.post(
   apiDoc({
     body: {
       users: T.list(
-        T.oneOf(
+        T.oneOf([
           T.object({
-            type: T.union('user'),
+            type: T.union(['user'] as const),
             name: T.string,
             age: T.number,
           }),
           T.object({
-            type: T.union('company'),
+            type: T.union(['company'] as const),
             address: T.string,
-          })
-        )
+          }),
+        ])
       ),
     },
   })((req, res) => {

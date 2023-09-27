@@ -96,13 +96,13 @@ export const tAny = {
   required: false as const,
 }
 
-export const tOneOf = <T extends any[]>(...options: T) => ({
+export const tOneOf = <T extends readonly any[] | any[]>(options: T) => ({
   type: 'oneOf' as const,
   required: false as const,
   options: (options as unknown) as DeepWriteable<T>,
 })
 
-export const tUnion = <T extends any[]>(...options: T) => ({
+export const tUnion = <T extends readonly any[] | any[]>(options: T) => ({
   // rename from enum to union?
   type: 'enum' as const,
   required: false as const,
@@ -151,9 +151,9 @@ export const tSchemaInterfaceBuilder = {
   null_string: tString,
   any: tNonNullable(tAny),
   null_any: tAny,
-  oneOf: <T extends any[]>(...options: T) => tNonNullable(tOneOf(...options)),
+  oneOf: <T extends readonly any[] | any[]>(options: T) => tNonNullable(tOneOf(options)),
   null_oneOf: tOneOf,
-  union: <T extends any[]>(...options: T) => tNonNullable(tUnion(...options)),
+  union: <T extends readonly any[] | any[]>(options: T) => tNonNullable(tUnion(options)),
   null_union: tUnion,
   object: <T>(args: T) => tNonNullable(tObject(args)),
   null_object: tObject,
