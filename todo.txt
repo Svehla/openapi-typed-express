@@ -4,3 +4,5 @@ TODOs:
 - fix bad error messages: "name must be a `string` type, but the final value was: `null`.\n If \"null\" is intended as an empty value be sure to mark the schema as `.nullable()`"
 - number | string
 - add tests for object oneOf
+
+- add valid tAny + scalar types with custom parsers

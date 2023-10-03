@@ -1,3 +1,4 @@
+export { jsValueToSchema } from './schemaToJS'
 export { InferSchemaType } from './InferSchemaType'
 export { convertSchemaToYupValidationObject } from './runtimeSchemaValidation'
 export {
