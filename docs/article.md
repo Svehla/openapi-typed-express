@@ -29,32 +29,29 @@ _HTTP 400 bad request runtime validation error from API definition_
 _Code definition_
 
 ```typescript
-import { apiDoc, tNonNullable, tString, tUnion, tList, tObject } from 'swagger-typed-express-docs'
+import { tSchemaInterfaceBuilder as T } from 'swagger-typed-express-docs'
 
 app.get(
-  '/user/:userId',
-  /**
+  '/',
+    /**
    * adding single-source-of-truth metadata for the Express handler and a library to do the
    * - runtime validations checks
    * - compile-time checks
    * - generate swagger documentation
    */
   apiDoc({
-    params: {
-      userId: tNonNullable(tString),
-    },
     query: {
-      name: tNonNullable(tString),
-      header: tList(tNonNullable(tUnion('a', 'b', 'c'))),
+      name: T.string
+      header: T.list(T.union(['a', 'b', 'c']))),
     },
     body: {
-      header: tList(tNonNullable(tUnion('a', 'b', 'c'))),
-      message: tNonNullable(tString),
-      footer: tString,
+      header: T.list(T.union(['a', 'b', 'c']))),
+      message: T.null_list,
+      footer: T.string,
     },
-    returns: tObject({
-      enhancedBody: tObject({
-        data: tUnion('a', 'b', 'c'),
+    returns: T.null_object({
+      data: T.null_object({
+        nestedData: T.union(['a', 'b', 'c']),
       }),
     }),
   })((req, res) => {

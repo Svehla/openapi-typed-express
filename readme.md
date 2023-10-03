@@ -17,7 +17,7 @@ So you can just simply wrap your endpoint with the `apiDoc(...)` and initialize 
 
 ```typescript
 import express from 'express'
-import { apiDoc, initApiDocs, tNonNullable, tString } from 'swagger-typed-express-docs'
+import { apiDoc, initApiDocs, tSchemaInterfaceBuilder as T } from 'swagger-typed-express-docs'
 import swaggerUi from 'swagger-ui-express'
 
 const app = express()
@@ -33,20 +33,20 @@ app.get(
    */
   apiDoc({
     params: {
-      userId: tNonNullable(tString),
+      userId: T.string,
     },
     query: {
-      name: tNonNullable(tString),
-      header: tList(tNonNullable(tUnion('a', 'b', 'c'))),
+      name: T.String,
+      header: T.list(T.union(['a', 'b', 'c']))),
     },
     body: {
-      header: tList(tNonNullable(tUnion('a', 'b', 'c'))),
-      message: tNonNullable(tString),
-      footer: tString,
+      header: T.list(T.union(['a', 'b', 'c']))),
+      message: T.string,
+      footer: T.string,
     },
-    returns: tObject({
-      enhancedBody: tObject({
-        data: tUnion('a', 'b', 'c'),
+    returns: T.object({
+      enhancedBody: T.object({
+        data: T.union(['a', 'b', 'c']),
       }),
     }),
   })((req, res) => {
@@ -94,21 +94,23 @@ and define a meta-information about inputs & outputs of each API handler.
 example usage:
 
 ```typescript
+import { tSchemaInterfaceBuilder as T } from 'swagger-typed-express-docs'
+
 app.get(
   '/',
   apiDoc({
     query: {
-      name: tNonNullable(tString),
-      header: tList(tNonNullable(tUnion('a', 'b', 'c'))),
+      name: T.string
+      header: T.list(T.union(['a', 'b', 'c']))),
     },
     body: {
-      header: tList(tNonNullable(tUnion('a', 'b', 'c'))),
-      message: tNonNullable(tString),
-      footer: tString,
+      header: T.list(T.union(['a', 'b', 'c']))),
+      message: T.null_list,
+      footer: T.string,
     },
-    returns: tObject({
-      data: tObject({
-        nestedData: tUnion('a', 'b', 'c'),
+    returns: T.null_object({
+      data: T.null_object({
+        nestedData: T.union(['a', 'b', 'c']),
       }),
     }),
   })((req, res) => {

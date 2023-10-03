@@ -142,8 +142,18 @@ export const tNonNullable = <T extends { required: any }>(
   required: true as const,
 })
 
+export const tNullable = <T extends { required: any }>(
+  a: T
+): NiceMerge<Omit<T, 'required'>, { required: false }> => ({
+  ...a,
+  required: false as const,
+})
+
 export const tSchemaInterfaceBuilder = {
   number: tNonNullable(tNumber),
+  // is null_ proper prefix for informing user that its null"able", not JS null field?
+  // my TS infer handler handle it as undefined, not null... typed-express-docs is not supporting null / undef
+  // so I guess it doesn't matter and null"able" is nice JS readable API
   null_number: tNumber,
   boolean: tNonNullable(tBoolean),
   null_boolean: tBoolean,
@@ -159,4 +169,7 @@ export const tSchemaInterfaceBuilder = {
   null_object: tObject,
   list: <T extends Schema>(items: T) => tNonNullable(tList(items)),
   null_list: tList,
+
+  nonNullable: tNonNullable,
+  nullable: tNullable,
 }
