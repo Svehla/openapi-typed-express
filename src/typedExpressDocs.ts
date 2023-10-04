@@ -109,7 +109,6 @@ export const apiDoc = <C extends Config>(docs: C) => (
   }
 
   // make the sign for the function metadata to be sure that resolver is enhanced by this library
-  // @ts-expect-error
   lazyInitializeHandler[__expressOpenAPIHack_key__] = __expressOpenAPIHack__
 
   return lazyInitializeHandler

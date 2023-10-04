@@ -4,7 +4,11 @@
 export const mapEntries = <Key extends string | number, V, RetKey extends string | number, RV>(
   fn: (a: [Key, V]) => [RetKey, RV],
   obj: Record<Key, V>
-) => Object.fromEntries(Object.entries(obj).map(fn as any)) as Record<RetKey, RV>
+) =>
+  Object.fromEntries(
+    // @ts-ignore
+    Object.entries(obj).map(fn as any)
+  ) as Record<RetKey, RV>
 
 export const isObject = (a: any) => typeof a === 'object' && a !== null && !Array.isArray(a)
 

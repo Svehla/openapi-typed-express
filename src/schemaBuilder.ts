@@ -78,59 +78,61 @@ export type Schema =
 
 export const tNumber = {
   type: 'number' as const,
-  required: false as const,
+  // default value should be true for all types...
+  required: true as const,
 }
 
 export const tBoolean = {
   type: 'boolean' as const,
-  required: false as const,
+  required: true as const,
 }
 
 export const tString = {
   type: 'string' as const,
-  required: false as const,
+  required: true as const,
 }
 
 export const tAny = {
   type: 'any' as const,
-  required: false as const,
+  required: true as const,
 }
 
 export const tOneOf = <T extends readonly any[] | any[]>(options: T) => ({
   type: 'oneOf' as const,
-  required: false as const,
+  required: true as const,
   options: (options as unknown) as DeepWriteable<T>,
 })
 
 export const tUnion = <T extends readonly any[] | any[]>(options: T) => ({
   // rename from enum to union?
   type: 'enum' as const,
-  required: false as const,
+  required: true as const,
   options: (options as unknown) as DeepWriteable<T>,
 })
 
 export const tObject = <T>(a: T) => ({
   type: 'object' as const,
-  required: false as const,
+  required: true as const,
   properties: a,
 })
 
 export const tList = <T extends Schema>(items: T) => ({
   type: 'array' as const,
-  required: false,
+  required: true,
   items,
 })
 
-export const tCustomScalar = <R>(
-  name: string,
+// TODO: add config extra args like min/max/length/whatever
+export const tCustomScalar = <Name extends string, R>(
+  name: Name,
   conf: {
-    parser: (v: any) => R
-    validator: (v: any) => boolean
+    parser?: (value: any) => R
+    validator?: (value: R) => boolean
   }
 ) => ({
-  name,
+  name: `scalar_${name}` as const,
   type: 'customScalar' as const,
-  required: false,
+  required: true as const,
   parser: conf.parser,
   validator: conf.validator,
 })
@@ -154,22 +156,24 @@ export const tSchemaInterfaceBuilder = {
   // is null_ proper prefix for informing user that its null"able", not JS null field?
   // my TS infer handler handle it as undefined, not null... typed-express-docs is not supporting null / undef
   // so I guess it doesn't matter and null"able" is nice JS readable API
-  null_number: tNumber,
+  null_number: tNullable(tNumber),
   boolean: tNonNullable(tBoolean),
-  null_boolean: tBoolean,
+  null_boolean: tNullable(tBoolean),
   string: tNonNullable(tString),
-  null_string: tString,
+  null_string: tNullable(tString),
   any: tNonNullable(tAny),
-  null_any: tAny,
+  null_any: tNullable(tAny),
   oneOf: <T extends readonly any[] | any[]>(options: T) => tNonNullable(tOneOf(options)),
-  null_oneOf: tOneOf,
+  null_oneOf: <T extends readonly any[] | any[]>(options: T) => tNullable(tOneOf(options)),
   union: <T extends readonly any[] | any[]>(options: T) => tNonNullable(tUnion(options)),
-  null_union: tUnion,
+  null_union: <T extends readonly any[] | any[]>(options: T) => tNullable(tUnion(options)),
   object: <T>(args: T) => tNonNullable(tObject(args)),
-  null_object: tObject,
+  null_object: <T>(args: T) => tNullable(tObject(args)),
   list: <T extends Schema>(items: T) => tNonNullable(tList(items)),
-  null_list: tList,
+  null_list: <T extends Schema>(items: T) => tNullable(tList(items)),
 
   nonNullable: tNonNullable,
   nullable: tNullable,
 }
+
+// TODO: create a recursive deepNullable(...) wrapper

@@ -43,6 +43,8 @@ export const convertSchemaToYupValidationObject = (
     case 'customScalar':
       // TODO: how to do custom validation errors
       // > https://github.com/formium/formik/issues/2146#issuecomment-720639988
+      // console.log('validate custom scalar: ')
+      // console.log(schema)
       const yupObCustomScalar = yup.mixed().transform(schema.parser).test({
         name: schema.name,
         test: schema.validator,
