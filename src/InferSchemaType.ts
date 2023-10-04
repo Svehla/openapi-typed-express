@@ -2,7 +2,7 @@
 // f.e.: yup.InferType<typeof yupSchemaTest1>
 import { Schema } from './schemaBuilder'
 
-type MakeOptional<T, Required extends boolean> = Required extends true ? T : T | undefined
+type MakeOptional<T, Required extends boolean> = Required extends true ? T : T | undefined | null
 
 export type InferSchemaType<T extends Schema> = T extends {
   type: 'object'
@@ -23,7 +23,7 @@ export type InferSchemaType<T extends Schema> = T extends {
   : T extends { type: 'number' }
   ? MakeOptional<number, T['required']>
   : T extends { type: 'customScalar' }
-  ? MakeOptional<ReturnType<T['parser']>, T['required']>
+  ? MakeOptional<ReturnType<T['transform']>, T['required']>
   : T extends { type: 'any' }
   ? any
   : never

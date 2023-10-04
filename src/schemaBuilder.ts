@@ -38,8 +38,7 @@ export type SchemaNumber = {
 export type SchemaCustomScalar = {
   name: string
   type: 'customScalar'
-  parser: (val: any) => any
-  validator: (val: any) => any
+  transform: (val: any) => any
   required: boolean
 }
 
@@ -76,47 +75,47 @@ export type Schema =
 
 // --------- builder functions ---------
 
-export const tNumber = {
+const tNumber = {
   type: 'number' as const,
   // default value should be true for all types...
   required: true as const,
 }
 
-export const tBoolean = {
+const tBoolean = {
   type: 'boolean' as const,
   required: true as const,
 }
 
-export const tString = {
+const tString = {
   type: 'string' as const,
   required: true as const,
 }
 
-export const tAny = {
+const tAny = {
   type: 'any' as const,
   required: true as const,
 }
 
-export const tOneOf = <T extends readonly any[] | any[]>(options: T) => ({
+const tOneOf = <T extends readonly any[] | any[]>(options: T) => ({
   type: 'oneOf' as const,
   required: true as const,
   options: (options as unknown) as DeepWriteable<T>,
 })
 
-export const tUnion = <T extends readonly any[] | any[]>(options: T) => ({
+const tUnion = <T extends readonly any[] | any[]>(options: T) => ({
   // rename from enum to union?
   type: 'enum' as const,
   required: true as const,
   options: (options as unknown) as DeepWriteable<T>,
 })
 
-export const tObject = <T>(a: T) => ({
+const tObject = <T>(a: T) => ({
   type: 'object' as const,
   required: true as const,
   properties: a,
 })
 
-export const tList = <T extends Schema>(items: T) => ({
+const tList = <T extends Schema>(items: T) => ({
   type: 'array' as const,
   required: true,
   items,
@@ -125,33 +124,28 @@ export const tList = <T extends Schema>(items: T) => ({
 // TODO: add config extra args like min/max/length/whatever
 export const tCustomScalar = <Name extends string, R>(
   name: Name,
-  conf: {
-    parser?: (value: any) => R
-    validator?: (value: R) => boolean
-  }
+  transform: (value: any) => R
 ) => ({
   name: `scalar_${name}` as const,
   type: 'customScalar' as const,
   required: true as const,
-  parser: conf.parser,
-  validator: conf.validator,
+  transform: transform,
 })
 
-export const tNonNullable = <T extends { required: any }>(
+const tNonNullable = <T extends { required: any }>(
   a: T
 ): NiceMerge<Omit<T, 'required'>, { required: true }> => ({
   ...a,
   required: true as const,
 })
 
-export const tNullable = <T extends { required: any }>(
+const tNullable = <T extends { required: any }>(
   a: T
 ): NiceMerge<Omit<T, 'required'>, { required: false }> => ({
   ...a,
   required: false as const,
 })
-
-export const tSchemaInterfaceBuilder = {
+export const tSchema = {
   number: tNonNullable(tNumber),
   // is null_ proper prefix for informing user that its null"able", not JS null field?
   // my TS infer handler handle it as undefined, not null... typed-express-docs is not supporting null / undef

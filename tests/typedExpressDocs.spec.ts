@@ -1,5 +1,5 @@
 import { __expressOpenAPIHack__, apiDoc } from '../src/typedExpressDocs'
-import { tBoolean, tNonNullable, tNumber, tObject, tString, tUnion } from '../src/schemaBuilder'
+import { tSchema as T } from '../src/schemaBuilder'
 
 describe('typedExpressDocs', () => {
   describe('apiDoc', () => {
@@ -13,7 +13,7 @@ describe('typedExpressDocs', () => {
 
         const lazyFn = apiDoc({
           body: {
-            message: tNonNullable(tString),
+            message: T.string,
           },
         })(req => {
           expect({
@@ -37,7 +37,7 @@ describe('typedExpressDocs', () => {
 
       const lazyFn = apiDoc({
         query: {
-          message: tNonNullable(tString),
+          message: T.string,
         },
       })(req => {
         expect({
@@ -60,7 +60,7 @@ describe('typedExpressDocs', () => {
 
       const lazyFn = apiDoc({
         params: {
-          message: tNonNullable(tString),
+          message: T.string,
         },
         body: {},
         returns: undefined,
@@ -87,27 +87,25 @@ describe('typedExpressDocs', () => {
           },
         },
         query: {
-          z: 1234,
+          z: '1234',
         },
       }
 
       const lazyFn = apiDoc({
         params: {
-          message: tNonNullable(tString),
+          message: T.string,
         },
         body: {
-          a: tNonNullable(tBoolean),
-          b: tNonNullable(tString),
-          c: tNonNullable(
-            tObject({
-              d: tNonNullable(tNumber),
-            })
-          ),
+          a: T.boolean,
+          b: T.string,
+          c: T.object({
+            d: T.number,
+          }),
         },
         query: {
-          z: tString,
+          z: T.string,
         },
-        returns: tString,
+        returns: T.string,
       })(req => {
         expect({
           params: req.params,
@@ -132,27 +130,25 @@ describe('typedExpressDocs', () => {
             },
           },
           query: {
-            z: 1234,
+            z: '1234',
           },
         }
 
         const lazyFn = apiDoc({
           params: {
-            message: tNonNullable(tBoolean),
-          },
-          body: {
-            a: tNonNullable(tNumber),
-            b: tNonNullable(tBoolean),
-            c: tNonNullable(
-              tObject({
-                d: tNonNullable(tBoolean),
-              })
-            ),
+            message: T.boolean,
           },
           query: {
-            z: tString,
+            z: T.null_string,
           },
-          returns: tString,
+          body: {
+            a: T.number,
+            b: T.boolean,
+            c: T.object({
+              d: T.boolean,
+            }),
+          },
+          returns: T.null_string,
         })(() => {
           expect('you shall not').toBe('pass')
         })
@@ -167,13 +163,17 @@ describe('typedExpressDocs', () => {
                   errors: {
                     paramsErrors: {
                       value: { message: 'hi' },
-                      errors: ['message must be one of the following values: true, false'],
+                      errors: [
+                        'message must be a `boolean` type, but the final value was: `"hi"`.',
+                      ],
                       inner: [
                         {
                           value: 'hi',
                           path: 'message',
-                          type: 'oneOf',
-                          errors: ['message must be one of the following values: true, false'],
+                          type: 'typeError',
+                          errors: [
+                            'message must be a `boolean` type, but the final value was: `"hi"`.',
+                          ],
                           params: {
                             value: 'hi',
                             originalValue: 'hi',
@@ -188,35 +188,33 @@ describe('typedExpressDocs', () => {
                               optional: false,
                               coerce: true,
                             },
-                            values: 'true, false',
-                            resolved: [true, false],
+                            type: 'boolean',
                           },
                           inner: [],
                           name: 'ValidationError',
-                          message: 'message must be one of the following values: true, false',
+                          message:
+                            'message must be a `boolean` type, but the final value was: `"hi"`.',
                         },
                       ],
                       name: 'ValidationError',
-                      message: 'message must be one of the following values: true, false',
+                      message: 'message must be a `boolean` type, but the final value was: `"hi"`.',
                     },
                     queryErrors: null,
                     bodyErrors: {
                       value: { a: true, b: 'text', c: { d: 3 } },
                       errors: [
-                        'a must be a `number` type, but the final value was: `NaN` (cast from the value `true`).',
-                        'b must be one of the following values: true, false',
-                        'c.d must be one of the following values: true, false',
+                        'a must be a `number` type, but the final value was: `true`.',
+                        'b must be a `boolean` type, but the final value was: `"text"`.',
+                        'c.d must be a `boolean` type, but the final value was: `3`.',
                       ],
                       inner: [
                         {
-                          value: null,
+                          value: true,
                           path: 'a',
                           type: 'typeError',
-                          errors: [
-                            'a must be a `number` type, but the final value was: `NaN` (cast from the value `true`).',
-                          ],
+                          errors: ['a must be a `number` type, but the final value was: `true`.'],
                           params: {
-                            value: null,
+                            value: true,
                             originalValue: true,
                             path: 'a',
                             spec: {
@@ -233,14 +231,15 @@ describe('typedExpressDocs', () => {
                           },
                           inner: [],
                           name: 'ValidationError',
-                          message:
-                            'a must be a `number` type, but the final value was: `NaN` (cast from the value `true`).',
+                          message: 'a must be a `number` type, but the final value was: `true`.',
                         },
                         {
                           value: 'text',
                           path: 'b',
-                          type: 'oneOf',
-                          errors: ['b must be one of the following values: true, false'],
+                          type: 'typeError',
+                          errors: [
+                            'b must be a `boolean` type, but the final value was: `"text"`.',
+                          ],
                           params: {
                             value: 'text',
                             originalValue: 'text',
@@ -255,18 +254,17 @@ describe('typedExpressDocs', () => {
                               optional: false,
                               coerce: true,
                             },
-                            values: 'true, false',
-                            resolved: [true, false],
+                            type: 'boolean',
                           },
                           inner: [],
                           name: 'ValidationError',
-                          message: 'b must be one of the following values: true, false',
+                          message: 'b must be a `boolean` type, but the final value was: `"text"`.',
                         },
                         {
                           value: 3,
                           path: 'c.d',
-                          type: 'oneOf',
-                          errors: ['c.d must be one of the following values: true, false'],
+                          type: 'typeError',
+                          errors: ['c.d must be a `boolean` type, but the final value was: `3`.'],
                           params: {
                             value: 3,
                             originalValue: 3,
@@ -281,12 +279,11 @@ describe('typedExpressDocs', () => {
                               optional: false,
                               coerce: true,
                             },
-                            values: 'true, false',
-                            resolved: [true, false],
+                            type: 'boolean',
                           },
                           inner: [],
                           name: 'ValidationError',
-                          message: 'c.d must be one of the following values: true, false',
+                          message: 'c.d must be a `boolean` type, but the final value was: `3`.',
                         },
                       ],
                       name: 'ValidationError',
@@ -309,9 +306,9 @@ describe('typedExpressDocs', () => {
 
         const lazyFn = apiDoc({
           body: {
-            enum: tUnion(['a']),
+            enum: T.union(['a']),
           },
-          returns: tString,
+          returns: T.string,
         })(() => {
           expect('you shall not').toBe('pass')
         })
@@ -345,8 +342,8 @@ describe('typedExpressDocs', () => {
                               abortEarly: true,
                               recursive: true,
                               disableStackTrace: false,
-                              nullable: true,
-                              optional: true,
+                              nullable: false,
+                              optional: false,
                               coerce: true,
                             },
                             values: 'a',

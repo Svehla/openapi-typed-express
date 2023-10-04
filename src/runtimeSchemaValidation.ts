@@ -16,53 +16,80 @@ yup.addMethod(yup.mixed, 'oneOfSchemas', function oneOfSchemas(schemas: any[], m
 })
 
 // TODO: write tests
+// .required() is here to be sure that key in object is defined even if the value is null
 export const convertSchemaToYupValidationObject = (
   schema: Schema
 ): yup.MixedSchema<any, any, any> => {
   switch (schema?.type) {
     case 'array': {
-      const yupArr = yup.array().of(convertSchemaToYupValidationObject(schema.items))
-      return schema.required ? yupArr.required() : yupArr.notRequired()
+      const yupArr = yup.array().of(convertSchemaToYupValidationObject(schema.items)).required()
+      return schema.required ? yupArr : yupArr.nullable()
     }
     case 'object': {
       // TODO: possible infinite TS recursion while inferring return type
-      const yupObj: any = yup.object(
-        mapEntries(([k, v]) => [k, convertSchemaToYupValidationObject(v) as any], schema.properties)
-      )
-      return schema.required ? yupObj.required() : yupObj.notRequired()
+      const yupObj: any = yup
+        .object(
+          mapEntries(
+            ([k, v]) => [k, convertSchemaToYupValidationObject(v) as any],
+            schema.properties
+          )
+        )
+        .required()
+      return schema.required ? yupObj : yupObj.nullable()
     }
     case 'boolean':
-      // yup `.boolean()` & `.bool()` makes string 'true' and string 'false' valid
-      // so we have to specify custom union for only true & false values
-      const validator = yup.mixed().oneOf([true, false])
-      return schema.required ? validator.required() : validator.notRequired()
+      const validator = yup.boolean().required()
+      return schema.required ? validator : validator.nullable()
+
     case 'number':
-      return schema.required ? yup.number().required() : yup.number().notRequired()
+      const numValidator = yup.number().required()
+      return schema.required ? numValidator : numValidator.nullable()
+
     case 'string':
-      return schema.required ? yup.string().required() : yup.string().notRequired()
+      const strValidator = yup.string().required()
+      // return schema.required ? yup.string().required() : yup.string().required().nullable()
+      return schema.required ? strValidator : strValidator.nullable()
+
     case 'customScalar':
       // TODO: how to do custom validation errors
       // > https://github.com/formium/formik/issues/2146#issuecomment-720639988
       // console.log('validate custom scalar: ')
-      // console.log(schema)
-      const yupObCustomScalar = yup.mixed().transform(schema.parser).test({
-        name: schema.name,
-        test: schema.validator,
-      })
+      const scalarValidator = yup
+        .mixed()
+        .required()
+        .transform(schema.transform)
+        .test({
+          name: schema.name,
+          test: function (value) {
+            const { path, createError } = this
+            if (schema.required === true && (value === null || value === undefined)) {
+              return createError({ path, message: path + ' ' + 'Value is required' })
+            }
 
-      return schema.required ? yupObCustomScalar.required() : yupObCustomScalar.notRequired()
+            try {
+              schema.transform(value)
+            } catch (err) {
+              return createError({ path, message: path + ' ' + err?.toString() })
+            }
+            return true
+          },
+        })
+      return schema.required ? scalarValidator : scalarValidator.nullable()
+
     case 'any':
       return yup.mixed()
+
     case 'enum':
-      const yupObj = yup.mixed().oneOf(schema.options)
-      return schema.required ? yupObj.required() : yupObj.notRequired()
+      const enumValidator = yup.mixed().oneOf(schema.options).required()
+      return schema.required ? enumValidator : enumValidator.nullable()
+
     case 'oneOf':
-      return (
-        yup
-          .mixed()
-          // @ts-expect-error
-          .oneOfSchemas(schema.options.map(i => convertSchemaToYupValidationObject(i)))
-      )
+      const oneOfValidator = yup
+        .mixed()
+        .required()
+        // @ts-expect-error
+        .oneOfSchemas(schema.options.map(i => convertSchemaToYupValidationObject(i)))
+      return schema.required ? oneOfValidator : oneOfValidator.nullable()
 
     default:
       throw new Error(`unsupported type ${(schema as any)?.type}`)

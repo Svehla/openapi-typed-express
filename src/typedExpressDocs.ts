@@ -1,7 +1,7 @@
 import { DeepPartial, deepMerge, mergePaths, syncAllSettled } from './utils'
 import { InferSchemaType } from './InferSchemaType'
 import { NextFunction, Request, Response } from 'express'
-import { Schema, tNonNullable, tObject } from './schemaBuilder'
+import { Schema, tSchema as T } from './schemaBuilder'
 import { UrlsMethodDocs, convertUrlsMethodsSchemaToOpenAPI } from './openAPIFromSchema'
 import { convertSchemaToYupValidationObject } from './runtimeSchemaValidation'
 import { parseUrlFromExpressRegexp } from './expressRegExUrlParser'
@@ -47,9 +47,9 @@ export const apiDoc = <C extends Config>(docs: C) => (
   ) => void
 ) => {
   // --- this function is called only for initialization of handlers ---
-  const paramsSchema = docs.params ? tNonNullable(tObject(docs.params)) : null
-  const querySchema = docs.query ? tNonNullable(tObject(docs.query)) : null
-  const bodySchema = docs.body ? tNonNullable(tObject(docs.body)) : null
+  const paramsSchema = docs.params ? T.object(docs.params) : null
+  const querySchema = docs.query ? T.object(docs.query) : null
+  const bodySchema = docs.body ? T.object(docs.body) : null
 
   const paramsValidator = paramsSchema ? convertSchemaToYupValidationObject(paramsSchema) : null
   const queryValidator = querySchema ? convertSchemaToYupValidationObject(querySchema) : null
@@ -69,9 +69,9 @@ export const apiDoc = <C extends Config>(docs: C) => (
       // --- this function include runtime validations which are triggered each request ---
 
       const [urlValidation, queryValidation, bodyValidation] = syncAllSettled([
-        () => paramsValidator?.validateSync(req.params, { abortEarly: false }),
-        () => queryValidator?.validateSync(req.query, { abortEarly: false }),
-        () => bodyValidator?.validateSync(req.body, { abortEarly: false }),
+        () => paramsValidator?.validateSync(req.params, { abortEarly: false, strict: true }),
+        () => queryValidator?.validateSync(req.query, { abortEarly: false, strict: true }),
+        () => bodyValidator?.validateSync(req.body, { abortEarly: false, strict: true }),
       ])
 
       if (
@@ -93,6 +93,11 @@ export const apiDoc = <C extends Config>(docs: C) => (
         res.status(400).send(errObj)
         return
       }
+
+      // ==== casting custom scalar types into JS objects ====
+      if (paramsValidator) req.params = paramsValidator.cast(req.params)
+      if (queryValidator) req.query = queryValidator.cast(req.query)
+      if (bodyValidator) req.body = bodyValidator.cast(req.body)
 
       return handle(req as any, res, next)
     }

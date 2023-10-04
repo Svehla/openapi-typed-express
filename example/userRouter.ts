@@ -1,13 +1,12 @@
 import express from 'express'
-import { apiDoc, InferSchemaType, tNonNullable, tNumber, tObject, tString } from '../src'
-import { tList } from '../src/schemaBuilder'
+import { apiDoc, InferSchemaType, tSchema as T } from '../src'
 
 export const router = express.Router()
 
-const tUserType = tObject({
-  id: tNonNullable(tString),
-  name: tString,
-  age: tNumber,
+const tUserType = T.object({
+  id: T.string,
+  name: T.null_string,
+  age: T.null_number,
 })
 
 const users: InferSchemaType<typeof tUserType>[] = []
@@ -16,12 +15,12 @@ router.get(
   '/',
   apiDoc({
     query: {
-      limit: tNumber,
-      offset: tNumber,
+      limit: T.null_number,
+      offset: T.null_number,
     },
-    returns: tList(tUserType),
+    returns: T.list(tUserType),
   })((req, res) => {
-    res.send(users.slice(req.query.offset, req.query.limit))
+    res.send(users.slice(req.query.offset ?? undefined, req.query.limit ?? undefined))
   })
 )
 
@@ -29,8 +28,8 @@ router.post(
   '/',
   apiDoc({
     body: {
-      name: tNonNullable(tString),
-      age: tNonNullable(tNumber),
+      name: T.string,
+      age: T.number,
     },
     returns: tUserType,
   })((req, res) => {
@@ -47,7 +46,7 @@ router.get(
   '/:userId',
   apiDoc({
     params: {
-      userId: tNonNullable(tString),
+      userId: T.string,
     },
     returns: tUserType,
   })((req, res) => {

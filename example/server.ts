@@ -1,10 +1,10 @@
 import express from 'express'
-import { apiDoc, initApiDocs } from '../src'
+import { apiDoc, initApiDocs, tScalars } from '../src'
 import { router } from './userRouter'
 import packageJSON from '../package.json'
 import swaggerUi from 'swagger-ui-express'
 import { queryParser } from 'express-query-parser'
-import { tSchemaInterfaceBuilder as T } from '../src/schemaBuilder'
+import { tSchema as T } from '../src/schemaBuilder'
 
 const app = express()
 const port = 5000
@@ -15,6 +15,30 @@ app.use(
   queryParser({
     parseNull: true,
     parseBoolean: true,
+  })
+)
+
+app.get(
+  '/scalar/:id',
+  apiDoc({
+    query: {
+      a: T.list(tScalars.date),
+    },
+    params: {
+      id: tScalars.castNumber,
+    },
+    body: {
+      myDate1: tScalars.null_date,
+      myDate2: tScalars.date,
+      bool: T.boolean,
+      age: tScalars.minMaxNum(0, 18),
+      myDate3: tScalars.null_date,
+    },
+  })((req, res) => {
+    console.log(req.query)
+    console.log(req.params)
+    console.log(req.body)
+    res.send('scalar')
   })
 )
 

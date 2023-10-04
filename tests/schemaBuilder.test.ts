@@ -1,26 +1,18 @@
 import {
-  tAny,
-  tBoolean,
-  tList,
-  tNonNullable,
-  tNumber,
-  tObject,
-  tString,
-  tUnion,
   // TODO: add more tests for tCustomScalar
   // tCustomScalar,
+  tSchema as T,
 } from '../src/schemaBuilder'
 
 describe('schemaBuilder', () => {
-  const objDesc = tObject({
-    a: tNonNullable(tString),
-    b: tString,
-    c: tBoolean,
-    d: tNonNullable(tList(tNonNullable(tObject({ nestedA: tNonNullable(tString) })))),
-    e: tNumber,
-    f: tAny,
-    g: tUnion(['a', 'b', 'c', 'd']),
-    // TODO: add more tests for tCustomScalar
+  const objDesc = T.object({
+    a: T.string,
+    b: T.string,
+    c: T.boolean,
+    d: T.list(T.object({ nestedA: T.string })),
+    e: T.number,
+    f: T.any,
+    g: T.union(['a', 'b', 'c', 'd']),
   })
 
   test('1', () => {

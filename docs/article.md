@@ -29,7 +29,7 @@ _HTTP 400 bad request runtime validation error from API definition_
 _Code definition_
 
 ```typescript
-import { tSchemaInterfaceBuilder as T } from 'swagger-typed-express-docs'
+import { tSchema as T } from 'swagger-typed-express-docs'
 
 app.get(
   '/',
