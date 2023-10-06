@@ -27,10 +27,10 @@ router.get(
 router.post(
   '/',
   apiDoc({
-    body: {
+    body: T.object({
       name: T.string,
       age: T.number,
-    },
+    }),
     returns: tUserType,
   })((req, res) => {
     const newUser = {

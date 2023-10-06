@@ -1,6 +1,6 @@
-import { tCustomScalar, tSchema as T } from './schemaBuilder'
+import { tCustomType, tSchema as T } from './schemaBuilder'
 
-const tDate = tCustomScalar('date', value => {
+const tDate = tCustomType('date', value => {
   const parsedValue = new Date(value)
   if (isNaN(parsedValue?.getTime())) {
     throw new Error('invalid Date')
@@ -8,7 +8,7 @@ const tDate = tCustomScalar('date', value => {
   return parsedValue
 })
 
-const tCastNumber = tCustomScalar('castNumber', value => {
+const tCastNumber = tCustomType('castNumber', value => {
   const parsedValue = Number(value)
   if (isNaN(parsedValue)) {
     throw new Error('invalid number cast')
@@ -17,7 +17,7 @@ const tCastNumber = tCustomScalar('castNumber', value => {
 })
 
 const tMinMaxNum = (min: number, max: number) =>
-  tCustomScalar(`minMaxNum_${min}_${max}`, value => {
+  tCustomType(`minMaxNum_${min}_${max}`, value => {
     if (typeof value !== 'number' || isNaN(value)) {
       throw new Error('invalid number value')
     }
@@ -30,7 +30,7 @@ const tMinMaxNum = (min: number, max: number) =>
     return value as number
   })
 
-export const tScalars = {
+export const tCustom = {
   date: T.nonNullable(tDate),
   null_date: T.nullable(tDate),
 

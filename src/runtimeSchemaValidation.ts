@@ -50,11 +50,8 @@ export const convertSchemaToYupValidationObject = (
       // return schema.required ? yup.string().required() : yup.string().required().nullable()
       return schema.required ? strValidator : strValidator.nullable()
 
-    case 'customScalar':
-      // TODO: how to do custom validation errors
-      // > https://github.com/formium/formik/issues/2146#issuecomment-720639988
-      // console.log('validate custom scalar: ')
-      const scalarValidator = yup
+    case 'customType':
+      const customTypeValidator = yup
         .mixed()
         .required()
         .transform(schema.transform)
@@ -74,7 +71,7 @@ export const convertSchemaToYupValidationObject = (
             return true
           },
         })
-      return schema.required ? scalarValidator : scalarValidator.nullable()
+      return schema.required ? customTypeValidator : customTypeValidator.nullable()
 
     case 'any':
       return yup.mixed()

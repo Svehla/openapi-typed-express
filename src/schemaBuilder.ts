@@ -35,9 +35,9 @@ export type SchemaNumber = {
   required: boolean
 }
 
-export type SchemaCustomScalar = {
+export type SchemacustomType = {
   name: string
-  type: 'customScalar'
+  type: 'customType'
   transform: (val: any) => any
   required: boolean
 }
@@ -70,7 +70,7 @@ export type Schema =
   | SchemaBoolean
   | SchemaAny
   | SchemaEnum
-  | SchemaCustomScalar
+  | SchemacustomType
   | SchemaOneOf
 
 // --------- builder functions ---------
@@ -122,15 +122,16 @@ const tList = <T extends Schema>(items: T) => ({
 })
 
 // TODO: add config extra args like min/max/length/whatever
-export const tCustomScalar = <Name extends string, R>(
-  name: Name,
-  transform: (value: any) => R
-) => ({
-  name: `scalar_${name}` as const,
-  type: 'customScalar' as const,
+export const tCustomType = <Name extends string, R>(name: Name, transform: (value: any) => R) => ({
+  name: `custom_${name}` as const,
+  type: 'customType' as const,
   required: true as const,
   transform: transform,
 })
+// three types of custom scalar
+// 1. Any->Any
+// 2. String->Any
+// 3. String->String
 
 const tNonNullable = <T extends { required: any }>(
   a: T

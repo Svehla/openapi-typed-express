@@ -133,7 +133,7 @@ The library exposes many functions and objects which help you to create schema a
 - `tNonNullable(...)`
 - `tAny(...)`
 - `tObject(...)`
-- `tCustomScalar(...)`
+- `tCustomType(...)`
 - `tString(...)`
 
 if you want to see more examples on how to build schema structure by function compositions

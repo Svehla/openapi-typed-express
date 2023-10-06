@@ -17,12 +17,13 @@ export const __expressOpenAPIHack__ = Symbol('__expressOpenAPIHack__')
 type Config = {
   params?: Record<string, Schema>
   query?: Record<string, Schema>
-  body?: Record<string, Schema>
+  body?: Schema
   returns?: Schema
 }
 
 // eslint-disable-next-line @typescript-eslint/ban-types
 type UseEmptyObjectAsDefault<T> = T extends Record<any, any> ? T : {}
+// type UseEmptyASTObjectAsDefault<T> = T extends void ?
 
 type WrapToObject<T> = { type: 'object'; required: true; properties: T }
 
@@ -39,7 +40,8 @@ export const apiDoc = <C extends Config>(docs: C) => (
     req: Request<
       InferSchemaType<WrapToObject<UseEmptyObjectAsDefault<C['params']>>>,
       any,
-      InferSchemaType<WrapToObject<UseEmptyObjectAsDefault<C['body']>>>,
+      // @ts-expect-error
+      InferSchemaType<C['body']>,
       InferSchemaType<WrapToObject<UseEmptyObjectAsDefault<C['query']>>>
     >,
     res: Response,
@@ -49,7 +51,7 @@ export const apiDoc = <C extends Config>(docs: C) => (
   // --- this function is called only for initialization of handlers ---
   const paramsSchema = docs.params ? T.object(docs.params) : null
   const querySchema = docs.query ? T.object(docs.query) : null
-  const bodySchema = docs.body ? T.object(docs.body) : null
+  const bodySchema = docs.body ? docs.body : null
 
   const paramsValidator = paramsSchema ? convertSchemaToYupValidationObject(paramsSchema) : null
   const queryValidator = querySchema ? convertSchemaToYupValidationObject(querySchema) : null
@@ -94,7 +96,7 @@ export const apiDoc = <C extends Config>(docs: C) => (
         return
       }
 
-      // ==== casting custom scalar types into JS objects ====
+      // ==== casting custom types into JS runtime objects ====
       if (paramsValidator) req.params = paramsValidator.cast(req.params)
       if (queryValidator) req.query = queryValidator.cast(req.query)
       if (bodyValidator) req.body = bodyValidator.cast(req.body)

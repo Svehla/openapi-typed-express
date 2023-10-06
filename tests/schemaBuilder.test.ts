@@ -1,6 +1,6 @@
 import {
-  // TODO: add more tests for tCustomScalar
-  // tCustomScalar,
+  // TODO: add more tests for tCustomType
+  // tCustomType,
   tSchema as T,
 } from '../src/schemaBuilder'
 

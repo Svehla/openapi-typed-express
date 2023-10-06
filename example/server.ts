@@ -1,5 +1,5 @@
 import express from 'express'
-import { apiDoc, initApiDocs, tScalars } from '../src'
+import { apiDoc, initApiDocs, tCustom } from '../src'
 import { router } from './userRouter'
 import packageJSON from '../package.json'
 import swaggerUi from 'swagger-ui-express'
@@ -19,26 +19,30 @@ app.use(
 )
 
 app.get(
-  '/scalar/:id',
+  '/custom-types/:id',
   apiDoc({
-    query: {
-      a: T.list(tScalars.date),
-    },
     params: {
-      id: tScalars.castNumber,
+      id: tCustom.castNumber,
     },
-    body: {
-      myDate1: tScalars.null_date,
-      myDate2: tScalars.date,
+    query: {
+      a: T.list(tCustom.date),
+    },
+    body: T.object({
+      myDate1: tCustom.null_date,
+      myDate2: tCustom.date,
       bool: T.boolean,
-      age: tScalars.minMaxNum(0, 18),
-      myDate3: tScalars.null_date,
-    },
+      age: tCustom.minMaxNum(0, 18),
+      myDate3: tCustom.null_date,
+    }),
   })((req, res) => {
-    console.log(req.query)
     console.log(req.params)
+    console.log(req.query)
     console.log(req.body)
-    res.send('scalar')
+    res.send({
+      params: req.params,
+      query: req.query,
+      body: req.body,
+    })
   })
 )
 
@@ -52,11 +56,11 @@ app.post(
       name: T.null_string,
       header: T.union(['a', 'b', 'c'] as const),
     },
-    body: {
+    body: T.object({
       header: T.null_list(T.null_union(['a', 'b', 'c'] as const)),
       message: T.null_string,
       footer: T.string,
-    },
+    }),
     returns: T.null_object({
       enhancedBody: T.null_object({
         data: T.null_union(['a', 'b', 'c'] as const),
@@ -76,7 +80,7 @@ app.post(
 app.post(
   '/object-union-type',
   apiDoc({
-    body: {
+    body: T.object({
       users: T.list(
         T.oneOf([
           T.object({
@@ -90,7 +94,7 @@ app.post(
           }),
         ])
       ),
-    },
+    }),
   })((req, res) => {
     const body = req.body
     const query = req.query

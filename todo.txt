@@ -5,4 +5,4 @@ TODOs:
 - number | string
 - add tests for object oneOf
 
-- add valid tAny + scalar types with custom parsers
+- add valid tAny 

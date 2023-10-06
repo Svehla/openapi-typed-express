@@ -41,10 +41,13 @@ const toOpenAPISchema = (schema: Schema): any => {
         oneOf: schema.options.map(option => toOpenAPISchema(option)),
       }
 
-    case 'customScalar':
-      return {
-        type: 'any',
-      }
+    case 'any':
+      return { type: 'any' }
+
+    case 'customType':
+      return { type: 'any' }
+    //   type: 'any',
+    // }
 
     default:
       return {

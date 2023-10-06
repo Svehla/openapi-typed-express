@@ -1,7 +1,6 @@
 export { jsValueToSchema } from './schemaToJS'
 export { InferSchemaType } from './InferSchemaType'
 export { convertSchemaToYupValidationObject } from './runtimeSchemaValidation'
-export { tCustomScalar, tSchema } from './schemaBuilder'
-export { tScalars } from './scalarTypes'
-
+export { tCustomType, tSchema } from './schemaBuilder'
+export { tCustom } from './customTypes'
 export { apiDoc, initApiDocs } from './typedExpressDocs'

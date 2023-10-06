@@ -12,9 +12,9 @@ describe('typedExpressDocs', () => {
         }
 
         const lazyFn = apiDoc({
-          body: {
+          body: T.object({
             message: T.string,
-          },
+          }),
         })(req => {
           expect({
             query: req.query,
@@ -62,7 +62,6 @@ describe('typedExpressDocs', () => {
         params: {
           message: T.string,
         },
-        body: {},
         returns: undefined,
       })(req => {
         expect({
@@ -95,13 +94,13 @@ describe('typedExpressDocs', () => {
         params: {
           message: T.string,
         },
-        body: {
+        body: T.object({
           a: T.boolean,
           b: T.string,
           c: T.object({
             d: T.number,
           }),
-        },
+        }),
         query: {
           z: T.string,
         },
@@ -141,13 +140,13 @@ describe('typedExpressDocs', () => {
           query: {
             z: T.null_string,
           },
-          body: {
+          body: T.object({
             a: T.number,
             b: T.boolean,
             c: T.object({
               d: T.boolean,
             }),
-          },
+          }),
           returns: T.null_string,
         })(() => {
           expect('you shall not').toBe('pass')
@@ -305,9 +304,9 @@ describe('typedExpressDocs', () => {
         }
 
         const lazyFn = apiDoc({
-          body: {
+          body: T.object({
             enum: T.union(['a']),
-          },
+          }),
           returns: T.string,
         })(() => {
           expect('you shall not').toBe('pass')
