@@ -1,6 +1,6 @@
-import { tCustomType, tSchema as T } from './schemaBuilder'
+import { tSchema as T } from './schemaBuilder'
 
-const tDate = tCustomType('date', value => {
+const tDate = T.customType('date', value => {
   const parsedValue = new Date(value)
   if (isNaN(parsedValue?.getTime())) {
     throw new Error('invalid Date')
@@ -8,7 +8,8 @@ const tDate = tCustomType('date', value => {
   return parsedValue
 })
 
-const tCastNumber = tCustomType('castNumber', value => {
+// TODO: how to solve basic types (bool|str) casting?
+const tCastNumber = T.customType('castNumber', value => {
   const parsedValue = Number(value)
   if (isNaN(parsedValue)) {
     throw new Error('invalid number cast')
@@ -17,8 +18,8 @@ const tCastNumber = tCustomType('castNumber', value => {
 })
 
 const tMinMaxNum = (min: number, max: number) =>
-  tCustomType(`minMaxNum_${min}_${max}`, value => {
-    if (typeof value !== 'number' || isNaN(value)) {
+  T.custom_number(value => {
+    if (isNaN(value)) {
       throw new Error('invalid number value')
     }
     if (value < min) {
@@ -27,7 +28,6 @@ const tMinMaxNum = (min: number, max: number) =>
     if (value > max) {
       throw new Error('value needs to be > ' + max)
     }
-    return value as number
   })
 
 export const tCustom = {

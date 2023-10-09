@@ -20,75 +20,83 @@ yup.addMethod(yup.mixed, 'oneOfSchemas', function oneOfSchemas(schemas: any[], m
 export const convertSchemaToYupValidationObject = (
   schema: Schema
 ): yup.MixedSchema<any, any, any> => {
-  switch (schema?.type) {
-    case 'array': {
-      const yupArr = yup.array().of(convertSchemaToYupValidationObject(schema.items)).required()
-      return schema.required ? yupArr : yupArr.nullable()
-    }
-    case 'object': {
-      // TODO: possible infinite TS recursion while inferring return type
-      const yupObj: any = yup
-        .object(
-          mapEntries(
-            ([k, v]) => [k, convertSchemaToYupValidationObject(v) as any],
-            schema.properties
-          )
-        )
-        .required()
-      return schema.required ? yupObj : yupObj.nullable()
-    }
-    case 'boolean':
-      const validator = yup.boolean().required()
-      return schema.required ? validator : validator.nullable()
+  // let yv = null as any
+  // yup validator
+  let yupValidator = yup as any
 
-    case 'number':
-      const numValidator = yup.number().required()
-      return schema.required ? numValidator : numValidator.nullable()
-
-    case 'string':
-      const strValidator = yup.string().required()
-      // return schema.required ? yup.string().required() : yup.string().required().nullable()
-      return schema.required ? strValidator : strValidator.nullable()
-
-    case 'customType':
-      const customTypeValidator = yup
-        .mixed()
-        .required()
-        .transform(schema.transform)
-        .test({
-          name: schema.name,
-          test: function (value) {
+  if (schema?.type === 'array') {
+    yupValidator = yupValidator.array().of(convertSchemaToYupValidationObject(schema.items))
+    //
+  } else if (schema?.type === 'object') {
+    // TODO: possible infinite TS recursion while inferring return type
+    yupValidator = yupValidator.object(
+      mapEntries(([k, v]) => [k, convertSchemaToYupValidationObject(v) as any], schema.properties)
+    )
+    //
+  } else if (schema?.type === 'boolean') {
+    yupValidator = yupValidator.boolean()
+    //
+  } else if (schema?.type === 'number') {
+    yupValidator = yupValidator.number()
+    //
+  } else if (schema?.type === 'string') {
+    yupValidator = yupValidator.string()
+    //
+  } else if (schema?.type === 'customType') {
+    yupValidator = yupValidator
+      .mixed()
+      .test({
+        name: schema.name,
+        test: function (value: any) {
+          try {
+            schema.transform(value)
+          } catch (err) {
             const { path, createError } = this
-            if (schema.required === true && (value === null || value === undefined)) {
-              return createError({ path, message: path + ' ' + 'Value is required' })
-            }
-
-            try {
-              schema.transform(value)
-            } catch (err) {
-              return createError({ path, message: path + ' ' + err?.toString() })
-            }
-            return true
-          },
-        })
-      return schema.required ? customTypeValidator : customTypeValidator.nullable()
-
-    case 'any':
-      return yup.mixed()
-
-    case 'enum':
-      const enumValidator = yup.mixed().oneOf(schema.options).required()
-      return schema.required ? enumValidator : enumValidator.nullable()
-
-    case 'oneOf':
-      const oneOfValidator = yup
-        .mixed()
-        .required()
-        // @ts-expect-error
-        .oneOfSchemas(schema.options.map(i => convertSchemaToYupValidationObject(i)))
-      return schema.required ? oneOfValidator : oneOfValidator.nullable()
-
-    default:
-      throw new Error(`unsupported type ${(schema as any)?.type}`)
+            return createError({ path, message: path + ' ' + (err as Error)?.message ?? '' })
+          }
+          return true
+        },
+      })
+      // transform needs to be called for only tested fields which can be transformed without throwing errors
+      .transform(schema.transform)
+  } else if (schema?.type === 'any') {
+    yupValidator = yupValidator.mixed()
+    //
+  } else if (schema?.type === 'enum') {
+    yupValidator = yupValidator.mixed().oneOf(schema.options)
+    //
+  } else if (schema?.type === 'oneOf') {
+    yupValidator = yupValidator
+      .mixed()
+      .oneOfSchemas(schema.options.map(i => convertSchemaToYupValidationObject(i)))
+    //
+  } else {
+    throw new Error(`unsupported type ${(schema as any)?.type}`)
   }
+
+  // all keys are required in the objects, only values may be nullable
+  yupValidator = yupValidator.required()
+
+  // value (or a key of an object) may be nullable
+  if (schema.required === false) {
+    yupValidator = yupValidator.nullable()
+  }
+
+  // user may define runtime validators to specify value to be more strict
+  if (schema.validator) {
+    yupValidator = yupValidator.test({
+      test: function (value: any) {
+        try {
+          // @ts-expect-error
+          schema.validator?.(value)
+        } catch (err) {
+          const { path, createError } = this
+          return createError({ path, message: path + ' ' + (err as Error)?.message ?? '' })
+        }
+        return true
+      },
+    })
+  }
+
+  return yupValidator
 }

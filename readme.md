@@ -127,14 +127,14 @@ app.get(
 
 The library exposes many functions and objects which help you to create schema as you want.
 
-- `tBoolean(...)`
-- `tNumber(...)`
-- `tUnion(...)`
-- `tNonNullable(...)`
-- `tAny(...)`
-- `tObject(...)`
-- `tCustomType(...)`
-- `tString(...)`
+- `T.boolean(...)`
+- `T.number(...)`
+- `T.union(...)`
+- `T.nonNullable(...)`
+- `T.any(...)`
+- `T.object(...)`
+- `T.customType(...)`
+- `T.string(...)`
 
 if you want to see more examples on how to build schema structure by function compositions
 you can check the tests

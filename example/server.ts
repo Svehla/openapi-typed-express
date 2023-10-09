@@ -18,6 +18,13 @@ app.use(
   })
 )
 
+const string3PlusChars = T.custom_string(a => {
+  console.log('custom validator ', a)
+  if (a.length < 3) {
+    throw new Error('length needs to be >= 3')
+  }
+})
+
 app.get(
   '/custom-types/:id',
   apiDoc({
@@ -26,6 +33,7 @@ app.get(
     },
     query: {
       a: T.list(tCustom.date),
+      b: string3PlusChars,
     },
     body: T.object({
       myDate1: tCustom.null_date,
