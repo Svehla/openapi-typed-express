@@ -1,5 +1,3 @@
-// TODO: add option for cyclic dependencies with arrow functions instead of direct type definition
-
 // random ideas:
 // there are two types of custom types => validators & casters
 // 1. CAST     => there are 3 types of custom scalar convertor
@@ -14,6 +12,8 @@
 // express casting could be broken if name is: `1234` and its parsed as number, so the schema is much safer a better
 // but more complex and potentially more complicated
 
+// TODO: add option for cyclic dependencies with arrow functions instead of direct type definition
+
 // ----------------------- type-utils ------------------------
 type NiceMerge<T, U, T0 = T & U, T1 = { [K in keyof T0]: T0[K] }> = T1
 type DeepWriteable<T> = {
@@ -25,12 +25,14 @@ type DeepWriteable<T> = {
 export type SchemaList = {
   type: 'array'
   items: Schema
+
   required: boolean
   validator?: (v: any[]) => void
 }
 
 export type SchemaObject = {
   type: 'object'
+
   properties: Record<string, Schema>
   required: boolean
   validator?: (v: Record<any, any>) => void
@@ -38,12 +40,14 @@ export type SchemaObject = {
 
 export type SchemaBoolean = {
   type: 'boolean'
+
   required: boolean
   validator?: (v: boolean) => void
 }
 
 export type SchemaString = {
   type: 'string'
+
   required: boolean
   validator?: (v: string) => void
   // string could have special transfer function... just this one function may cast? but what about JSONs?
@@ -51,6 +55,7 @@ export type SchemaString = {
 
 export type SchemaNumber = {
   type: 'number'
+
   required: boolean
   validator?: (v: number) => void
 }
@@ -58,8 +63,13 @@ export type SchemaNumber = {
 export type SchemaCustomType = {
   name: string
   type: 'customType'
-  transform: (val: any) => any
+  // TODO: find proper name... what about Parent group type or something like that?
+  serializedInheritFromSchema: Schema
+  // types are infer from this functions
+  // runtime parsing is in this function
+  parser: (val: any) => any
 
+  // TODO: should I add generic serializer to all types? its mandatory question if I start casting types in this lib...
   required: boolean
   validator?: (v: any) => void
 }
@@ -128,19 +138,20 @@ const tOneOf = <T extends readonly any[] | any[]>(options: T) => ({
   options: (options as unknown) as DeepWriteable<T>,
 })
 
-const tUnion = <T extends readonly any[] | any[]>(options: T) => ({
-  // rename from enum to union?
+// TODO: array X list?
+const tEnum = <T extends readonly any[] | any[]>(options: T) => ({
   type: 'enum' as const,
   required: true as const,
   options: (options as unknown) as DeepWriteable<T>,
 })
 
-const tObject = <T>(a: T) => ({
+const tObject = <T extends Record<string, Schema>>(a: T) => ({
   type: 'object' as const,
   required: true as const,
   properties: a,
 })
 
+// TODO: array X list?
 const tList = <T extends Schema>(items: T) => ({
   type: 'array' as const,
   required: true,
@@ -148,11 +159,17 @@ const tList = <T extends Schema>(items: T) => ({
 })
 
 // TODO: add config extra args like min/max/length/whatever
-export const tCustomType = <Name extends string, R>(name: Name, transform: (value: any) => R) => ({
+export const tCustomType = <Name extends string, R>(
+  name: Name,
+  parser: (value: any) => R,
+  // TODO: return values could serialize in the future... but it's not mandatory right now
+  serializedInheritFromSchema = tAny as Schema
+) => ({
   name: `custom_${name}` as const,
   type: 'customType' as const,
+  serializedInheritFromSchema,
   required: true as const,
-  transform: transform,
+  parser,
 })
 
 const tNonNullable = <T extends { required: any }>(
@@ -194,11 +211,11 @@ export const tSchema = {
   oneOf: <T extends readonly any[] | any[]>(options: T) => tNonNullable(tOneOf(options)),
   null_oneOf: <T extends readonly any[] | any[]>(options: T) => tNullable(tOneOf(options)),
 
-  union: <T extends readonly any[] | any[]>(options: T) => tNonNullable(tUnion(options)),
-  null_union: <T extends readonly any[] | any[]>(options: T) => tNullable(tUnion(options)),
+  enum: <T extends readonly any[] | any[]>(options: T) => tNonNullable(tEnum(options)),
+  null_enum: <T extends readonly any[] | any[]>(options: T) => tNullable(tEnum(options)),
 
-  object: <T>(args: T) => tNonNullable(tObject(args)),
-  null_object: <T>(args: T) => tNullable(tObject(args)),
+  object: <T extends Record<string, Schema>>(args: T) => tNonNullable(tObject(args)),
+  null_object: <T extends Record<string, Schema>>(args: T) => tNullable(tObject(args)),
 
   list: <T extends Schema>(items: T) => tNonNullable(tList(items)),
   null_list: <T extends Schema>(items: T) => tNullable(tList(items)),

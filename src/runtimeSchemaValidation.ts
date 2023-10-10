@@ -43,13 +43,15 @@ export const convertSchemaToYupValidationObject = (
     yupValidator = yupValidator.string()
     //
   } else if (schema?.type === 'customType') {
+    // TODO: should i validate parent group type from serializedInheritFromSchema?
+    yupValidator = convertSchemaToYupValidationObject(schema.serializedInheritFromSchema)
     yupValidator = yupValidator
-      .mixed()
       .test({
         name: schema.name,
         test: function (value: any) {
           try {
-            schema.transform(value)
+            // TODO: parser run for two times I should optimize it somehow
+            schema.parser(value)
           } catch (err) {
             const { path, createError } = this
             return createError({ path, message: path + ' ' + (err as Error)?.message ?? '' })
@@ -58,7 +60,7 @@ export const convertSchemaToYupValidationObject = (
         },
       })
       // transform needs to be called for only tested fields which can be transformed without throwing errors
-      .transform(schema.transform)
+      .transform(schema.parser)
   } else if (schema?.type === 'any') {
     yupValidator = yupValidator.mixed()
     //

@@ -12,7 +12,7 @@ describe('schemaBuilder', () => {
     d: T.list(T.object({ nestedA: T.string })),
     e: T.number,
     f: T.any,
-    g: T.union(['a', 'b', 'c', 'd']),
+    g: T.enum(['a', 'b', 'c', 'd']),
   })
 
   test('1', () => {

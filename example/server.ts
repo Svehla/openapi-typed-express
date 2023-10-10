@@ -1,5 +1,5 @@
 import express from 'express'
-import { apiDoc, initApiDocs, tCustom } from '../src'
+import { apiDoc, initApiDocs, jsValueToSchema, tCustom } from '../src'
 import { router } from './userRouter'
 import packageJSON from '../package.json'
 import swaggerUi from 'swagger-ui-express'
@@ -36,6 +36,7 @@ app.get(
       b: string3PlusChars,
     },
     body: T.object({
+      anything: T.null_any,
       myDate1: tCustom.null_date,
       myDate2: tCustom.date,
       bool: T.boolean,
@@ -62,16 +63,16 @@ app.post(
     },
     query: {
       name: T.null_string,
-      header: T.union(['a', 'b', 'c'] as const),
+      header: T.enum(['a', 'b', 'c'] as const),
     },
     body: T.object({
-      header: T.null_list(T.null_union(['a', 'b', 'c'] as const)),
+      header: T.null_list(T.null_enum(['a', 'b', 'c'] as const)),
       message: T.null_string,
       footer: T.string,
     }),
     returns: T.null_object({
       enhancedBody: T.null_object({
-        data: T.null_union(['a', 'b', 'c'] as const),
+        data: T.null_enum(['a', 'b', 'c'] as const),
       }),
     }),
   })((req, res) => {
@@ -92,12 +93,12 @@ app.post(
       users: T.list(
         T.oneOf([
           T.object({
-            type: T.union(['user'] as const),
+            type: T.enum(['user'] as const),
             name: T.string,
             age: T.number,
           }),
           T.object({
-            type: T.union(['company'] as const),
+            type: T.enum(['company'] as const),
             address: T.string,
           }),
         ])
@@ -116,7 +117,7 @@ app.post(
 
 app.use('/users', router)
 
-const openAPIJSON = initApiDocs(app, {
+const lazyOpenAPI3_0_0JSON = initApiDocs(app, {
   info: {
     version: packageJSON.version,
     title: 'Example application',
@@ -126,8 +127,17 @@ const openAPIJSON = initApiDocs(app, {
   },
 })
 
-app.use('/api-docs/', (req, res) => res.send(openAPIJSON))
-app.use('/swagger-ui/', swaggerUi.serve, swaggerUi.setup(openAPIJSON))
+app.use('/api-docs/', (req, res) => res.send(lazyOpenAPI3_0_0JSON))
+
+// ----------------------------------------------------------
+// ---- Coffee for those who understand what's happening ----
+
+// eslint-disable-next-line prettier/prettier
+app.get('/MAGIC', apiDoc({ returns: jsValueToSchema(lazyOpenAPI3_0_0JSON) })((_req, res) => res.send('ok')))
+lazyOpenAPI3_0_0JSON.paths['/api-docs'] = initApiDocs(app).paths['/MAGIC']
+// ----------------------------------------------------------
+
+app.use('/swagger-ui/', swaggerUi.serve, swaggerUi.setup(lazyOpenAPI3_0_0JSON))
 
 app.listen(port, () => {
   console.info(`

@@ -37,16 +37,16 @@ app.get(
     },
     query: {
       name: T.String,
-      header: T.list(T.union(['a', 'b', 'c']))),
+      header: T.list(T.enum(['a', 'b', 'c']))),
     },
     body: {
-      header: T.list(T.union(['a', 'b', 'c']))),
+      header: T.list(T.enum(['a', 'b', 'c']))),
       message: T.string,
       footer: T.string,
     },
     returns: T.object({
       enhancedBody: T.object({
-        data: T.union(['a', 'b', 'c']),
+        data: T.enum(['a', 'b', 'c']),
       }),
     }),
   })((req, res) => {
@@ -101,16 +101,16 @@ app.get(
   apiDoc({
     query: {
       name: T.string
-      header: T.list(T.union(['a', 'b', 'c']))),
+      header: T.list(T.enum(['a', 'b', 'c']))),
     },
     body: {
-      header: T.list(T.union(['a', 'b', 'c']))),
+      header: T.list(T.enum(['a', 'b', 'c']))),
       message: T.null_list,
       footer: T.string,
     },
     returns: T.null_object({
       data: T.null_object({
-        nestedData: T.union(['a', 'b', 'c']),
+        nestedData: T.enum(['a', 'b', 'c']),
       }),
     }),
   })((req, res) => {
@@ -129,7 +129,7 @@ The library exposes many functions and objects which help you to create schema a
 
 - `T.boolean(...)`
 - `T.number(...)`
-- `T.union(...)`
+- `T.enum(...)`
 - `T.nonNullable(...)`
 - `T.any(...)`
 - `T.object(...)`

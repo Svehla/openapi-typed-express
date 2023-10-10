@@ -8,6 +8,16 @@ type GenerateOpenAPIPathArg = {
   returnsSchema: Schema | null | undefined
 }
 
+// openapi do not support any types...
+const anyTypeOpenAPI = {
+  oneOf: [
+    //
+    { type: 'string' },
+    { type: 'number' },
+    { type: 'object' },
+    { type: 'array', items: [] },
+  ],
+}
 const toOpenAPISchema = (schema: Schema): any => {
   switch (schema.type) {
     case 'enum':
@@ -42,12 +52,10 @@ const toOpenAPISchema = (schema: Schema): any => {
       }
 
     case 'any':
-      return { type: 'any' }
+      return anyTypeOpenAPI
 
     case 'customType':
-      return { type: 'any' }
-    //   type: 'any',
-    // }
+      return toOpenAPISchema(schema.serializedInheritFromSchema)
 
     default:
       return {

@@ -34,3 +34,6 @@ modules.xml
 
 ### System Files ###
 *.DS_Store
+
+
+example/__generated-api__

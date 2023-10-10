@@ -1,5 +1,6 @@
 import { Schema } from './schemaBuilder'
 
+// TODO: add proper TS output schema types
 export const jsValueToSchema = (jsValue: any): Schema => {
   if (typeof jsValue === 'string') {
     return {

@@ -42,16 +42,16 @@ app.get(
   apiDoc({
     query: {
       name: T.string
-      header: T.list(T.union(['a', 'b', 'c']))),
+      header: T.list(T.enum(['a', 'b', 'c']))),
     },
     body: {
-      header: T.list(T.union(['a', 'b', 'c']))),
+      header: T.list(T.enum(['a', 'b', 'c']))),
       message: T.null_list,
       footer: T.string,
     },
     returns: T.null_object({
       data: T.null_object({
-        nestedData: T.union(['a', 'b', 'c']),
+        nestedData: T.enum(['a', 'b', 'c']),
       }),
     }),
   })((req, res) => {
@@ -109,7 +109,7 @@ Cyclic dependencies of data types, similar to
 
 **Better support of creating custom data type**
 
-In the current library there is no official way how to create a custom data type with custom validators and custom type inference and you have to use one of the pre-defined types `tBoolean` `tNumber` `tUnion` `tNonNullable` `tAny` `tObject` `tCustomType` `tString`.
+In the current library there is no official way how to create a custom data type with custom validators and custom type inference and you have to use one of the pre-defined types `tBoolean` `tNumber` `tEnum` `tNonNullable` `tAny` `tObject` `tCustomType` `tString`.
 
 ## What do you think?
 

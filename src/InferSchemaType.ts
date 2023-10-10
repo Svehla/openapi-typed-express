@@ -23,7 +23,7 @@ export type InferSchemaType<T extends Schema> = T extends {
   : T extends { type: 'number' }
   ? MakeOptional<number, T['required']>
   : T extends { type: 'customType' }
-  ? MakeOptional<ReturnType<T['transform']>, T['required']>
+  ? MakeOptional<ReturnType<T['parser']>, T['required']>
   : T extends { type: 'any' }
   ? any
   : never

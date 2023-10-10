@@ -305,7 +305,7 @@ describe('typedExpressDocs', () => {
 
         const lazyFn = apiDoc({
           body: T.object({
-            enum: T.union(['a']),
+            enum: T.enum(['a']),
           }),
           returns: T.string,
         })(() => {
