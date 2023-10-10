@@ -39,6 +39,12 @@ const toOpenAPISchema = (schema: TSchema): any => {
         properties: mapEntries(([k, v]) => [k, toOpenAPISchema(v)], schema.properties),
       }
 
+    case 'hashMap':
+      return {
+        type: 'object',
+        additionalProperties: toOpenAPISchema(schema.property),
+      }
+
     case 'array':
       return {
         type: 'array',

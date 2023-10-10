@@ -21,7 +21,6 @@ type DeepWriteable<T> = {
 }
 
 // ----------------------- schema ------------------------
-
 export type TList = {
   type: 'array'
   items: TSchema
@@ -36,6 +35,16 @@ export type TObject = {
   properties: Record<string, TSchema>
   required: boolean
   validator?: (v: Record<any, any>) => void
+}
+
+// Object with dynamic keys
+// TODO: this is experimental implementation => TODO: write tests
+export type THashMap = {
+  type: 'hashMap'
+  property: TSchema
+
+  required: boolean
+  validator?: (v: any[]) => void
 }
 
 export type TBoolean = {
@@ -108,6 +117,7 @@ export type TSchema =
   | TEnum
   | TCustomType
   | TOneOf
+  | THashMap
 
 // --------- builder functions ---------
 
@@ -149,6 +159,12 @@ const tObject = <T extends Record<string, TSchema>>(a: T) => ({
   type: 'object' as const,
   required: true as const,
   properties: a,
+})
+
+const tHashMap = <T extends TSchema>(a: T) => ({
+  type: 'hashMap' as const,
+  required: true as const,
+  property: a,
 })
 
 // TODO: array X list?
@@ -220,6 +236,8 @@ export const tSchema = {
   list: <T extends TSchema>(items: T) => tNonNullable(tList(items)),
   null_list: <T extends TSchema>(items: T) => tNullable(tList(items)),
 
+  hashMap: <T extends TSchema>(args: T) => tNonNullable(tHashMap(args)),
+  null_hashMap: <T extends TSchema>(args: T) => tNullable(tHashMap(args)),
   // build your own type function
   customType: tCustomType,
   nonNullable: tNonNullable,

@@ -22,6 +22,8 @@ export type InferSchemaType<T extends TSchema> = T extends {
   ? MakeOptional<T['options'][number], T['required']>
   : T extends { type: 'number' }
   ? MakeOptional<number, T['required']>
+  : T extends { type: 'hashMap' }
+  ? MakeOptional<Record<string, InferSchemaType<T['property']>>, T['required']>
   : T extends { type: 'customType' }
   ? MakeOptional<ReturnType<T['parser']>, T['required']>
   : T extends { type: 'any' }

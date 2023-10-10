@@ -30,7 +30,7 @@ export const convertSchemaToYupValidationObject = (
   } else if (schema?.type === 'object') {
     // TODO: possible infinite TS recursion while inferring return type
     yupValidator = yupValidator.object(
-      mapEntries(([k, v]) => [k, convertSchemaToYupValidationObject(v) as any], schema.properties)
+      mapEntries(([k, v]) => [k, convertSchemaToYupValidationObject(v)], schema.properties)
     )
     //
   } else if (schema?.type === 'boolean') {
@@ -75,6 +75,16 @@ export const convertSchemaToYupValidationObject = (
   } else if (schema?.type === 'any') {
     yupValidator = yupValidator.mixed()
     //
+  } else if (schema?.type === 'hashMap') {
+    yupValidator = yup.mixed()
+
+    yupValidator = yup.lazy(v =>
+      yup
+        .object(mapEntries(([k]) => [k, convertSchemaToYupValidationObject(schema.property)], v))
+        .required()
+    )
+
+    console.log(yupValidator)
   } else if (schema?.type === 'enum') {
     yupValidator = yupValidator.mixed().oneOf(schema.options)
     //
@@ -88,7 +98,11 @@ export const convertSchemaToYupValidationObject = (
   }
 
   // all keys are required in the objects, only values may be nullable
-  yupValidator = yupValidator.required()
+  // TODO: shit code
+  // yup lazy required is not working...
+  if (yupValidator.required) {
+    yupValidator = yupValidator.required()
+  }
 
   // value (or a key of an object) may be nullable
   if (schema.required === false) {

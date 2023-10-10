@@ -19,7 +19,6 @@ app.use(
 )
 
 const string3PlusChars = T.custom_string(a => {
-  console.log('custom validator ', a)
   if (a.length < 3) {
     throw new Error('length needs to be >= 3')
   }
@@ -36,17 +35,26 @@ app.get(
       b: string3PlusChars,
     },
     body: T.object({
+      a: T.object({ a: T.object({ a: T.object({ a: T.string }) }) }),
       anything: T.null_any,
       myDate1: tCustom.cast_null_date,
       myDate2: tCustom.cast_date,
       bool: T.boolean,
       age: tCustom.minMaxNum(0, 18),
       myDate3: tCustom.cast_null_date,
+      hashMap1: T.hashMap(T.string),
+      hashMap2: T.hashMap(
+        T.object({
+          a: T.string,
+          b: T.boolean,
+        })
+      ),
     }),
   })((req, res) => {
-    console.log(req.params)
-    console.log(req.query)
-    console.log(req.body)
+    // console.log('----------------')
+    // console.log(req.params)
+    // console.log(req.query)
+    // console.log(req.body)
     res.send({
       params: req.params,
       query: req.query,
@@ -133,8 +141,14 @@ app.use('/api-docs/', (req, res) => res.send(lazyOpenAPI3_0_0JSON))
 // ---- Coffee for those who understand what's happening ----
 
 // eslint-disable-next-line prettier/prettier
-app.get('/MAGIC', apiDoc({ returns: jsValueToSchema(lazyOpenAPI3_0_0JSON) })((_req, res) => res.send('ok')))
-lazyOpenAPI3_0_0JSON.paths['/api-docs'] = initApiDocs(app).paths['/MAGIC']
+const HAVE_FUN = true
+if (HAVE_FUN) {
+  app.get(
+    '/MAGIC',
+    apiDoc({ returns: jsValueToSchema(lazyOpenAPI3_0_0JSON) })((_req, res) => res.send('ok'))
+  )
+  lazyOpenAPI3_0_0JSON.paths['/api-docs'] = initApiDocs(app).paths['/MAGIC']
+}
 // ----------------------------------------------------------
 
 app.use('/swagger-ui/', swaggerUi.serve, swaggerUi.setup(lazyOpenAPI3_0_0JSON))

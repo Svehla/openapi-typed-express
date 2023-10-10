@@ -15,7 +15,7 @@ const generateServiceAPI = async () => {
 
   const data = await res.json()
 
-  const tsTypes = x.default(data)
+  const tsTypes = await x.default(data)
 
   fs.writeFileSync(
     path.join(mocksPath, '/server-api.ts'),
