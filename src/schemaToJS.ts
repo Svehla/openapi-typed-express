@@ -1,7 +1,7 @@
-import { Schema } from './schemaBuilder'
+import { TSchema } from './schemaBuilder'
 
 // TODO: add proper TS output schema types
-export const jsValueToSchema = (jsValue: any): Schema => {
+export const jsValueToSchema = (jsValue: any): TSchema => {
   if (typeof jsValue === 'string') {
     return {
       type: 'string',
@@ -18,7 +18,7 @@ export const jsValueToSchema = (jsValue: any): Schema => {
       required: true,
     }
   } else if (Array.isArray(jsValue)) {
-    let itemsSchema: Schema
+    let itemsSchema: TSchema
 
     // assuming array is homogeneous
     if (jsValue.length > 0) {
@@ -33,7 +33,7 @@ export const jsValueToSchema = (jsValue: any): Schema => {
       items: itemsSchema,
     }
   } else if (typeof jsValue === 'object' && jsValue !== null) {
-    const properties: Record<string, Schema> = {}
+    const properties: Record<string, TSchema> = {}
 
     for (const key in jsValue) {
       if (jsValue.hasOwnProperty(key)) {

@@ -1,7 +1,7 @@
 import { DeepPartial, deepMerge, mergePaths, syncAllSettled } from './utils'
 import { InferSchemaType } from './InferSchemaType'
 import { NextFunction, Request, Response } from 'express'
-import { Schema, tSchema as T } from './schemaBuilder'
+import { TSchema, tSchema as T } from './schemaBuilder'
 import { UrlsMethodDocs, convertUrlsMethodsSchemaToOpenAPI } from './openAPIFromSchema'
 import { convertSchemaToYupValidationObject } from './runtimeSchemaValidation'
 import { parseUrlFromExpressRegexp } from './expressRegExUrlParser'
@@ -15,17 +15,17 @@ export const __expressOpenAPIHack__ = Symbol('__expressOpenAPIHack__')
 // --------------------------------------------------------------------------
 
 type Config = {
-  params?: Record<string, Schema>
-  query?: Record<string, Schema>
-  body?: Schema
-  returns?: Schema
+  params?: Record<string, TSchema>
+  query?: Record<string, TSchema>
+  body?: TSchema
+  returns?: TSchema
 }
 
 // eslint-disable-next-line @typescript-eslint/ban-types
 type UseEmptyObjectAsDefault<T> = T extends Record<any, any> ? T : {}
 // type UseEmptyASTObjectAsDefault<T> = T extends void ?
 
-type WrapToObject<T> = { type: 'object'; required: true; properties: T }
+type WrapToTObject<T> = { type: 'object'; required: true; properties: T }
 
 /**
  * yup errors are stringified into stack trace
@@ -38,11 +38,11 @@ export const apiDoc = <C extends Config>(docs: C) => (
   handle: (
     // express by default binds empty object for params/body/query
     req: Request<
-      InferSchemaType<WrapToObject<UseEmptyObjectAsDefault<C['params']>>>,
+      InferSchemaType<WrapToTObject<UseEmptyObjectAsDefault<C['params']>>>,
       any,
       // @ts-expect-error
       InferSchemaType<C['body']>,
-      InferSchemaType<WrapToObject<UseEmptyObjectAsDefault<C['query']>>>
+      InferSchemaType<WrapToTObject<UseEmptyObjectAsDefault<C['query']>>>
     >,
     res: Response,
     next: NextFunction

@@ -1,10 +1,10 @@
 // TODO: do we use this infer or just use the yum one?
 // f.e.: yup.InferType<typeof yupSchemaTest1>
-import { Schema } from './schemaBuilder'
+import { TSchema } from './schemaBuilder'
 
 type MakeOptional<T, Required extends boolean> = Required extends true ? T : T | undefined | null
 
-export type InferSchemaType<T extends Schema> = T extends {
+export type InferSchemaType<T extends TSchema> = T extends {
   type: 'object'
   properties: infer U
 } // @ts-expect-error

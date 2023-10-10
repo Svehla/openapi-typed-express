@@ -22,30 +22,30 @@ type DeepWriteable<T> = {
 
 // ----------------------- schema ------------------------
 
-export type SchemaList = {
+export type TList = {
   type: 'array'
-  items: Schema
+  items: TSchema
 
   required: boolean
   validator?: (v: any[]) => void
 }
 
-export type SchemaObject = {
+export type TObject = {
   type: 'object'
 
-  properties: Record<string, Schema>
+  properties: Record<string, TSchema>
   required: boolean
   validator?: (v: Record<any, any>) => void
 }
 
-export type SchemaBoolean = {
+export type TBoolean = {
   type: 'boolean'
 
   required: boolean
   validator?: (v: boolean) => void
 }
 
-export type SchemaString = {
+export type TString = {
   type: 'string'
 
   required: boolean
@@ -53,18 +53,18 @@ export type SchemaString = {
   // string could have special transfer function... just this one function may cast? but what about JSONs?
 }
 
-export type SchemaNumber = {
+export type TNumber = {
   type: 'number'
 
   required: boolean
   validator?: (v: number) => void
 }
 
-export type SchemaCustomType = {
+export type TCustomType = {
   name: string
   type: 'customType'
   // TODO: find proper name... what about Parent group type or something like that?
-  serializedInheritFromSchema: Schema
+  serializedInheritFromSchema: TSchema
   // types are infer from this functions
   // runtime parsing is in this function
   parser: (val: any) => any
@@ -74,13 +74,13 @@ export type SchemaCustomType = {
   validator?: (v: any) => void
 }
 
-export type SchemaAny = {
+export type TAny = {
   type: 'any'
   required: boolean
   validator?: (v: any) => void
 }
 
-export type SchemaEnum = {
+export type TEnum = {
   type: 'enum'
   required: boolean
 
@@ -88,7 +88,7 @@ export type SchemaEnum = {
   validator?: (v: any) => void
 }
 
-export type SchemaOneOf = {
+export type TOneOf = {
   type: 'oneOf'
   required: boolean
 
@@ -98,16 +98,16 @@ export type SchemaOneOf = {
 
 // --- TODO: add types
 
-export type Schema =
-  | SchemaList
-  | SchemaObject
-  | SchemaString
-  | SchemaNumber
-  | SchemaBoolean
-  | SchemaAny
-  | SchemaEnum
-  | SchemaCustomType
-  | SchemaOneOf
+export type TSchema =
+  | TList
+  | TObject
+  | TString
+  | TNumber
+  | TBoolean
+  | TAny
+  | TEnum
+  | TCustomType
+  | TOneOf
 
 // --------- builder functions ---------
 
@@ -145,14 +145,14 @@ const tEnum = <T extends readonly any[] | any[]>(options: T) => ({
   options: (options as unknown) as DeepWriteable<T>,
 })
 
-const tObject = <T extends Record<string, Schema>>(a: T) => ({
+const tObject = <T extends Record<string, TSchema>>(a: T) => ({
   type: 'object' as const,
   required: true as const,
   properties: a,
 })
 
 // TODO: array X list?
-const tList = <T extends Schema>(items: T) => ({
+const tList = <T extends TSchema>(items: T) => ({
   type: 'array' as const,
   required: true,
   items,
@@ -163,7 +163,7 @@ export const tCustomType = <Name extends string, R>(
   name: Name,
   parser: (value: any) => R,
   // TODO: return values could serialize in the future... but it's not mandatory right now
-  serializedInheritFromSchema = tAny as Schema
+  serializedInheritFromSchema = tAny as TSchema
 ) => ({
   name: `custom_${name}` as const,
   type: 'customType' as const,
@@ -214,11 +214,11 @@ export const tSchema = {
   enum: <T extends readonly any[] | any[]>(options: T) => tNonNullable(tEnum(options)),
   null_enum: <T extends readonly any[] | any[]>(options: T) => tNullable(tEnum(options)),
 
-  object: <T extends Record<string, Schema>>(args: T) => tNonNullable(tObject(args)),
-  null_object: <T extends Record<string, Schema>>(args: T) => tNullable(tObject(args)),
+  object: <T extends Record<string, TSchema>>(args: T) => tNonNullable(tObject(args)),
+  null_object: <T extends Record<string, TSchema>>(args: T) => tNullable(tObject(args)),
 
-  list: <T extends Schema>(items: T) => tNonNullable(tList(items)),
-  null_list: <T extends Schema>(items: T) => tNullable(tList(items)),
+  list: <T extends TSchema>(items: T) => tNonNullable(tList(items)),
+  null_list: <T extends TSchema>(items: T) => tNullable(tList(items)),
 
   // build your own type function
   customType: tCustomType,

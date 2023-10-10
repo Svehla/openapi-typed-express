@@ -1,11 +1,11 @@
-import { Schema, SchemaObject } from './schemaBuilder'
+import { TSchema, TObject } from './schemaBuilder'
 import { isObject, mapEntries } from './utils'
 
 type GenerateOpenAPIPathArg = {
-  querySchema: SchemaObject | null | undefined
-  pathSchema: SchemaObject | null | undefined
-  bodySchema: SchemaObject | null | undefined
-  returnsSchema: Schema | null | undefined
+  querySchema: TObject | null | undefined
+  pathSchema: TObject | null | undefined
+  bodySchema: TObject | null | undefined
+  returnsSchema: TSchema | null | undefined
 }
 
 // openapi do not support any types...
@@ -18,7 +18,7 @@ const anyTypeOpenAPI = {
     { type: 'array', items: [] },
   ],
 }
-const toOpenAPISchema = (schema: Schema): any => {
+const toOpenAPISchema = (schema: TSchema): any => {
   switch (schema.type) {
     case 'enum':
       return {
@@ -125,10 +125,10 @@ export type UrlsMethodDocs = Record<
   Record<
     Method,
     {
-      pathSchema: SchemaObject | null | undefined
-      querySchema: SchemaObject | null | undefined
-      bodySchema: SchemaObject | null | undefined
-      returnsSchema: Schema | null | undefined
+      pathSchema: TObject | null | undefined
+      querySchema: TObject | null | undefined
+      bodySchema: TObject | null | undefined
+      returnsSchema: TSchema | null | undefined
     }
   >
 >

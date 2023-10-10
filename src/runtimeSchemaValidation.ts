@@ -1,5 +1,5 @@
 import * as yup from 'yup'
-import { Schema } from './schemaBuilder'
+import { TSchema } from './schemaBuilder'
 import { mapEntries } from './utils'
 
 // inspiration:
@@ -18,7 +18,7 @@ yup.addMethod(yup.mixed, 'oneOfSchemas', function oneOfSchemas(schemas: any[], m
 // TODO: write tests
 // .required() is here to be sure that key in object is defined even if the value is null
 export const convertSchemaToYupValidationObject = (
-  schema: Schema
+  schema: TSchema
 ): yup.MixedSchema<any, any, any> => {
   // let yv = null as any
   // yup validator
