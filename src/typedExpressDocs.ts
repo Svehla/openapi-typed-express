@@ -1,4 +1,4 @@
-import { DeepPartial, deepMerge, mergePaths, syncAllSettled } from './utils'
+import { DeepPartial, convertYupErrToObj, deepMerge, mergePaths, syncAllSettled } from './utils'
 import { InferSchemaType } from './InferSchemaType'
 import { NextFunction, Request, Response } from 'express'
 import { TSchema, tSchema as T } from './schemaBuilder'
@@ -26,13 +26,6 @@ type UseEmptyObjectAsDefault<T> = T extends Record<any, any> ? T : {}
 // type UseEmptyASTObjectAsDefault<T> = T extends void ?
 
 type WrapToTObject<T> = { type: 'object'; required: true; properties: T }
-
-/**
- * yup errors are stringified into stack trace
- * thanks to this function we extract JSON which describe error with better
- * programming API
- */
-const convertYupErrToObj = (obj: any) => JSON.parse(JSON.stringify(obj))
 
 export const apiDoc = <C extends Config>(docs: C) => (
   handle: (

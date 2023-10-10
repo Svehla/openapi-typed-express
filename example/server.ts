@@ -29,19 +29,19 @@ app.get(
   '/custom-types/:id',
   apiDoc({
     params: {
-      id: tCustom.castNumber,
+      id: tCustom.cast_number,
     },
     query: {
-      a: T.list(tCustom.date),
+      a: T.list(tCustom.cast_date),
       b: string3PlusChars,
     },
     body: T.object({
       anything: T.null_any,
-      myDate1: tCustom.null_date,
-      myDate2: tCustom.date,
+      myDate1: tCustom.cast_null_date,
+      myDate2: tCustom.cast_date,
       bool: T.boolean,
       age: tCustom.minMaxNum(0, 18),
-      myDate3: tCustom.null_date,
+      myDate3: tCustom.cast_null_date,
     }),
   })((req, res) => {
     console.log(req.params)

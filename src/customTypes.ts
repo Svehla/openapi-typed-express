@@ -16,6 +16,9 @@ const tDate = T.customType(
 
 const tMinMaxNum = (min: number, max: number) =>
   T.custom_number(value => {
+    if (value === null || value === undefined) {
+      throw new Error('invalid nullable number value')
+    }
     if (isNaN(value)) {
       throw new Error('invalid number value')
     }
@@ -42,8 +45,8 @@ const tMinMaxNum = (min: number, max: number) =>
 // but more complex and potentially more complicated
 
 // TODO: how to solve basic types (boolean|string) casting?
-const tCastNumber = T.customType(
-  'castNumber',
+const tCast_number = T.customType(
+  'cast_number',
   value => {
     const parsedValue = Number(value)
     if (isNaN(parsedValue)) {
@@ -55,11 +58,11 @@ const tCastNumber = T.customType(
 )
 
 export const tCustom = {
-  date: T.nonNullable(tDate),
-  null_date: T.nullable(tDate),
+  cast_date: T.nonNullable(tDate),
+  cast_null_date: T.nullable(tDate),
 
-  castNumber: T.nonNullable(tCastNumber),
-  null_castNumber: T.nullable(tCastNumber),
+  cast_number: T.nonNullable(tCast_number),
+  cast_null_number: T.nullable(tCast_number),
 
   minMaxNum: tMinMaxNum,
 }

@@ -30,8 +30,8 @@ export const mergePaths = (path1: string, path2: string) => {
 export const syncAllSettled = (syncFns: (() => any)[]) => {
   return syncFns.map(syncFn => {
     try {
-      syncFn()
-      return { status: 'fulfilled' as const }
+      const data = syncFn()
+      return { status: 'fulfilled' as const, data }
     } catch (err) {
       return { status: 'rejected' as const, reason: err }
     }
@@ -67,3 +67,10 @@ const coalesceByKey = (source: any) => (acc: any, key: any): any =>
 // TODO: write more tests and check if the implementation is good enough
 export const deepMerge = (target: any, ...sources: any[]) =>
   sources.reduce((acc, source) => Object.keys(source).reduce(coalesceByKey(source), acc), target)
+
+/**
+ * yup errors are stringified into stack trace
+ * thanks to this function we extract JSON which describe error with better
+ * programming API
+ */
+export const convertYupErrToObj = (obj: any) => JSON.parse(JSON.stringify(obj))

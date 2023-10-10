@@ -43,12 +43,16 @@ export const convertSchemaToYupValidationObject = (
     yupValidator = yupValidator.string()
     //
   } else if (schema?.type === 'customType') {
-    // TODO: should i validate parent group type from serializedInheritFromSchema?
-    yupValidator = convertSchemaToYupValidationObject(schema.serializedInheritFromSchema)
+    // TODO: should i validate parent group type from serializedInheritFromSchema? its not working for casting (Date().toString) -> Date
+    // yupValidator = convertSchemaToYupValidationObject(schema.serializedInheritFromSchema)
+    yupValidator = yup.mixed()
     yupValidator = yupValidator
       .test({
         name: schema.name,
         test: function (value: any) {
+          if (schema.required === false && (value === null || value === undefined)) {
+            return true
+          }
           try {
             // TODO: parser run for two times I should optimize it somehow
             schema.parser(value)
@@ -60,7 +64,14 @@ export const convertSchemaToYupValidationObject = (
         },
       })
       // transform needs to be called for only tested fields which can be transformed without throwing errors
-      .transform(schema.parser)
+      // @ts-expect-error
+      .transform(value => {
+        // I do not want to transform nullable values
+        if (schema.required === false && (value === null || value === undefined)) {
+          return value
+        }
+        return schema.parser(value)
+      })
   } else if (schema?.type === 'any') {
     yupValidator = yupValidator.mixed()
     //
