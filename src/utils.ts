@@ -53,10 +53,12 @@ export type DeepPartial<T> = T extends (infer Item)[]
 const merge = (a: any, b: any): any =>
   isObject(a) && isObject(b) ? deepMerge(a, b) : isObject(a) && !isObject(b) ? a : b
 
-const coalesceByKey = (source: any) => (acc: any, key: any): any =>
-  (acc[key] && source[key]
-    ? (acc[key] = merge(acc[key], source[key]))
-    : (acc[key] = source[key])) && acc
+const coalesceByKey =
+  (source: any) =>
+  (acc: any, key: any): any =>
+    (acc[key] && source[key]
+      ? (acc[key] = merge(acc[key], source[key]))
+      : (acc[key] = source[key])) && acc
 
 /**
  * Merge all sources into the target
