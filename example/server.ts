@@ -24,37 +24,48 @@ const string3PlusChars = T.custom_string(a => {
   }
 })
 
+const input = {
+  params: {
+    id: tCustom.cast_number,
+  },
+  query: {
+    a: T.list(tCustom.cast_date),
+    b: string3PlusChars,
+  },
+  body: T.object({
+    a: T.object({ a: T.object({ a: T.object({ a: T.string }) }) }),
+    anything: T.null_any,
+    myDate1: tCustom.cast_null_date,
+    myDate2: tCustom.cast_date,
+    bool: T.boolean,
+    age: tCustom.minMaxNum(0, 18),
+    myDate3: tCustom.cast_null_date,
+    hashMap1: T.hashMap(T.string),
+    hashMap2: T.hashMap(
+      T.object({
+        a: T.string,
+        b: T.boolean,
+      })
+    ),
+  }),
+}
+
 app.get(
   '/custom-types/:id',
   apiDoc({
-    params: {
-      id: tCustom.cast_number,
-    },
-    query: {
-      a: T.list(tCustom.cast_date),
-      b: string3PlusChars,
-    },
-    body: T.object({
-      a: T.object({ a: T.object({ a: T.object({ a: T.string }) }) }),
-      anything: T.null_any,
-      myDate1: tCustom.cast_null_date,
-      myDate2: tCustom.cast_date,
-      bool: T.boolean,
-      age: tCustom.minMaxNum(0, 18),
-      myDate3: tCustom.cast_null_date,
-      hashMap1: T.hashMap(T.string),
-      hashMap2: T.hashMap(
-        T.object({
-          a: T.string,
-          b: T.boolean,
-        })
-      ),
+    params: input.params,
+    query: input.query,
+    body: input.body,
+    returns: T.object({
+      params: T.object(input.params),
+      query: T.object(input.query),
+      body: input.body,
     }),
   })((req, res) => {
-    // console.log('----------------')
-    // console.log(req.params)
-    // console.log(req.query)
-    // console.log(req.body)
+    console.log('----------------')
+    console.log(req.params)
+    console.log(req.query)
+    console.log(req.body)
     res.send({
       params: req.params,
       query: req.query,
@@ -88,8 +99,7 @@ app.post(
     const query = req.query
 
     res.send({
-      body,
-      query,
+      enhancedBody: { data: 'a' },
     })
   })
 )
@@ -111,6 +121,10 @@ app.post(
           }),
         ])
       ),
+    }),
+    returns: T.object({
+      body: T.any,
+      query: T.any,
     }),
   })((req, res) => {
     const body = req.body
@@ -145,7 +159,10 @@ const HAVE_FUN = true
 if (HAVE_FUN) {
   app.get(
     '/MAGIC',
-    apiDoc({ returns: jsValueToSchema(lazyOpenAPI3_0_0JSON) })((_req, res) => res.send('ok'))
+    apiDoc({ returns: jsValueToSchema(lazyOpenAPI3_0_0JSON) })((_req, res) =>
+      // @ts-ignore
+      res.send('ok')
+    )
   )
   lazyOpenAPI3_0_0JSON.paths['/api-docs'] = initApiDocs(app).paths['/MAGIC']
 }

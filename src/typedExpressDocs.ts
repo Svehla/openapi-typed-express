@@ -35,11 +35,10 @@ export const apiDoc =
       req: Request<
         InferSchemaType<WrapToTObject<UseEmptyObjectAsDefault<C['params']>>>,
         any,
-        // @ts-expect-error
         InferSchemaType<C['body']>,
         InferSchemaType<WrapToTObject<UseEmptyObjectAsDefault<C['query']>>>
       >,
-      res: Response,
+      res: Omit<Response, 'send'> & { send: (data: InferSchemaType<C['returns']>) => void },
       next: NextFunction
     ) => void
   ) => {
@@ -64,7 +63,7 @@ export const apiDoc =
 
       const handleRouteWithRuntimeValidations = (
         req: Request,
-        res: Response,
+        res: Response, // & { typedSend: (data: C['returns']) => void },
         next: NextFunction
       ) => {
         // --- this function include runtime validations which are triggered each request ---
@@ -100,6 +99,8 @@ export const apiDoc =
         if (queryValidator) req.query = queryValidator.cast(req.query)
         if (bodyValidator) req.body = bodyValidator.cast(req.body)
 
+        res.send = (data: any) => res.send(data)
+        // @ts-ignore => if this ignore is missing, there is potential infinite ts recursion...
         return handle(req as any, res, next)
       }
 

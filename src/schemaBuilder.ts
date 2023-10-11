@@ -105,7 +105,7 @@ export type TOneOf = {
   validator?: (v: any) => void
 }
 
-// --- TODO: add types
+// --- TODO: I should add buffer type?
 
 export type TSchema =
   | TList

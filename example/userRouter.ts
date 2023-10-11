@@ -48,7 +48,7 @@ router.get(
     params: {
       userId: T.string,
     },
-    returns: tUserType,
+    returns: T.nullable(tUserType),
   })((req, res) => {
     const user = users.find(i => i.id === req.params.userId)
     res.send(user)

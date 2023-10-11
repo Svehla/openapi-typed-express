@@ -4,11 +4,21 @@ import { TSchema } from './schemaBuilder'
 
 type MakeOptional<T, Required extends boolean> = Required extends true ? T : T | undefined | null
 
-export type InferSchemaType<T extends TSchema> = T extends {
-  type: 'object'
-  properties: infer U
-} // @ts-expect-error
-  ? { [K in keyof U]: InferSchemaType<U[K]> }
+export type InferSchemaType<T extends TSchema | undefined> = T extends undefined
+  ? undefined
+  : T extends {
+      type: 'object'
+      properties: infer U
+    }
+  ? MakeOptional<
+      {
+        [K in keyof U]: InferSchemaType<
+          // @ts-expect-error
+          U[K]
+        >
+      },
+      T['required']
+    >
   : T extends { type: 'array'; items: any }
   ? MakeOptional<InferSchemaType<T['items']>[], T['required']>
   : T extends { type: 'boolean' }
