@@ -99,7 +99,6 @@ export const apiDoc =
         if (queryValidator) req.query = queryValidator.cast(req.query)
         if (bodyValidator) req.body = bodyValidator.cast(req.body)
 
-        res.send = (data: any) => res.send(data)
         // @ts-ignore => if this ignore is missing, there is potential infinite ts recursion...
         return handle(req as any, res, next)
       }

@@ -57,6 +57,7 @@ export type TBoolean = {
 export type TString = {
   type: 'string'
 
+  // TODO: add maxLen?
   required: boolean
   validator?: (v: string) => void
   // string could have special transfer function... just this one function may cast? but what about JSONs?
@@ -65,6 +66,7 @@ export type TString = {
 export type TNumber = {
   type: 'number'
 
+  // TODO: add min max?
   required: boolean
   validator?: (v: number) => void
 }
