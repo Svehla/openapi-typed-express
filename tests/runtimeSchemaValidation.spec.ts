@@ -113,6 +113,39 @@ describe('runtimeSchemaValidation', () => {
         }
       )
     })
+
+    test('12', () => {
+      validateDataAgainstSchema(
+        T.hashMap(
+          T.null_object({
+            bool: T.boolean,
+            num: T.number,
+          })
+        ),
+        {
+          dynKey1: { bool: true, num: 3 },
+          dynKey2: null,
+          dynKey3: { bool: false, num: -1 },
+        },
+        {
+          status: 'fulfilled',
+        }
+      )
+    })
+
+    test('13', () => {
+      validateDataAgainstSchema(
+        T.hashMap(T.string),
+        {
+          dynKey1: 'a',
+          dynKey2: 3,
+        },
+        {
+          status: 'rejected',
+          reason: { errors: ['dynKey2 must be a `string` type, but the final value was: `3`.'] },
+        }
+      )
+    })
   })
 
   describe('custom types', () => {
