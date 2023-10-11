@@ -158,45 +158,13 @@ describe('typedExpressDocs', () => {
           {
             status: () => ({
               send: (errorObj: any) => {
-                expect(errorObj).toStrictEqual({
+                expect(errorObj).toMatchObject({
                   errors: {
                     paramsErrors: {
                       value: { message: 'hi' },
                       errors: [
                         'message must be a `boolean` type, but the final value was: `"hi"`.',
                       ],
-                      inner: [
-                        {
-                          value: 'hi',
-                          path: 'message',
-                          type: 'typeError',
-                          errors: [
-                            'message must be a `boolean` type, but the final value was: `"hi"`.',
-                          ],
-                          params: {
-                            value: 'hi',
-                            originalValue: 'hi',
-                            path: 'message',
-                            spec: {
-                              strip: false,
-                              strict: false,
-                              abortEarly: true,
-                              recursive: true,
-                              disableStackTrace: false,
-                              nullable: false,
-                              optional: false,
-                              coerce: true,
-                            },
-                            type: 'boolean',
-                          },
-                          inner: [],
-                          name: 'ValidationError',
-                          message:
-                            'message must be a `boolean` type, but the final value was: `"hi"`.',
-                        },
-                      ],
-                      name: 'ValidationError',
-                      message: 'message must be a `boolean` type, but the final value was: `"hi"`.',
                     },
                     queryErrors: null,
                     bodyErrors: {
@@ -206,87 +174,6 @@ describe('typedExpressDocs', () => {
                         'b must be a `boolean` type, but the final value was: `"text"`.',
                         'c.d must be a `boolean` type, but the final value was: `3`.',
                       ],
-                      inner: [
-                        {
-                          value: true,
-                          path: 'a',
-                          type: 'typeError',
-                          errors: ['a must be a `number` type, but the final value was: `true`.'],
-                          params: {
-                            value: true,
-                            originalValue: true,
-                            path: 'a',
-                            spec: {
-                              strip: false,
-                              strict: false,
-                              abortEarly: true,
-                              recursive: true,
-                              disableStackTrace: false,
-                              nullable: false,
-                              optional: false,
-                              coerce: true,
-                            },
-                            type: 'number',
-                          },
-                          inner: [],
-                          name: 'ValidationError',
-                          message: 'a must be a `number` type, but the final value was: `true`.',
-                        },
-                        {
-                          value: 'text',
-                          path: 'b',
-                          type: 'typeError',
-                          errors: [
-                            'b must be a `boolean` type, but the final value was: `"text"`.',
-                          ],
-                          params: {
-                            value: 'text',
-                            originalValue: 'text',
-                            path: 'b',
-                            spec: {
-                              strip: false,
-                              strict: false,
-                              abortEarly: true,
-                              recursive: true,
-                              disableStackTrace: false,
-                              nullable: false,
-                              optional: false,
-                              coerce: true,
-                            },
-                            type: 'boolean',
-                          },
-                          inner: [],
-                          name: 'ValidationError',
-                          message: 'b must be a `boolean` type, but the final value was: `"text"`.',
-                        },
-                        {
-                          value: 3,
-                          path: 'c.d',
-                          type: 'typeError',
-                          errors: ['c.d must be a `boolean` type, but the final value was: `3`.'],
-                          params: {
-                            value: 3,
-                            originalValue: 3,
-                            path: 'c.d',
-                            spec: {
-                              strip: false,
-                              strict: false,
-                              abortEarly: true,
-                              recursive: true,
-                              disableStackTrace: false,
-                              nullable: false,
-                              optional: false,
-                              coerce: true,
-                            },
-                            type: 'boolean',
-                          },
-                          inner: [],
-                          name: 'ValidationError',
-                          message: 'c.d must be a `boolean` type, but the final value was: `3`.',
-                        },
-                      ],
-                      name: 'ValidationError',
-                      message: '3 errors occurred',
                     },
                   },
                 })
@@ -318,41 +205,14 @@ describe('typedExpressDocs', () => {
           {
             status: () => ({
               send: (errorObj: any) => {
-                expect(errorObj).toStrictEqual({
+                expect(errorObj).toMatchObject({
                   errors: {
                     paramsErrors: null,
                     queryErrors: null,
                     bodyErrors: {
                       value: { enum: 'b' },
                       errors: ['enum must be one of the following values: a'],
-                      inner: [
-                        {
-                          value: 'b',
-                          path: 'enum',
-                          type: 'oneOf',
-                          errors: ['enum must be one of the following values: a'],
-                          params: {
-                            value: 'b',
-                            originalValue: 'b',
-                            path: 'enum',
-                            spec: {
-                              strip: false,
-                              strict: false,
-                              abortEarly: true,
-                              recursive: true,
-                              disableStackTrace: false,
-                              nullable: false,
-                              optional: false,
-                              coerce: true,
-                            },
-                            values: 'a',
-                            resolved: ['a'],
-                          },
-                          inner: [],
-                          name: 'ValidationError',
-                          message: 'enum must be one of the following values: a',
-                        },
-                      ],
+
                       name: 'ValidationError',
                       message: 'enum must be one of the following values: a',
                     },

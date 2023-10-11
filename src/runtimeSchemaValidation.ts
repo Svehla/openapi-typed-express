@@ -83,8 +83,6 @@ export const convertSchemaToYupValidationObject = (
         .object(mapEntries(([k]) => [k, convertSchemaToYupValidationObject(schema.property)], v))
         .required()
     )
-
-    console.log(yupValidator)
   } else if (schema?.type === 'enum') {
     yupValidator = yupValidator.mixed().oneOf(schema.options)
     //
