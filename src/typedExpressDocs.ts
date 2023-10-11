@@ -27,92 +27,98 @@ type UseEmptyObjectAsDefault<T> = T extends Record<any, any> ? T : {}
 
 type WrapToTObject<T> = { type: 'object'; required: true; properties: T }
 
-export const apiDoc = <C extends Config>(docs: C) => (
-  handle: (
-    // express by default binds empty object for params/body/query
-    req: Request<
-      InferSchemaType<WrapToTObject<UseEmptyObjectAsDefault<C['params']>>>,
-      any,
-      // @ts-expect-error
-      InferSchemaType<C['body']>,
-      InferSchemaType<WrapToTObject<UseEmptyObjectAsDefault<C['query']>>>
-    >,
-    res: Response,
-    next: NextFunction
-  ) => void
-) => {
-  // --- this function is called only for initialization of handlers ---
-  const paramsSchema = docs.params ? T.object(docs.params) : null
-  const querySchema = docs.query ? T.object(docs.query) : null
-  const bodySchema = docs.body ? docs.body : null
+export const apiDoc =
+  <C extends Config>(docs: C) =>
+  (
+    handle: (
+      // express by default binds empty object for params/body/query
+      req: Request<
+        InferSchemaType<WrapToTObject<UseEmptyObjectAsDefault<C['params']>>>,
+        any,
+        // @ts-expect-error
+        InferSchemaType<C['body']>,
+        InferSchemaType<WrapToTObject<UseEmptyObjectAsDefault<C['query']>>>
+      >,
+      res: Response,
+      next: NextFunction
+    ) => void
+  ) => {
+    // --- this function is called only for initialization of handlers ---
+    const paramsSchema = docs.params ? T.object(docs.params) : null
+    const querySchema = docs.query ? T.object(docs.query) : null
+    const bodySchema = docs.body ? docs.body : null
 
-  const paramsValidator = paramsSchema ? convertSchemaToYupValidationObject(paramsSchema) : null
-  const queryValidator = querySchema ? convertSchemaToYupValidationObject(querySchema) : null
-  const bodyValidator = bodySchema ? convertSchemaToYupValidationObject(bodySchema) : null
+    const paramsValidator = paramsSchema ? convertSchemaToYupValidationObject(paramsSchema) : null
+    const queryValidator = querySchema ? convertSchemaToYupValidationObject(querySchema) : null
+    const bodyValidator = bodySchema ? convertSchemaToYupValidationObject(bodySchema) : null
 
-  // `apiDocs()` have to return an function because express runtime checks
-  // if handler is a function and if not it throw new Error
-  const lazyInitializeHandler = (message: symbol) => {
-    // if someone forget to call `initApiDocs()` before server starts to listen
-    // each HTTP call to apiDocs()() decorated handler should fails
-    // because this fn is synchronous express should return nicely stringified error
-    if (message !== __expressOpenAPIHack__) {
-      throw new Error('You probably forget to call `initApiDocs()` for typed-express library')
-    }
-
-    const handleRouteWithRuntimeValidations = (req: Request, res: Response, next: NextFunction) => {
-      // --- this function include runtime validations which are triggered each request ---
-
-      const [urlValidation, queryValidation, bodyValidation] = syncAllSettled([
-        () => paramsValidator?.validateSync(req.params, { abortEarly: false, strict: true }),
-        () => queryValidator?.validateSync(req.query, { abortEarly: false, strict: true }),
-        () => bodyValidator?.validateSync(req.body, { abortEarly: false, strict: true }),
-      ])
-
-      if (
-        urlValidation.status === 'rejected' ||
-        queryValidation.status === 'rejected' ||
-        bodyValidation.status === 'rejected'
-      ) {
-        const paramsErrors = urlValidation.status === 'rejected' ? urlValidation.reason : null
-        const queryErrors = queryValidation.status === 'rejected' ? queryValidation.reason : null
-        const bodyErrors = bodyValidation.status === 'rejected' ? bodyValidation.reason : null
-
-        const errObj = {
-          errors: {
-            paramsErrors: convertYupErrToObj(paramsErrors),
-            queryErrors: convertYupErrToObj(queryErrors),
-            bodyErrors: convertYupErrToObj(bodyErrors),
-          },
-        }
-        res.status(400).send(errObj)
-        return
+    // `apiDocs()` have to return an function because express runtime checks
+    // if handler is a function and if not it throw new Error
+    const lazyInitializeHandler = (message: symbol) => {
+      // if someone forget to call `initApiDocs()` before server starts to listen
+      // each HTTP call to apiDocs()() decorated handler should fails
+      // because this fn is synchronous express should return nicely stringified error
+      if (message !== __expressOpenAPIHack__) {
+        throw new Error('You probably forget to call `initApiDocs()` for typed-express library')
       }
 
-      // ==== casting custom types into JS runtime objects ====
-      if (paramsValidator) req.params = paramsValidator.cast(req.params)
-      if (queryValidator) req.query = queryValidator.cast(req.query)
-      if (bodyValidator) req.body = bodyValidator.cast(req.body)
+      const handleRouteWithRuntimeValidations = (
+        req: Request,
+        res: Response,
+        next: NextFunction
+      ) => {
+        // --- this function include runtime validations which are triggered each request ---
 
-      return handle(req as any, res, next)
+        const [urlValidation, queryValidation, bodyValidation] = syncAllSettled([
+          () => paramsValidator?.validateSync(req.params, { abortEarly: false, strict: true }),
+          () => queryValidator?.validateSync(req.query, { abortEarly: false, strict: true }),
+          () => bodyValidator?.validateSync(req.body, { abortEarly: false, strict: true }),
+        ])
+
+        if (
+          urlValidation.status === 'rejected' ||
+          queryValidation.status === 'rejected' ||
+          bodyValidation.status === 'rejected'
+        ) {
+          const paramsErrors = urlValidation.status === 'rejected' ? urlValidation.reason : null
+          const queryErrors = queryValidation.status === 'rejected' ? queryValidation.reason : null
+          const bodyErrors = bodyValidation.status === 'rejected' ? bodyValidation.reason : null
+
+          const errObj = {
+            errors: {
+              paramsErrors: convertYupErrToObj(paramsErrors),
+              queryErrors: convertYupErrToObj(queryErrors),
+              bodyErrors: convertYupErrToObj(bodyErrors),
+            },
+          }
+          res.status(400).send(errObj)
+          return
+        }
+
+        // ==== casting custom types into JS runtime objects ====
+        if (paramsValidator) req.params = paramsValidator.cast(req.params)
+        if (queryValidator) req.query = queryValidator.cast(req.query)
+        if (bodyValidator) req.body = bodyValidator.cast(req.body)
+
+        return handle(req as any, res, next)
+      }
+
+      return {
+        apiRouteSchema: {
+          paramsSchema,
+          querySchema,
+          bodySchema,
+          returnsSchema: docs.returns,
+        },
+        handle: handleRouteWithRuntimeValidations,
+      }
     }
 
-    return {
-      apiRouteSchema: {
-        paramsSchema,
-        querySchema,
-        bodySchema,
-        returnsSchema: docs.returns,
-      },
-      handle: handleRouteWithRuntimeValidations,
-    }
+    // make the sign for the function metadata to be sure that resolver is enhanced by this library
+    lazyInitializeHandler[__expressOpenAPIHack_key__] = __expressOpenAPIHack__
+
+    return lazyInitializeHandler
   }
-
-  // make the sign for the function metadata to be sure that resolver is enhanced by this library
-  lazyInitializeHandler[__expressOpenAPIHack_key__] = __expressOpenAPIHack__
-
-  return lazyInitializeHandler
-}
 
 // --------------------------------------------------------------------
 // ------------- Internal express struct handlers resolver ------------

@@ -145,14 +145,14 @@ const tAny = {
 const tOneOf = <T extends readonly any[] | any[]>(options: T) => ({
   type: 'oneOf' as const,
   required: true as const,
-  options: (options as unknown) as DeepWriteable<T>,
+  options: options as unknown as DeepWriteable<T>,
 })
 
 // TODO: array X list?
 const tEnum = <T extends readonly any[] | any[]>(options: T) => ({
   type: 'enum' as const,
   required: true as const,
-  options: (options as unknown) as DeepWriteable<T>,
+  options: options as unknown as DeepWriteable<T>,
 })
 
 const tObject = <T extends Record<string, TSchema>>(a: T) => ({
