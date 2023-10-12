@@ -1,3 +1,4 @@
+// TODO: i do not support set as [val1, val2] as const
 import { InferSchemaType, TSchema } from './typedSchema'
 import { mapEntries } from './utils'
 
