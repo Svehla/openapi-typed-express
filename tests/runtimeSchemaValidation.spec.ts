@@ -6,15 +6,15 @@ describe('runtimeSchemaValidation', () => {
   // TODO: create function to test if parsed cast value is proper
   const validateDataAgainstSchema = (schema: any, objToValidate: any, output: any) => {
     const yupValidator = convertSchemaToYupValidationObject(schema)
-    const [objValidation] = syncAllSettled([
-      () => yupValidator.validateSync(objToValidate, { abortEarly: false, strict: true }),
+    const [objValidationRes] = syncAllSettled([
+      () => yupValidator.validateSync(objToValidate, { abortEarly: false }),
     ])
 
-    if (objValidation.status === 'rejected') {
-      objValidation.reason = convertYupErrToObj(objValidation.reason)
+    if (objValidationRes.status === 'rejected') {
+      objValidationRes.reason = convertYupErrToObj(objValidationRes.reason)
     }
 
-    expect(objValidation).toMatchObject(output)
+    expect(objValidationRes).toMatchObject(output)
   }
 
   describe('default types', () => {
@@ -42,6 +42,22 @@ describe('runtimeSchemaValidation', () => {
 
     test('5', () => {
       validateDataAgainstSchema(T.null_string, null, { status: 'fulfilled' })
+    })
+    test('51', () => {
+      validateDataAgainstSchema(T.number, '3', {
+        reason: {
+          errors: ['this must be a `number` type, but the final value was: `"3"`.'],
+        },
+        status: 'rejected',
+      })
+    })
+    test('52', () => {
+      validateDataAgainstSchema(T.boolean, 'true', {
+        reason: {
+          errors: ['this must be a `boolean` type, but the final value was: `"true"`.'],
+        },
+        status: 'rejected',
+      })
     })
 
     // test('6', () => {
@@ -149,27 +165,49 @@ describe('runtimeSchemaValidation', () => {
   })
 
   describe('custom types', () => {
-    test('1', () => {
-      validateDataAgainstSchema(tCustom.cast_date, new Date().toISOString(), {
-        status: 'fulfilled',
+    describe('date', () => {
+      test('1', () => {
+        validateDataAgainstSchema(tCustom.cast_date, new Date().toISOString(), {
+          status: 'fulfilled',
+        })
       })
-    })
 
-    test('2', () => {
-      validateDataAgainstSchema(tCustom.cast_null_date, new Date().toISOString(), {
-        status: 'fulfilled',
+      test('2', () => {
+        validateDataAgainstSchema(tCustom.cast_null_date, new Date().toISOString(), {
+          status: 'fulfilled',
+        })
       })
-    })
 
-    test('3', () => {
-      validateDataAgainstSchema(
-        tCustom.cast_null_date,
-        `!invalid date!${new Date().toISOString()}`,
-        {
+      test('3', () => {
+        validateDataAgainstSchema(
+          tCustom.cast_null_date,
+          `!lorem ipsum!${new Date().toISOString()}`,
+          {
+            status: 'rejected',
+            reason: { errors: ['invalid Date'] },
+          }
+        )
+      })
+
+      test('4', () => {
+        validateDataAgainstSchema(tCustom.cast_date, 123, {
           status: 'rejected',
-          reason: { errors: [' invalid Date'] },
-        }
-      )
+
+          reason: {
+            errors: ['this must be a `string` type, but the final value was: `123`.'],
+          },
+        })
+      })
+
+      test('5', () => {
+        validateDataAgainstSchema(tCustom.cast_date, new Date().getTime().toString(), {
+          status: 'rejected',
+
+          reason: {
+            errors: ['invalid Date'],
+          },
+        })
+      })
     })
 
     test('4', () => {
@@ -179,14 +217,14 @@ describe('runtimeSchemaValidation', () => {
     test('5', () => {
       validateDataAgainstSchema(tCustom.minMaxNum(1, 5), 6, {
         status: 'rejected',
-        reason: { errors: [' value needs to be > 5'] },
+        reason: { errors: ['value needs to be > 5'] },
       })
     })
 
     test('2', () => {
       validateDataAgainstSchema(tCustom.cast_null_number, 'null', {
         status: 'rejected',
-        reason: { errors: [' invalid number cast'] },
+        reason: { errors: ['invalid number cast'] },
       })
     })
   })
@@ -202,34 +240,31 @@ describe('runtime custom types parsing ', () => {
     return out
   }
 
-  test('0', () => {
-    // TODO: is this correct behavior?
-    const value = getSchemaCastedValue(tCustom.cast_null_date, null)
-    expect(value).toEqual({
-      status: 'fulfilled',
-      data: null,
+  describe('date', () => {
+    test('1', () => {
+      const value = getSchemaCastedValue(tCustom.cast_null_date, null)
+      expect(value).toEqual({
+        status: 'fulfilled',
+        data: null,
+      })
     })
   })
 
-  test('1', () => {
-    const dateSnapshot = new Date()
-    const value = getSchemaCastedValue(tCustom.cast_date, dateSnapshot.getTime())
-    expect(value.data.toISOString()).toEqual(dateSnapshot.toISOString())
-  })
-
-  test('2', () => {
-    const value = getSchemaCastedValue(tCustom.cast_null_number, null)
-    expect(value).toEqual({
-      status: 'fulfilled',
-      data: null,
+  describe('number cast', () => {
+    test('1', () => {
+      const value = getSchemaCastedValue(tCustom.cast_null_number, null)
+      expect(value).toEqual({
+        status: 'fulfilled',
+        data: null,
+      })
     })
-  })
 
-  test('3', () => {
-    const value = getSchemaCastedValue(tCustom.cast_null_number, '005')
-    expect(value).toEqual({
-      status: 'fulfilled',
-      data: 5,
+    test('2', () => {
+      const value = getSchemaCastedValue(tCustom.cast_null_number, '005')
+      expect(value).toEqual({
+        status: 'fulfilled',
+        data: 5,
+      })
     })
   })
 })

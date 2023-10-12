@@ -10,7 +10,7 @@ yup.addMethod(yup.mixed, 'oneOfSchemas', function oneOfSchemas(schemas: any[], m
     'one-of-schemas-exact',
     message || 'Not all items in ${path} match one of the allowed schemas',
     item => {
-      return schemas.some(schema => schema.isValidSync(item, { strict: true }))
+      return schemas.some(schema => schema.isValidSync(item))
     }
   )
 })
@@ -34,43 +34,53 @@ export const convertSchemaToYupValidationObject = (
     )
     //
   } else if (schema?.type === 'boolean') {
-    yupValidator = yupValidator.boolean()
+    yupValidator = yupValidator.boolean().strict()
     //
   } else if (schema?.type === 'number') {
-    yupValidator = yupValidator.number()
+    yupValidator = yupValidator.number().strict()
     //
   } else if (schema?.type === 'string') {
-    yupValidator = yupValidator.string()
+    yupValidator = yupValidator.string().strict()
     //
   } else if (schema?.type === 'customType') {
-    // TODO: should i validate parent group type from serializedInheritFromSchema? its not working for casting (Date().toString) -> Date
-    // yupValidator = convertSchemaToYupValidationObject(schema.serializedInheritFromSchema)
     yupValidator = yup.mixed()
+    // transform is not working with the { strict: true } | .strict()... fucking fuck!!!!
+    // this lib is not supporting yup castng, only transform for custom types are enable
     yupValidator = yupValidator
-      .test({
-        name: schema.name,
-        test: function (value: any) {
-          if (schema.required === false && (value === null || value === undefined)) {
-            return true
-          }
-          try {
-            // TODO: parser run for two times I should optimize it somehow
-            schema.parser(value)
-          } catch (err) {
-            const { path, createError } = this
-            return createError({ path, message: path + ' ' + (err as Error)?.message ?? '' })
-          }
-          return true
-        },
-      })
-      // transform needs to be called for only tested fields which can be transformed without throwing errors
-      // @ts-expect-error
-      .transform(value => {
-        // I do not want to transform nullable values
+      .transform(function (value: any) {
         if (schema.required === false && (value === null || value === undefined)) {
           return value
         }
-        return schema.parser(value)
+
+        try {
+          const parentTypeValidator = convertSchemaToYupValidationObject(
+            schema.serializedInheritFromSchema
+          )
+          parentTypeValidator.validateSync(value, { abortEarly: false })
+
+          const parsedValue = schema.parser(value)
+
+          return parsedValue
+        } catch (err) {
+          // err is value => then the value will be transformed into proper yup error
+          return err
+        }
+      })
+      .test({
+        name: schema.name,
+        test: function (value: any) {
+          // check if parser found error => if yes, do yup error stuffs
+          // TODO: check if its my own custom error instance with uniq js pointer
+          if (value instanceof Error) {
+            const { path, createError } = this
+            return createError({
+              path,
+              message: [path, (value as Error)?.message ?? ''].filter(Boolean).join(' '),
+            })
+          }
+
+          return true
+        },
       })
   } else if (schema?.type === 'any') {
     yupValidator = yupValidator.mixed()
@@ -95,6 +105,7 @@ export const convertSchemaToYupValidationObject = (
     throw new Error(`unsupported type ${(schema as any)?.type}`)
   }
 
+  // ------- shared global behavior -------
   // all keys are required in the objects, only values may be nullable
   // TODO: shit code
   // yup lazy required is not working...
@@ -116,7 +127,10 @@ export const convertSchemaToYupValidationObject = (
           schema.validator?.(value)
         } catch (err) {
           const { path, createError } = this
-          return createError({ path, message: path + ' ' + (err as Error)?.message ?? '' })
+          return createError({
+            path,
+            message: [path, (err as Error)?.message ?? ''].filter(Boolean).join(' '),
+          })
         }
         return true
       },

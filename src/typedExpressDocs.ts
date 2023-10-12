@@ -68,20 +68,25 @@ export const apiDoc =
       ) => {
         // --- this function include runtime validations which are triggered each request ---
 
-        const [urlValidation, queryValidation, bodyValidation] = syncAllSettled([
-          () => paramsValidator?.validateSync(req.params, { abortEarly: false, strict: true }),
-          () => queryValidator?.validateSync(req.query, { abortEarly: false, strict: true }),
-          () => bodyValidator?.validateSync(req.body, { abortEarly: false, strict: true }),
+        // TODO: add formBody? i think its not needed in the modern rest-api
+        const [paramValidationRes, queryValidationRes, bodyValidationRes] = syncAllSettled([
+          // strict is not working with transform...
+          () => paramsValidator?.validateSync(req.params, { abortEarly: false }),
+          () => queryValidator?.validateSync(req.query, { abortEarly: false }),
+          () => bodyValidator?.validateSync(req.body, { abortEarly: false }),
         ])
 
         if (
-          urlValidation.status === 'rejected' ||
-          queryValidation.status === 'rejected' ||
-          bodyValidation.status === 'rejected'
+          paramValidationRes.status === 'rejected' ||
+          queryValidationRes.status === 'rejected' ||
+          bodyValidationRes.status === 'rejected'
         ) {
-          const paramsErrors = urlValidation.status === 'rejected' ? urlValidation.reason : null
-          const queryErrors = queryValidation.status === 'rejected' ? queryValidation.reason : null
-          const bodyErrors = bodyValidation.status === 'rejected' ? bodyValidation.reason : null
+          const paramsErrors =
+            paramValidationRes.status === 'rejected' ? paramValidationRes.reason : null
+          const queryErrors =
+            queryValidationRes.status === 'rejected' ? queryValidationRes.reason : null
+          const bodyErrors =
+            bodyValidationRes.status === 'rejected' ? bodyValidationRes.reason : null
 
           const errObj = {
             errors: {
@@ -94,11 +99,12 @@ export const apiDoc =
           return
         }
 
-        // ==== casting custom types into JS runtime objects ====
-        if (paramsValidator) req.params = paramsValidator.cast(req.params)
-        if (queryValidator) req.query = queryValidator.cast(req.query)
-        if (bodyValidator) req.body = bodyValidator.cast(req.body)
+        // ==== override casted (transformed) custom types into JS runtime objects ====
+        if (paramsValidator) req.params = paramValidationRes.data
+        if (queryValidator) req.query = queryValidationRes.data
+        if (bodyValidator) req.body = bodyValidationRes.data
 
+        // TODO: apply serializer for custom scalar types like `Date -> string` (reverse parser)
         // @ts-ignore => if this ignore is missing, there is potential infinite ts recursion...
         return handle(req as any, res, next)
       }

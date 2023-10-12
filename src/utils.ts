@@ -27,7 +27,9 @@ export const mergePaths = (path1: string, path2: string) => {
  * this function works nice for batching synchronous errors into metadata object
  * TODO: add tests
  */
-export const syncAllSettled = (syncFns: (() => any)[]) => {
+export const syncAllSettled = <T>(
+  syncFns: (() => T)[]
+): ({ status: 'fulfilled'; data: T } | { status: 'rejected'; reason: any })[] => {
   return syncFns.map(syncFn => {
     try {
       const data = syncFn()

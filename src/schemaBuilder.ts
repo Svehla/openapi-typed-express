@@ -1,18 +1,4 @@
-// random ideas:
-// there are two types of custom types => validators & casters
-// 1. CAST     => there are 3 types of custom scalar convertor
-//   1. Any->Any       | T      -> U
-//   2. String->Any    | String -> U
-// 2. VALIDATE => there are 2 types of custom validator => it could inherit from some type like tNumberRange = { ...tNumber, validator }
-//   1. Any -> Any     | T      -> T | (examples: JSON -> Struct T)
-//   2. T -> T         | (examples string -> string, number -> number) (regex/length/...custom)
-// generic casting:
-// if I want to support generic casting i should add extra fields { ...Type, shouldCast: boolean, transform/caster: any }
-// TODO: should this lightweight library add casting? or it could be done via express middlewares?
-// express casting could be broken if name is: `1234` and its parsed as number, so the schema is much safer a better
-// but more complex and potentially more complicated
-
-// TODO: add option for cyclic dependencies with arrow functions instead of direct type definition
+import { InferSchemaType } from './InferSchemaType'
 
 // ----------------------- type-utils ------------------------
 type NiceMerge<T, U, T0 = T & U, T1 = { [K in keyof T0]: T0[K] }> = T1
@@ -177,11 +163,11 @@ const tList = <T extends TSchema>(items: T) => ({
 })
 
 // TODO: add config extra args like min/max/length/whatever
-export const tCustomType = <Name extends string, R>(
+export const tCustomType = <Name extends string, R, ParentType extends TSchema>(
   name: Name,
-  parser: (value: any) => R,
+  parser: (value: InferSchemaType<ParentType>) => R,
   // TODO: return values could serialize in the future... but it's not mandatory right now
-  serializedInheritFromSchema = tAny as TSchema
+  serializedInheritFromSchema = tAny as ParentType
 ) => ({
   name: `custom_${name}` as const,
   type: 'customType' as const,

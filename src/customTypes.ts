@@ -1,7 +1,5 @@
 import { tSchema as T } from './schemaBuilder'
 
-// TODO: add tests
-
 const tDate = T.customType(
   'date',
   value => {
@@ -11,9 +9,10 @@ const tDate = T.customType(
     }
     return parsedValue
   },
-  T.string
+  T.string // I could custom T.IsoString type with validtor fn
 )
 
+// put min max into the part of base schema protocol?
 const tMinMaxNum = (min: number, max: number) =>
   T.custom_number(value => {
     if (value === null || value === undefined) {
@@ -57,6 +56,7 @@ const tCast_number = T.customType(
   T.string
 )
 
+// TODO: rename to tCast
 export const tCustom = {
   cast_date: T.nonNullable(tDate),
   cast_null_date: T.nullable(tDate),

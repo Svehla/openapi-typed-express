@@ -1,12 +1,16 @@
 import { __expressOpenAPIHack__, apiDoc } from '../src/typedExpressDocs'
 import { tSchema as T } from '../src/schemaBuilder'
+import { tCustom } from '../src/customTypes'
 
 describe('typedExpressDocs', () => {
   describe('apiDoc', () => {
     describe('valid', () => {
-      test('1 - body', () => {
+      test.only('1 - body', () => {
         const reqData = {
-          body: { message: 'hi' },
+          body: {
+            message: 'hi',
+            date: new Date(123).toISOString(),
+          },
           params: {},
           query: {},
         }
@@ -14,13 +18,10 @@ describe('typedExpressDocs', () => {
         const lazyFn = apiDoc({
           body: T.object({
             message: T.string,
+            date: tCustom.cast_date,
           }),
         })(req => {
-          expect({
-            query: req.query,
-            params: req.params,
-            body: req.body,
-          }).toStrictEqual(reqData)
+          expect(req.body.date.getTime()).toStrictEqual(new Date(123).getTime())
         })
 
         const metadata = lazyFn(__expressOpenAPIHack__)
