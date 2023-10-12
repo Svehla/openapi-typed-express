@@ -1,10 +1,9 @@
 import express from 'express'
-import { apiDoc, initApiDocs, jsValueToSchema, tCustom } from '../src'
+import { apiDoc, initApiDocs, jsValueToSchema, T } from '../src'
 import { router } from './userRouter'
 import packageJSON from '../package.json'
 import swaggerUi from 'swagger-ui-express'
 import { queryParser } from 'express-query-parser'
-import { tSchema as T } from '../src/schemaBuilder'
 
 const app = express()
 const port = 5000
@@ -26,20 +25,20 @@ const string3PlusChars = T.custom_string(a => {
 
 const input = {
   params: {
-    id: tCustom.cast_number,
+    id: T._custom.cast_number,
   },
   query: {
-    a: T.list(tCustom.cast_date),
+    a: T.list(T._custom.cast_date),
     b: string3PlusChars,
   },
   body: T.object({
     a: T.object({ a: T.object({ a: T.object({ a: T.string }) }) }),
     anything: T.null_any,
-    myDate1: tCustom.cast_null_date,
-    myDate2: tCustom.cast_date,
+    myDate1: T._custom.cast_null_date,
+    myDate2: T._custom.cast_date,
     bool: T.boolean,
-    age: tCustom.minMaxNum(0, 18),
-    myDate3: tCustom.cast_null_date,
+    age: T._custom.minMaxNum(0, 18),
+    myDate3: T._custom.cast_null_date,
     hashMap1: T.hashMap(T.string),
     hashMap2: T.hashMap(
       T.object({
@@ -61,6 +60,32 @@ app.get(
       query: T.object(input.query),
       body: input.body,
     }),
+  })((req, res) => {
+    console.log('----------------')
+    console.log(req.params)
+    console.log(req.query)
+    console.log(req.body)
+    res.send({
+      params: req.params,
+      query: req.query,
+      body: req.body,
+    })
+  })
+)
+
+app.get(
+  '/deep-nullable/:id',
+  apiDoc({
+    params: input.params,
+    query: input.query,
+    body: input.body,
+    returns: T.deepNullable(
+      T.object({
+        params: T.object(input.params),
+        query: T.object(input.query),
+        body: input.body,
+      })
+    ),
   })((req, res) => {
     console.log('----------------')
     console.log(req.params)

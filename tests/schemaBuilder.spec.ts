@@ -1,4 +1,4 @@
-import { tSchema as T } from '../src/schemaBuilder'
+import { tSchema as T } from '../src'
 
 describe('schemaBuilder', () => {
   const objDesc = T.object({

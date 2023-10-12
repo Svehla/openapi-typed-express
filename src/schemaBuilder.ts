@@ -1,111 +1,11 @@
-import { InferSchemaType } from './InferSchemaType'
+import { InferSchemaType, TSchema } from './typedSchema'
+import { mapEntries } from './utils'
 
 // ----------------------- type-utils ------------------------
 type NiceMerge<T, U, T0 = T & U, T1 = { [K in keyof T0]: T0[K] }> = T1
 type DeepWriteable<T> = {
   -readonly [P in keyof T]: DeepWriteable<T[P]>
 }
-
-// ----------------------- schema ------------------------
-export type TList = {
-  type: 'array'
-  items: TSchema
-
-  required: boolean
-  validator?: (v: any[]) => void
-}
-
-export type TObject = {
-  type: 'object'
-
-  properties: Record<string, TSchema>
-  required: boolean
-  validator?: (v: Record<any, any>) => void
-}
-
-// Object with dynamic keys
-// TODO: this is experimental implementation => TODO: write tests
-export type THashMap = {
-  type: 'hashMap'
-  property: TSchema
-
-  required: boolean
-  validator?: (v: any[]) => void
-}
-
-export type TBoolean = {
-  type: 'boolean'
-
-  required: boolean
-  validator?: (v: boolean) => void
-}
-
-export type TString = {
-  type: 'string'
-
-  // TODO: add maxLen?
-  required: boolean
-  validator?: (v: string) => void
-  // string could have special transfer function... just this one function may cast? but what about JSONs?
-}
-
-export type TNumber = {
-  type: 'number'
-
-  // TODO: add min max?
-  required: boolean
-  validator?: (v: number) => void
-}
-
-export type TCustomType = {
-  name: string
-  type: 'customType'
-  // TODO: find proper name... what about Parent group type or something like that?
-  serializedInheritFromSchema: TSchema
-  // types are infer from this functions
-  // runtime parsing is in this function
-  parser: (val: any) => any
-
-  // TODO: should I add generic serializer to all types? its mandatory question if I start casting types in this lib...
-  required: boolean
-  validator?: (v: any) => void
-}
-
-export type TAny = {
-  type: 'any'
-  required: boolean
-  validator?: (v: any) => void
-}
-
-export type TEnum = {
-  type: 'enum'
-  required: boolean
-
-  options: any[]
-  validator?: (v: any) => void
-}
-
-export type TOneOf = {
-  type: 'oneOf'
-  required: boolean
-
-  options: any[]
-  validator?: (v: any) => void
-}
-
-// --- TODO: I should add buffer type?
-
-export type TSchema =
-  | TList
-  | TObject
-  | TString
-  | TNumber
-  | TBoolean
-  | TAny
-  | TEnum
-  | TCustomType
-  | TOneOf
-  | THashMap
 
 // --------- builder functions ---------
 
@@ -163,6 +63,7 @@ const tList = <T extends TSchema>(items: T) => ({
 })
 
 // TODO: add config extra args like min/max/length/whatever
+// TODO: add serializers for res.send()?
 export const tCustomType = <Name extends string, R, ParentType extends TSchema>(
   name: Name,
   parser: (value: InferSchemaType<ParentType>) => R,
@@ -190,27 +91,60 @@ const tNullable = <T extends { required: any }>(
   required: false as const,
 })
 
+const addValidator = <T extends TSchema>(
+  schema: T,
+  validator: (val: InferSchemaType<T>) => void
+) => ({
+  ...schema,
+  validator,
+})
+
+// TODO: create a recursive deepNullable(...) wrapper
+// TODO: add types
+// TODO: add tests
+const deepNullable = (schema: TSchema): any => {
+  if (schema.type === 'array') {
+    return { ...tNullable(schema), items: deepNullable(schema.items) }
+  } else if (schema.type === 'hashMap') {
+    return { ...tNullable(schema), property: deepNullable(schema.property) }
+  } else if (schema.type === 'object') {
+    return {
+      ...tNullable(schema),
+      properties: mapEntries(([k, v]) => [k, deepNullable(v)], schema.properties),
+    }
+  } else if (schema.type === 'customType') {
+    return {
+      ...tNullable(schema),
+      serializedInheritFromSchema: deepNullable(schema.serializedInheritFromSchema),
+    }
+    // ???
+  }
+  return tNullable(schema) as TSchema
+}
+
 export const tSchema = {
   // is null_ proper prefix for informing user that its null"able", not JS null field?
   // my TS infer handler handle it as undefined, not null... typed-express-docs is not supporting null / undef
   // so I guess it doesn't matter and null"able" is nice JS readable API
   number: tNonNullable(tNumber),
   null_number: tNullable(tNumber),
-  custom_number: (validator: (a: number) => void) => ({ ...tNonNullable(tNumber), validator }),
-  custom_null_number: (validator: (a: number) => void) => ({ ...tNullable(tNumber), validator }),
+  custom_number: (validator: (a: number) => void) => tNonNullable(addValidator(tNumber, validator)),
+  custom_null_number: (validator: (a: number) => void) =>
+    tNullable(addValidator(tNumber, validator)),
 
   boolean: tNonNullable(tBoolean),
   null_boolean: tNullable(tBoolean),
 
   string: tNonNullable(tString),
   null_string: tNullable(tString),
-  custom_string: (validator: (a: string) => void) => ({ ...tNonNullable(tString), validator }),
-  custom_null_string: (validator: (a: string) => void) => ({ ...tNullable(tString), validator }),
+  custom_string: (validator: (a: string) => void) => tNonNullable(addValidator(tString, validator)),
+  custom_null_string: (validator: (a: string) => void) =>
+    tNullable(addValidator(tString, validator)),
 
   any: tNonNullable(tAny),
   null_any: tNullable(tAny),
-  custom_any: (validator: (a: any) => void) => ({ ...tNonNullable(tAny), validator }),
-  custom_null_any: (validator: (a: any) => void) => ({ ...tNonNullable(tAny), validator }),
+  custom_any: (validator: (a: any) => void) => tNonNullable(addValidator(tAny, validator)),
+  custom_null_any: (validator: (a: any) => void) => tNonNullable(addValidator(tAny, validator)),
 
   oneOf: <T extends readonly any[] | any[]>(options: T) => tNonNullable(tOneOf(options)),
   null_oneOf: <T extends readonly any[] | any[]>(options: T) => tNullable(tOneOf(options)),
@@ -230,6 +164,5 @@ export const tSchema = {
   customType: tCustomType,
   nonNullable: tNonNullable,
   nullable: tNullable,
+  deepNullable,
 }
-
-// TODO: create a recursive deepNullable(...) wrapper

@@ -1,5 +1,5 @@
-import { convertSchemaToYupValidationObject, tCustom } from '../src'
-import { tSchema as T } from '../src/schemaBuilder'
+import { convertSchemaToYupValidationObject } from '../src'
+import { tSchema as T } from '../src'
 import { convertYupErrToObj, syncAllSettled } from '../src/utils'
 
 describe('runtimeSchemaValidation', () => {
@@ -167,20 +167,20 @@ describe('runtimeSchemaValidation', () => {
   describe('custom types', () => {
     describe('date', () => {
       test('1', () => {
-        validateDataAgainstSchema(tCustom.cast_date, new Date().toISOString(), {
+        validateDataAgainstSchema(T._custom.cast_date, new Date().toISOString(), {
           status: 'fulfilled',
         })
       })
 
       test('2', () => {
-        validateDataAgainstSchema(tCustom.cast_null_date, new Date().toISOString(), {
+        validateDataAgainstSchema(T._custom.cast_null_date, new Date().toISOString(), {
           status: 'fulfilled',
         })
       })
 
       test('3', () => {
         validateDataAgainstSchema(
-          tCustom.cast_null_date,
+          T._custom.cast_null_date,
           `!lorem ipsum!${new Date().toISOString()}`,
           {
             status: 'rejected',
@@ -190,7 +190,7 @@ describe('runtimeSchemaValidation', () => {
       })
 
       test('4', () => {
-        validateDataAgainstSchema(tCustom.cast_date, 123, {
+        validateDataAgainstSchema(T._custom.cast_date, 123, {
           status: 'rejected',
 
           reason: {
@@ -200,7 +200,7 @@ describe('runtimeSchemaValidation', () => {
       })
 
       test('5', () => {
-        validateDataAgainstSchema(tCustom.cast_date, new Date().getTime().toString(), {
+        validateDataAgainstSchema(T._custom.cast_date, new Date().getTime().toString(), {
           status: 'rejected',
 
           reason: {
@@ -211,18 +211,18 @@ describe('runtimeSchemaValidation', () => {
     })
 
     test('4', () => {
-      validateDataAgainstSchema(tCustom.minMaxNum(1, 5), 2, { status: 'fulfilled' })
+      validateDataAgainstSchema(T._custom.minMaxNum(1, 5), 2, { status: 'fulfilled' })
     })
 
     test('5', () => {
-      validateDataAgainstSchema(tCustom.minMaxNum(1, 5), 6, {
+      validateDataAgainstSchema(T._custom.minMaxNum(1, 5), 6, {
         status: 'rejected',
         reason: { errors: ['value needs to be > 5'] },
       })
     })
 
     test('2', () => {
-      validateDataAgainstSchema(tCustom.cast_null_number, 'null', {
+      validateDataAgainstSchema(T._custom.cast_null_number, 'null', {
         status: 'rejected',
         reason: { errors: ['invalid number cast'] },
       })
@@ -242,7 +242,7 @@ describe('runtime custom types parsing ', () => {
 
   describe('date', () => {
     test('1', () => {
-      const value = getSchemaCastedValue(tCustom.cast_null_date, null)
+      const value = getSchemaCastedValue(T._custom.cast_null_date, null)
       expect(value).toEqual({
         status: 'fulfilled',
         data: null,
@@ -252,7 +252,7 @@ describe('runtime custom types parsing ', () => {
 
   describe('number cast', () => {
     test('1', () => {
-      const value = getSchemaCastedValue(tCustom.cast_null_number, null)
+      const value = getSchemaCastedValue(T._custom.cast_null_number, null)
       expect(value).toEqual({
         status: 'fulfilled',
         data: null,
@@ -260,7 +260,7 @@ describe('runtime custom types parsing ', () => {
     })
 
     test('2', () => {
-      const value = getSchemaCastedValue(tCustom.cast_null_number, '005')
+      const value = getSchemaCastedValue(T._custom.cast_null_number, '005')
       expect(value).toEqual({
         status: 'fulfilled',
         data: 5,

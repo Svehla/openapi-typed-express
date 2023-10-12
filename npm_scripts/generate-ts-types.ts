@@ -6,6 +6,10 @@ import path from 'path'
 const mocksPath = path.join(__dirname, '../example/__generated-api__')
 
 const generateServiceAPI = async () => {
+  if (!fs.existsSync(mocksPath)) {
+    fs.mkdirSync(mocksPath)
+  }
+
   const url = 'http://localhost:5000/api-docs/'
   const uiSwaggerUrl = 'http://localhost:5000/swagger-ui/index.html'
 

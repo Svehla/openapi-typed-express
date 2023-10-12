@@ -1,6 +1,7 @@
 import { __expressOpenAPIHack__, apiDoc } from '../src/typedExpressDocs'
-import { tSchema as T } from '../src/schemaBuilder'
-import { tCustom } from '../src/customTypes'
+import { tSchema as T } from '../src'
+
+const tCustom = T._custom
 
 describe('typedExpressDocs', () => {
   describe('apiDoc', () => {

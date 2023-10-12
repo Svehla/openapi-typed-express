@@ -1,6 +1,7 @@
-import { TSchema } from './schemaBuilder'
+import { TSchema } from './typedSchema'
 
 // TODO: add proper TS output schema types
+// TODO: add tests
 export const jsValueToSchema = (jsValue: any): TSchema => {
   if (typeof jsValue === 'string') {
     return {

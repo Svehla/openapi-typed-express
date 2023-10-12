@@ -1,4 +1,4 @@
-import { TSchema, TObject } from './schemaBuilder'
+import { TObject, TSchema } from './typedSchema'
 import { isObject, mapEntries } from './utils'
 
 type GenerateOpenAPIPathArg = {
