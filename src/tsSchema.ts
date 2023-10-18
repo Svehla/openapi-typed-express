@@ -103,6 +103,7 @@ export type TSchema =
 
 type MakeOptional<T, Required extends boolean> = Required extends true ? T : T | undefined | null
 
+// TODO: write TS tests
 export type InferSchemaType<T extends TSchema | undefined> = T extends undefined
   ? undefined
   : T extends {

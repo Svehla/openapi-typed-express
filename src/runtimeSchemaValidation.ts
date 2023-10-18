@@ -15,8 +15,9 @@ yup.addMethod(yup.mixed, 'oneOfSchemas', function oneOfSchemas(schemas: any[], m
   )
 })
 
-// TODO: write tests
-// .required() is here to be sure that key in object is defined even if the value is null
+/**
+ * .required() is here to be sure that key in object is defined even if the value is null
+ */
 export const convertSchemaToYupValidationObject = (
   schema: TSchema
 ): yup.MixedSchema<any, any, any> => {
