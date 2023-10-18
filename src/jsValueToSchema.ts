@@ -1,4 +1,4 @@
-import { TSchema } from './typedSchema'
+import { TSchema } from './tsSchema'
 
 // TODO: add proper TS output schema types
 // TODO: add tests

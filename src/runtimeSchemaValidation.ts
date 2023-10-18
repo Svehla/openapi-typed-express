@@ -1,6 +1,6 @@
 import * as yup from 'yup'
 import { mapEntries } from './utils'
-import { TSchema } from './typedSchema'
+import { TSchema } from './tsSchema'
 
 // inspiration:
 // https://stackoverflow.com/a/74322802

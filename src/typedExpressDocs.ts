@@ -4,7 +4,7 @@ import { tSchema as T } from './schemaBuilder'
 import { UrlsMethodDocs, convertUrlsMethodsSchemaToOpenAPI } from './openAPIFromSchema'
 import { convertSchemaToYupValidationObject } from './runtimeSchemaValidation'
 import { parseUrlFromExpressRegexp } from './expressRegExUrlParser'
-import { InferSchemaType, TSchema } from './typedSchema'
+import { InferSchemaType, TSchema } from './tsSchema'
 
 // symbol as a key is not sended via express down to the _routes
 export const __expressOpenAPIHack_key__ = '__expressOpenAPIHack_key__'
