@@ -128,6 +128,7 @@ export const tSchema = {
   // my TS infer handler handle it as undefined, not null... typed-express-docs is not supporting null / undef
   // so I guess it doesn't matter and null"able" is nice JS readable API
   number: tNonNullable(tNumber),
+  // null means nullable => so the undefined is also nullable value
   null_number: tNullable(tNumber),
   custom_number: (validator: (a: number) => void) => tNonNullable(addValidator(tNumber, validator)),
   custom_null_number: (validator: (a: number) => void) =>

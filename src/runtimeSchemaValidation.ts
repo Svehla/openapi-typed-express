@@ -107,12 +107,17 @@ export const convertSchemaToYupValidationObject = (
   }
 
   // ------- shared global behavior -------
-  // all keys are required in the objects, only values may be nullable
-  // TODO: shit code
-  // yup lazy required is not working...
+  // all keys are not required in the objects and values may be null or undefined
+
+  // if some field in the object is nullable `null_` key may not be required, but in TS types, only value is of type `| undefined`
+  // so the non existed keys are nullable as well, thanks to this, the schema is simplier for the writter, because there is less edge cases to think about
+
+  /*
   if (yupValidator.required) {
+    // required works for undefined values + required object keys
     yupValidator = yupValidator.required()
   }
+  */
 
   // value (or a key of an object) may be nullable
   if (schema.required === false) {

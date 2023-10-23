@@ -185,3 +185,9 @@ to make fully work `tNonNullable` you have to setup `tsconfig.json` properly.
 ![static type helper preview](./docs/preview-typed-code-query.png)
 
 ![Swagger preview](./docs/preview-swagger-docs.png)
+
+## Decisions
+
+if some field in the object is nullable `null_` key may not be required, but in TS types, only value is of type `| undefined`
+
+so the non existed keys are nullable as well, thanks to this, the schema is simplier for the writter, because there is less edge cases to think about

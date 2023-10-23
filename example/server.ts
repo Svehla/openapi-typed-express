@@ -12,11 +12,33 @@ app.use(express.urlencoded({ extended: true }))
 app.use(express.json())
 app.use(
   queryParser({
+    parseNumber: true,
     parseNull: true,
     parseBoolean: true,
+    parseUndefined: true,
   })
 )
 
+app.get(
+  '/',
+  apiDoc({
+    query: {
+      s: T.null_string,
+      b: T.null_boolean,
+      n: T.null_number,
+      n_s: T.null_string,
+      n_b: T.null_boolean,
+      n_n: T.null_number,
+      not_exist_s: T.null_string,
+      not_exist_b: T.null_boolean,
+      not_exist_n: T.number,
+    },
+    returns: T.string,
+  })((req, res) => {
+    const x = req.query
+    res.send('ok')
+  })
+)
 const string3PlusChars = T.custom_string(a => {
   if (a.length < 3) {
     throw new Error('length needs to be >= 3')

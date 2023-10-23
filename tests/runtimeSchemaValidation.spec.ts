@@ -18,6 +18,31 @@ describe('runtimeSchemaValidation', () => {
   }
 
   describe('default types', () => {
+    test('0', () => {
+      validateDataAgainstSchema(
+        T.object({
+          s: T.null_string,
+          b: T.null_boolean,
+          n: T.null_number,
+          n_s: T.null_string,
+          n_b: T.null_boolean,
+          n_n: T.null_number,
+          not_exist_s: T.null_string,
+          not_exist_b: T.null_boolean,
+          not_exist_n: T.null_number,
+        }),
+        {
+          a: undefined,
+          b: undefined,
+          n: undefined,
+          n_s: null,
+          n_b: null,
+          n_n: null,
+        },
+        { status: 'fulfilled' }
+      )
+    })
+
     test('1', () => {
       validateDataAgainstSchema(
         T.object({
@@ -69,17 +94,14 @@ describe('runtimeSchemaValidation', () => {
       validateDataAgainstSchema(T.string, null, {
         status: 'rejected',
         reason: {
-          errors: ['this is a required field'],
+          errors: ['this cannot be null'],
         },
       })
     })
 
     test('8', () => {
       validateDataAgainstSchema(T.null_number, undefined, {
-        status: 'rejected',
-        reason: {
-          errors: ['this is a required field'],
-        },
+        status: 'fulfilled',
       })
     })
 
