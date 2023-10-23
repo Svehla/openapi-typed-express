@@ -1,5 +1,4 @@
-// TODO: i do not support set as [val1, val2] as const
-import { InferSchemaType, TSchema } from './typedSchema'
+import { InferSchemaType, TSchema } from './tsSchema'
 import { mapEntries } from './utils'
 
 // ----------------------- type-utils ------------------------
@@ -108,6 +107,8 @@ const deepNullable = (schema: TSchema): any => {
     return { ...tNullable(schema), items: deepNullable(schema.items) }
   } else if (schema.type === 'hashMap') {
     return { ...tNullable(schema), property: deepNullable(schema.property) }
+  } else if (schema.type === 'oneOf') {
+    return { ...tNullable(schema), options: schema.options.map(o => deepNullable(o)) }
   } else if (schema.type === 'object') {
     return {
       ...tNullable(schema),

@@ -1,4 +1,4 @@
-import { TObject, TSchema } from './typedSchema'
+import { TObject, TSchema } from './tsSchema'
 import { isObject, mapEntries } from './utils'
 
 type GenerateOpenAPIPathArg = {
@@ -18,6 +18,7 @@ const anyTypeOpenAPI = {
     { type: 'array', items: [] },
   ],
 }
+
 const toOpenAPISchema = (schema: TSchema): any => {
   switch (schema.type) {
     case 'enum':
@@ -35,6 +36,7 @@ const toOpenAPISchema = (schema: TSchema): any => {
         type: 'object',
         // ...schema,
         // TODO: add requires
+        // mmm, not sure about this line of code
         ...(required.length > 0 ? { required } : {}),
         properties: mapEntries(([k, v]) => [k, toOpenAPISchema(v)], schema.properties),
       }

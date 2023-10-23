@@ -1,23 +1,15 @@
-import { TSchema } from './typedSchema'
+import { tSchema as T } from './schemaBuilder'
+import { TSchema } from './tsSchema'
 
 // TODO: add proper TS output schema types
 // TODO: add tests
 export const jsValueToSchema = (jsValue: any): TSchema => {
   if (typeof jsValue === 'string') {
-    return {
-      type: 'string',
-      required: true,
-    }
+    return T.string
   } else if (typeof jsValue === 'boolean') {
-    return {
-      type: 'boolean',
-      required: true,
-    }
-  } else if (typeof jsValue === 'number') {
-    return {
-      type: 'number',
-      required: true,
-    }
+    return T.boolean
+  } else if (typeof jsValue === 'number' && !isNaN(jsValue)) {
+    return T.number
   } else if (Array.isArray(jsValue)) {
     let itemsSchema: TSchema
 
@@ -25,14 +17,10 @@ export const jsValueToSchema = (jsValue: any): TSchema => {
     if (jsValue.length > 0) {
       itemsSchema = jsValueToSchema(jsValue[0])
     } else {
-      itemsSchema = { type: 'any', required: false } // or some default type
+      itemsSchema = T.any
     }
 
-    return {
-      type: 'array',
-      required: true,
-      items: itemsSchema,
-    }
+    return T.list(itemsSchema)
   } else if (typeof jsValue === 'object' && jsValue !== null) {
     const properties: Record<string, TSchema> = {}
 
@@ -42,12 +30,8 @@ export const jsValueToSchema = (jsValue: any): TSchema => {
       }
     }
 
-    return {
-      type: 'object',
-      required: true,
-      properties,
-    }
+    return T.object(properties)
   }
 
-  throw new Error('invalid data type')
+  return T.any
 }
