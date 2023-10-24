@@ -18,6 +18,22 @@ describe('runtimeSchemaValidation', () => {
   }
 
   describe('default types', () => {
+    test('-1', () => {
+      validateDataAgainstSchema(
+        T.object({
+          s: T.string,
+          b: T.boolean,
+          c: T.number,
+        }),
+        {
+          s: undefined,
+          b: undefined,
+          c: undefined,
+        },
+        { status: 'rejected' }
+      )
+    })
+
     test('0', () => {
       validateDataAgainstSchema(
         T.object({

@@ -31,7 +31,12 @@ export const convertSchemaToYupValidationObject = (
   } else if (schema?.type === 'object') {
     // TODO: possible infinite TS recursion while inferring return type
     yupValidator = yupValidator.object(
-      mapEntries(([k, v]) => [k, convertSchemaToYupValidationObject(v)], schema.properties)
+      mapEntries(([k, v]) => {
+        const yupValue = convertSchemaToYupValidationObject(v)
+        // keys of object needs to be required if value is required
+        const value = v.required && yupValue.required ? yupValue.required() : yupValue
+        return [k, value]
+      }, schema.properties)
     )
     //
   } else if (schema?.type === 'boolean') {
@@ -112,12 +117,10 @@ export const convertSchemaToYupValidationObject = (
   // if some field in the object is nullable `null_` key may not be required, but in TS types, only value is of type `| undefined`
   // so the non existed keys are nullable as well, thanks to this, the schema is simplier for the writter, because there is less edge cases to think about
 
-  /*
-  if (yupValidator.required) {
-    // required works for undefined values + required object keys
-    yupValidator = yupValidator.required()
-  }
-  */
+  // if (yupValidator.required) {
+  //   // required works for undefined values + required object keys
+  //   yupValidator = yupValidator.required()
+  // }
 
   // value (or a key of an object) may be nullable
   if (schema.required === false) {
