@@ -6,7 +6,7 @@ const tCustom = T._custom
 describe('typedExpressDocs', () => {
   describe('apiDoc', () => {
     describe('valid', () => {
-      test.only('1 - body', () => {
+      test('1 - body', () => {
         const reqData = {
           body: {
             message: 'hi',
