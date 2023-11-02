@@ -7,7 +7,7 @@ import { parseUrlFromExpressRegexp } from './expressRegExUrlParser'
 import { InferSchemaType, TSchema } from './tsSchema'
 
 // symbol as a key is not sended via express down to the _routes
-export const __expressOpenAPIHack_key__ = '__expressOpenAPIHack_key__'
+export const __expressTypedHack_key__ = '__expressTypedHack_key__'
 export const __expressOpenAPIHack__ = Symbol('__expressOpenAPIHack__')
 
 // --------------------------------------------------------------------------
@@ -121,7 +121,7 @@ export const apiDoc =
     }
 
     // make the sign for the function metadata to be sure that resolver is enhanced by this library
-    lazyInitializeHandler[__expressOpenAPIHack_key__] = __expressOpenAPIHack__
+    lazyInitializeHandler[__expressTypedHack_key__] = __expressOpenAPIHack__
 
     return lazyInitializeHandler
   }
@@ -150,8 +150,18 @@ type ExpressRouteHandlerInternalStruct = {
   name: 'bound dispatch'
   route: {
     stack: {
-      handle: any
+      handle: (a?: symbol) => {
+        apiRouteSchema: {
+          paramsSchema: any
+          querySchema: any
+          bodySchema: any
+          returnsSchema: any
+        }
+        handle: (...args: any[]) => any
+      }
       method: string
+      // custom attribute for caching docs with multiple routes instances
+      _swaggerTypedExpressDocs__route_cache?: any
     }[]
     path: string
   }
@@ -167,10 +177,10 @@ const resolveRouteHandlersAndExtractAPISchema = (
   urlsMethodDocs: UrlsMethodDocs = {}
 ) => {
   // get metadata from express routes and resolved nested lazy route handlers
-  route.stack
-    .filter(s => s.name === 'router')
-    .forEach(s => {
-      const stack = s as ExpressRouterInternalStruct
+  route.stack.forEach(r => {
+    if (r.name === 'router') {
+      // === express router ===
+      const stack = r as ExpressRouterInternalStruct
       const parsedRouterRelativePath = parseUrlFromExpressRegexp(
         stack.regexp.toString(),
         stack.keys ?? []
@@ -182,21 +192,31 @@ const resolveRouteHandlersAndExtractAPISchema = (
         routerFullPath,
         urlsMethodDocs
       )
-    })
+    } else if (r.name === 'bound dispatch') {
+      // === final end routes ===
+      r.route.stack.forEach(s => {
+        // this check if route is annotated by openapi-typed-express-docs
+        // @ts-expect-error stored meta attributes of the function
+        const shouldInitTypedRoute = s.handle?.[__expressTypedHack_key__] === __expressOpenAPIHack__
 
-  // lazy resolve handlers of API requests
-  route.stack
-    .filter(s => s.name === 'bound dispatch')
-    .map(s => (s as ExpressRouteHandlerInternalStruct).route)
-    .forEach(r => {
-      r.stack.forEach(s => {
-        if (s.handle?.[__expressOpenAPIHack_key__] !== __expressOpenAPIHack__) return
+        // this is used for multiple instances of the same express Router via multiple app.use('/xxx', router)
+        const isInitTypedRoute = s._swaggerTypedExpressDocs__route_cache !== undefined
 
-        const routeMetadataDocs = s.handle(__expressOpenAPIHack__)
+        // typed route === route wrapped by apiDoc() high order function
+        if (shouldInitTypedRoute === false && isInitTypedRoute === false) return
 
-        const endpointPath = mergePaths(path, r.path)
+        const endpointPath = mergePaths(path, r.route.path)
 
-        // TODO: should I change it into immutable structure?
+        // each route needs to be initialized, but if we apply one route for multiple places via app.use() we need to persist api data
+        let routeMetadataDocs: any
+        if (s._swaggerTypedExpressDocs__route_cache) {
+          routeMetadataDocs = s._swaggerTypedExpressDocs__route_cache
+        } else {
+          routeMetadataDocs = s.handle(__expressOpenAPIHack__)
+          s.handle = routeMetadataDocs.handle
+          s._swaggerTypedExpressDocs__route_cache = routeMetadataDocs
+        }
+
         if (!urlsMethodDocs[endpointPath]) {
           urlsMethodDocs[endpointPath] = {}
         }
@@ -207,11 +227,9 @@ const resolveRouteHandlersAndExtractAPISchema = (
           bodySchema: routeMetadataDocs.apiRouteSchema.bodySchema,
           returnsSchema: routeMetadataDocs.apiRouteSchema.returnsSchema,
         }
-
-        // setup proper resolver to express endpoint
-        s.handle = routeMetadataDocs.handle
       })
-    })
+    }
+  })
 
   return urlsMethodDocs
 }

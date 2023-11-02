@@ -1,11 +1,11 @@
 {
   "name": "swagger-typed-express-docs",
-  "version": "0.3.13",
+  "version": "0.3.14",
   "description": "Simple express runtime parser and documentation swagger generator with 100% support of Typescript static types",
   "keywords": [
     "express",
     "typescript",
-    "swagger",
+    "openapi",
     "documentation",
     "inferring",
     "http",
@@ -13,7 +13,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/Svehla/swagger-typed-express-docs"
+    "url": "https://github.com/Svehla/openapi-typed-express-docs"
   },
   "license": "ISC",
   "author": "Jakub Švehla",

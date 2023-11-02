@@ -184,7 +184,10 @@ app.post(
   })
 )
 
-app.use('/users', router)
+app.use('/users-1', router)
+app.use('/users-2', router)
+app.use('/users-3', router)
+app.use('/users-4', router)
 
 const lazyOpenAPI3_0_0JSON = initApiDocs(app, {
   info: {
