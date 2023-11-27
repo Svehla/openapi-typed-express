@@ -11,13 +11,13 @@ describe('schemaBuilder', () => {
     g: T.enum(['a', 'b', 'c', 'd']),
     h: {
       ...T.customType('h', value => value, T.string),
-      // @ts-expect-error
-      parser: undefined,
+      // @ts-expect-error hack for raw JSON schema comparison
+      syncParser: undefined,
     },
     i: {
       ...T.customType('i', value => value, T.string),
-      // @ts-expect-error
-      parser: undefined,
+      // @ts-expect-error hack for raw JSON schema comparison
+      syncParser: undefined,
     },
   })
 

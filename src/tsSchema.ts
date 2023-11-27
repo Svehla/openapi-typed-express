@@ -58,7 +58,8 @@ export type TCustomType = {
   serializedInheritFromSchema: TSchema
   // types are infer from this functions
   // runtime parsing is in this function
-  parser: (val: any) => any
+  // TODO: rename to syncParser
+  syncParser: (val: any) => any
 
   // TODO: should I add generic serializer to all types? its mandatory question if I start casting types in this lib...
   required: boolean
@@ -79,12 +80,14 @@ export type TEnum = {
   validator?: (v: any) => void
 }
 
+type MaybePromise<T> = T | Promise<T>
+
 export type TOneOf = {
   type: 'oneOf'
   required: boolean
 
   options: any[]
-  validator?: (v: any) => void
+  validator?: (v: any) => MaybePromise<void>
 }
 
 // --- TODO: I should add buffer type?
@@ -135,7 +138,7 @@ export type InferSchemaType<T extends TSchema | undefined> = T extends undefined
   : T extends { type: 'hashMap' }
   ? MakeOptional<Record<string, InferSchemaType<T['property']>>, T['required']>
   : T extends { type: 'customType' }
-  ? MakeOptional<ReturnType<T['parser']>, T['required']>
+  ? MakeOptional<ReturnType<T['syncParser']>, T['required']>
   : T extends { type: 'any' }
   ? any
   : never

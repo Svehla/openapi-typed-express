@@ -1,4 +1,4 @@
-import { DeepPartial, convertYupErrToObj, deepMerge, mergePaths, syncAllSettled } from './utils'
+import { DeepPartial, convertYupErrToObj, deepMerge, mergePaths } from './utils'
 import { NextFunction, Request, Response } from 'express'
 import { tSchema as T } from './schemaBuilder'
 import { UrlsMethodDocs, convertUrlsMethodsSchemaToOpenAPI } from './openAPIFromSchema'
@@ -61,7 +61,7 @@ export const apiDoc =
         throw new Error('You probably forget to call `initApiDocs()` for typed-express library')
       }
 
-      const handleRouteWithRuntimeValidations = (
+      const handleRouteWithRuntimeValidations = async (
         req: Request,
         res: Response, // & { typedSend: (data: C['returns']) => void },
         next: NextFunction
@@ -69,13 +69,19 @@ export const apiDoc =
         // --- this function include runtime validations which are triggered each request ---
 
         // TODO: add formBody? i think its not needed in the modern rest-api
-        const [paramValidationRes, queryValidationRes, bodyValidationRes] = syncAllSettled([
+        const [
+          //
+          paramValidationRes,
+          queryValidationRes,
+          bodyValidationRes,
+        ] = await Promise.allSettled([
           // strict is not working with transform...
-          () => paramsValidator?.validateSync(req.params, { abortEarly: false }),
-          () => queryValidator?.validateSync(req.query, { abortEarly: false }),
-          () => bodyValidator?.validateSync(req.body, { abortEarly: false }),
+          paramsValidator?.validate(req.params, { abortEarly: false }),
+          queryValidator?.validate(req.query, { abortEarly: false }),
+          bodyValidator?.validate(req.body, { abortEarly: false }),
         ])
 
+        // console.log(paramValidationRes, queryValidationRes, bodyValidationRes)
         if (
           paramValidationRes.status === 'rejected' ||
           queryValidationRes.status === 'rejected' ||
@@ -90,9 +96,9 @@ export const apiDoc =
 
           const errObj = {
             errors: {
-              paramsErrors: convertYupErrToObj(paramsErrors),
-              queryErrors: convertYupErrToObj(queryErrors),
-              bodyErrors: convertYupErrToObj(bodyErrors),
+              params: convertYupErrToObj(paramsErrors),
+              query: convertYupErrToObj(queryErrors),
+              body: convertYupErrToObj(bodyErrors),
             },
           }
           res.status(400).send(errObj)
@@ -100,9 +106,9 @@ export const apiDoc =
         }
 
         // ==== override casted (transformed) custom types into JS runtime objects ====
-        if (paramsValidator) req.params = paramValidationRes.data
-        if (queryValidator) req.query = queryValidationRes.data
-        if (bodyValidator) req.body = bodyValidationRes.data
+        if (paramsValidator) req.params = paramValidationRes.value
+        if (queryValidator) req.query = queryValidationRes.value
+        if (bodyValidator) req.body = bodyValidationRes.value
 
         // TODO: apply serializer for custom scalar types like `Date -> string` (reverse parser)
         // @ts-ignore => if this ignore is missing, there is potential infinite ts recursion...

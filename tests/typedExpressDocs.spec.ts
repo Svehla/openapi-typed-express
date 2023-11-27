@@ -162,14 +162,14 @@ describe('typedExpressDocs', () => {
               send: (errorObj: any) => {
                 expect(errorObj).toMatchObject({
                   errors: {
-                    paramsErrors: {
+                    params: {
                       value: { message: 'hi' },
                       errors: [
                         'message must be a `boolean` type, but the final value was: `"hi"`.',
                       ],
                     },
-                    queryErrors: null,
-                    bodyErrors: {
+                    query: null,
+                    body: {
                       value: { a: true, b: 'text', c: { d: 3 } },
                       errors: [
                         'a must be a `number` type, but the final value was: `true`.',
@@ -209,9 +209,9 @@ describe('typedExpressDocs', () => {
               send: (errorObj: any) => {
                 expect(errorObj).toMatchObject({
                   errors: {
-                    paramsErrors: null,
-                    queryErrors: null,
-                    bodyErrors: {
+                    params: null,
+                    query: null,
+                    body: {
                       value: { enum: 'b' },
                       errors: ['enum must be one of the following values: a'],
 

@@ -66,7 +66,7 @@ const tList = <T extends TSchema>(items: T) => ({
 // TODO: add serializers for res.send()?
 export const tCustomType = <Name extends string, R, ParentType extends TSchema>(
   name: Name,
-  parser: (value: InferSchemaType<ParentType>) => R,
+  syncParser: (value: InferSchemaType<ParentType>) => R,
   // TODO: return values could serialize in the future... but it's not mandatory right now
   serializedInheritFromSchema = tAny as ParentType
 ) => ({
@@ -74,7 +74,7 @@ export const tCustomType = <Name extends string, R, ParentType extends TSchema>(
   type: 'customType' as const,
   serializedInheritFromSchema,
   required: true as const,
-  parser,
+  syncParser,
 })
 
 const tNonNullable = <T extends { required: any }>(
@@ -91,7 +91,7 @@ const tNullable = <T extends { required: any }>(
   required: false as const,
 })
 
-const addValidator = <T extends TSchema>(
+const tAddValidator = <T extends TSchema>(
   schema: T,
   validator: (val: InferSchemaType<T>) => void
 ) => ({
@@ -131,23 +131,25 @@ export const tSchema = {
   number: tNonNullable(tNumber),
   // null means nullable => so the undefined is also nullable value
   null_number: tNullable(tNumber),
-  custom_number: (validator: (a: number) => void) => tNonNullable(addValidator(tNumber, validator)),
+  custom_number: (validator: (a: number) => void) =>
+    tNonNullable(tAddValidator(tNumber, validator)),
   custom_null_number: (validator: (a: number) => void) =>
-    tNullable(addValidator(tNumber, validator)),
+    tNullable(tAddValidator(tNumber, validator)),
 
   boolean: tNonNullable(tBoolean),
   null_boolean: tNullable(tBoolean),
 
   string: tNonNullable(tString),
   null_string: tNullable(tString),
-  custom_string: (validator: (a: string) => void) => tNonNullable(addValidator(tString, validator)),
+  custom_string: (validator: (a: string) => void) =>
+    tNonNullable(tAddValidator(tString, validator)),
   custom_null_string: (validator: (a: string) => void) =>
-    tNullable(addValidator(tString, validator)),
+    tNullable(tAddValidator(tString, validator)),
 
   any: tNonNullable(tAny),
   null_any: tNullable(tAny),
-  custom_any: (validator: (a: any) => void) => tNonNullable(addValidator(tAny, validator)),
-  custom_null_any: (validator: (a: any) => void) => tNonNullable(addValidator(tAny, validator)),
+  custom_any: (validator: (a: any) => void) => tNonNullable(tAddValidator(tAny, validator)),
+  custom_null_any: (validator: (a: any) => void) => tNonNullable(tAddValidator(tAny, validator)),
 
   oneOf: <T extends readonly any[] | any[]>(options: T) => tNonNullable(tOneOf(options)),
   null_oneOf: <T extends readonly any[] | any[]>(options: T) => tNullable(tOneOf(options)),
@@ -167,5 +169,6 @@ export const tSchema = {
   customType: tCustomType,
   nonNullable: tNonNullable,
   nullable: tNullable,
+  addValidator: tAddValidator,
   deepNullable,
 }
