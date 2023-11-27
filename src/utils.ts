@@ -23,22 +23,22 @@ export const mergePaths = (path1: string, path2: string) => {
   return `/${[trimSlash(path1), trimSlash(path2)].filter(Boolean).join('/')}`
 }
 
-/**
- * this function works nice for batching synchronous errors into metadata object
- * TODO: add tests
- */
-export const syncAllSettled = <T>(
-  syncFns: (() => T)[]
-): ({ status: 'fulfilled'; data: T } | { status: 'rejected'; reason: any })[] => {
-  return syncFns.map(syncFn => {
-    try {
-      const data = syncFn()
-      return { status: 'fulfilled' as const, data }
-    } catch (err) {
-      return { status: 'rejected' as const, reason: err }
-    }
-  })
-}
+// /**
+//  * this function works nice for batching synchronous errors into metadata object
+//  * TODO: add tests
+//  */
+// export const syncAllSettled = <T>(
+//   syncFns: (() => T)[]
+// ): ({ status: 'fulfilled'; data: T } | { status: 'rejected'; reason: any })[] => {
+//   return syncFns.map(syncFn => {
+//     try {
+//       const data = syncFn()
+//       return { status: 'fulfilled' as const, data }
+//     } catch (err) {
+//       return { status: 'rejected' as const, reason: err }
+//     }
+//   })
+// }
 
 // we can optional generic use for apis where we have to integrate inconsistent responses
 // inspiration: https://stackoverflow.com/a/51365037
@@ -77,4 +77,10 @@ export const deepMerge = (target: any, ...sources: any[]) =>
  * thanks to this function we extract JSON which describe error with better
  * programming API
  */
+// export const convertYupErrToObj = (obj?: any) => {
+//   if (!obj) return undefined
+//   const yErrObj = JSON.parse(JSON.stringify(obj)) as { inner: any[] }
+//   const niceYErrObj = yErrObj?.inner?.map(i => ({ path: i?.path, errors: i?.errors }))
+//   return niceYErrObj
+// }
 export const convertYupErrToObj = (obj: any) => JSON.parse(JSON.stringify(obj))

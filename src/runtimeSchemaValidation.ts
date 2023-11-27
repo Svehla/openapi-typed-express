@@ -64,7 +64,9 @@ export const convertSchemaToYupValidationObject = (
           )
           parentTypeValidator.validateSync(value, { abortEarly: false })
 
-          const parsedValue = schema.parser(value)
+          // parser cannot return Promise!
+          // https://github.com/jquense/yup/issues/238
+          const parsedValue = schema.syncParser(value)
 
           return parsedValue
         } catch (err) {
@@ -118,10 +120,12 @@ export const convertSchemaToYupValidationObject = (
   // user may define runtime validators to specify value to be more strict
   if (schema.validator) {
     yupValidator = yupValidator.test({
-      test: function (value: any) {
+      test: async function (value: any) {
         try {
-          // @ts-expect-error
-          schema.validator?.(value)
+          await schema.validator?.(
+            // @ts-expect-error
+            value
+          )
         } catch (err) {
           const { path, createError } = this
           return createError({

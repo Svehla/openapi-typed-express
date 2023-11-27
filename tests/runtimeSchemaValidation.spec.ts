@@ -1,13 +1,13 @@
 import { convertSchemaToYupValidationObject } from '../src'
 import { tSchema as T } from '../src'
-import { convertYupErrToObj, syncAllSettled } from '../src/utils'
+import { convertYupErrToObj } from '../src/utils'
 
 describe('runtimeSchemaValidation', () => {
   // TODO: create function to test if parsed cast value is proper
-  const validateDataAgainstSchema = (schema: any, objToValidate: any, output: any) => {
+  const validateDataAgainstSchema = async (schema: any, objToValidate: any, output: any) => {
     const yupValidator = convertSchemaToYupValidationObject(schema)
-    const [objValidationRes] = syncAllSettled([
-      () => yupValidator.validateSync(objToValidate, { abortEarly: false }),
+    const [objValidationRes] = await Promise.allSettled([
+      yupValidator.validate(objToValidate, { abortEarly: false }),
     ])
 
     if (objValidationRes.status === 'rejected') {
@@ -17,9 +17,37 @@ describe('runtimeSchemaValidation', () => {
     expect(objValidationRes).toMatchObject(output)
   }
 
+  describe('async custom types validations', () => {
+    const delay = (ms: number) => new Promise(res => setTimeout(res, ms))
+    test('1', async () => {
+      await validateDataAgainstSchema(
+        T.addValidator(
+          T.customType('uniq_id_in_da_db', v => v, T.string),
+          async () => {
+            await delay(10)
+            throw new Error('value is invalid!!!!')
+          }
+        ),
+        'x',
+        { status: 'rejected' }
+      )
+    })
+
+    test('2', async () => {
+      await validateDataAgainstSchema(
+        T.addValidator(
+          T.customType('uniq_id_in_da_db', v => v, T.string),
+          async () => await delay(10)
+        ),
+        'x',
+        { status: 'fulfilled' }
+      )
+    })
+  })
+
   describe('default types', () => {
-    test('-1', () => {
-      validateDataAgainstSchema(
+    test('-1', async () => {
+      await validateDataAgainstSchema(
         T.object({
           s: T.string,
           b: T.boolean,
@@ -34,8 +62,8 @@ describe('runtimeSchemaValidation', () => {
       )
     })
 
-    test('0', () => {
-      validateDataAgainstSchema(
+    test('0', async () => {
+      await validateDataAgainstSchema(
         T.object({
           s: T.null_string,
           b: T.null_boolean,
@@ -59,8 +87,8 @@ describe('runtimeSchemaValidation', () => {
       )
     })
 
-    test('1', () => {
-      validateDataAgainstSchema(
+    test('1', async () => {
+      await validateDataAgainstSchema(
         T.object({
           a: T.string,
         }),
@@ -69,31 +97,31 @@ describe('runtimeSchemaValidation', () => {
       )
     })
 
-    test('2', () => {
-      validateDataAgainstSchema(T.string, 'hello', { status: 'fulfilled' })
+    test('2', async () => {
+      await validateDataAgainstSchema(T.string, 'hello', { status: 'fulfilled' })
     })
 
-    test('3', () => {
-      validateDataAgainstSchema(T.boolean, true, { status: 'fulfilled' })
+    test('3', async () => {
+      await validateDataAgainstSchema(T.boolean, true, { status: 'fulfilled' })
     })
 
-    test('4', () => {
-      validateDataAgainstSchema(T.number, 3, { status: 'fulfilled' })
+    test('4', async () => {
+      await validateDataAgainstSchema(T.number, 3, { status: 'fulfilled' })
     })
 
-    test('5', () => {
-      validateDataAgainstSchema(T.null_string, null, { status: 'fulfilled' })
+    test('5', async () => {
+      await validateDataAgainstSchema(T.null_string, null, { status: 'fulfilled' })
     })
-    test('51', () => {
-      validateDataAgainstSchema(T.number, '3', {
+    test('51', async () => {
+      await validateDataAgainstSchema(T.number, '3', {
         reason: {
           errors: ['this must be a `number` type, but the final value was: `"3"`.'],
         },
         status: 'rejected',
       })
     })
-    test('52', () => {
-      validateDataAgainstSchema(T.boolean, 'true', {
+    test('52', async () => {
+      await validateDataAgainstSchema(T.boolean, 'true', {
         reason: {
           errors: ['this must be a `boolean` type, but the final value was: `"true"`.'],
         },
@@ -101,13 +129,13 @@ describe('runtimeSchemaValidation', () => {
       })
     })
 
-    // test('6', () => {
+    // test('6', async () => {
     //   // mmmm undefined is not nullable in yup... but types enable to put undefined
-    //   validateDataAgainstSchema(T.null_string, undefined, { status: 'fulfilled' })
+    //   await validateDataAgainstSchema(T.null_string, undefined, { status: 'fulfilled' })
     // })
 
-    test('7', () => {
-      validateDataAgainstSchema(T.string, null, {
+    test('7', async () => {
+      await validateDataAgainstSchema(T.string, null, {
         status: 'rejected',
         reason: {
           errors: ['this cannot be null'],
@@ -115,14 +143,14 @@ describe('runtimeSchemaValidation', () => {
       })
     })
 
-    test('8', () => {
-      validateDataAgainstSchema(T.null_number, undefined, {
+    test('8', async () => {
+      await validateDataAgainstSchema(T.null_number, undefined, {
         status: 'fulfilled',
       })
     })
 
-    test('9', () => {
-      validateDataAgainstSchema(T.null_boolean, 'true', {
+    test('9', async () => {
+      await validateDataAgainstSchema(T.null_boolean, 'true', {
         status: 'rejected',
         reason: {
           errors: ['this must be a `boolean` type, but the final value was: `"true"`.'],
@@ -130,8 +158,8 @@ describe('runtimeSchemaValidation', () => {
       })
     })
 
-    test('10', () => {
-      validateDataAgainstSchema(
+    test('10', async () => {
+      await validateDataAgainstSchema(
         T.object({
           bool: T.boolean,
           num: T.number,
@@ -149,8 +177,8 @@ describe('runtimeSchemaValidation', () => {
       )
     })
 
-    test('11', () => {
-      validateDataAgainstSchema(
+    test('11', async () => {
+      await validateDataAgainstSchema(
         T.object({
           bool: T.boolean,
           num: T.number,
@@ -168,8 +196,8 @@ describe('runtimeSchemaValidation', () => {
       )
     })
 
-    test('12', () => {
-      validateDataAgainstSchema(
+    test('12', async () => {
+      await validateDataAgainstSchema(
         T.hashMap(
           T.null_object({
             bool: T.boolean,
@@ -187,8 +215,8 @@ describe('runtimeSchemaValidation', () => {
       )
     })
 
-    test('13', () => {
-      validateDataAgainstSchema(
+    test('13', async () => {
+      await validateDataAgainstSchema(
         T.hashMap(T.string),
         {
           dynKey1: 'a',
@@ -204,20 +232,20 @@ describe('runtimeSchemaValidation', () => {
 
   describe('custom types', () => {
     describe('date', () => {
-      test('1', () => {
-        validateDataAgainstSchema(T._custom.cast_date, new Date().toISOString(), {
+      test('1', async () => {
+        await validateDataAgainstSchema(T._custom.cast_date, new Date().toISOString(), {
           status: 'fulfilled',
         })
       })
 
-      test('2', () => {
-        validateDataAgainstSchema(T._custom.cast_null_date, new Date().toISOString(), {
+      test('2', async () => {
+        await validateDataAgainstSchema(T._custom.cast_null_date, new Date().toISOString(), {
           status: 'fulfilled',
         })
       })
 
-      test('3', () => {
-        validateDataAgainstSchema(
+      test('3', async () => {
+        await validateDataAgainstSchema(
           T._custom.cast_null_date,
           `!lorem ipsum!${new Date().toISOString()}`,
           {
@@ -227,8 +255,8 @@ describe('runtimeSchemaValidation', () => {
         )
       })
 
-      test('4', () => {
-        validateDataAgainstSchema(T._custom.cast_date, 123, {
+      test('4', async () => {
+        await validateDataAgainstSchema(T._custom.cast_date, 123, {
           status: 'rejected',
 
           reason: {
@@ -237,8 +265,8 @@ describe('runtimeSchemaValidation', () => {
         })
       })
 
-      test('5', () => {
-        validateDataAgainstSchema(T._custom.cast_date, new Date().getTime().toString(), {
+      test('5', async () => {
+        await validateDataAgainstSchema(T._custom.cast_date, new Date().getTime().toString(), {
           status: 'rejected',
 
           reason: {
@@ -248,19 +276,19 @@ describe('runtimeSchemaValidation', () => {
       })
     })
 
-    test('4', () => {
-      validateDataAgainstSchema(T._custom.minMaxNum(1, 5), 2, { status: 'fulfilled' })
+    test('4', async () => {
+      await validateDataAgainstSchema(T._custom.minMaxNum(1, 5), 2, { status: 'fulfilled' })
     })
 
-    test('5', () => {
-      validateDataAgainstSchema(T._custom.minMaxNum(1, 5), 6, {
+    test('5', async () => {
+      await validateDataAgainstSchema(T._custom.minMaxNum(1, 5), 6, {
         status: 'rejected',
         reason: { errors: ['value needs to be > 5'] },
       })
     })
 
-    test('2', () => {
-      validateDataAgainstSchema(T._custom.cast_null_number, 'null', {
+    test('2', async () => {
+      await validateDataAgainstSchema(T._custom.cast_null_number, 'null', {
         status: 'rejected',
         reason: { errors: ['invalid number cast'] },
       })
@@ -269,9 +297,9 @@ describe('runtimeSchemaValidation', () => {
 })
 
 describe('runtime custom types parsing ', () => {
-  const getSchemaCastedValue = (schema: any, valueIn: any) => {
+  const getSchemaCastedValue = async (schema: any, valueIn: any) => {
     const yupValidator = convertSchemaToYupValidationObject(schema)
-    const [out] = syncAllSettled([() => yupValidator.cast(valueIn)])
+    const [out] = await Promise.allSettled([yupValidator.cast(valueIn)])
     if (out.status === 'rejected') {
       out.reason = convertYupErrToObj(out.reason)
     }
@@ -279,29 +307,29 @@ describe('runtime custom types parsing ', () => {
   }
 
   describe('date', () => {
-    test('1', () => {
-      const value = getSchemaCastedValue(T._custom.cast_null_date, null)
+    test('1', async () => {
+      const value = await getSchemaCastedValue(T._custom.cast_null_date, null)
       expect(value).toEqual({
         status: 'fulfilled',
-        data: null,
+        value: null,
       })
     })
   })
 
   describe('number cast', () => {
-    test('1', () => {
-      const value = getSchemaCastedValue(T._custom.cast_null_number, null)
+    test('1', async () => {
+      const value = await getSchemaCastedValue(T._custom.cast_null_number, null)
       expect(value).toEqual({
         status: 'fulfilled',
-        data: null,
+        value: null,
       })
     })
 
-    test('2', () => {
-      const value = getSchemaCastedValue(T._custom.cast_null_number, '005')
+    test('2', async () => {
+      const value = await getSchemaCastedValue(T._custom.cast_null_number, '005')
       expect(value).toEqual({
         status: 'fulfilled',
-        data: 5,
+        value: 5,
       })
     })
   })
