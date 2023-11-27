@@ -1,6 +1,6 @@
 import { convertSchemaToYupValidationObject } from '../src'
 import { tSchema as T } from '../src'
-import { convertYupErrToObj } from '../src/utils'
+import { normalizeYupErrToObj } from '../src/utils'
 
 describe('runtimeSchemaValidation', () => {
   // TODO: create function to test if parsed cast value is proper
@@ -11,7 +11,12 @@ describe('runtimeSchemaValidation', () => {
     ])
 
     if (objValidationRes.status === 'rejected') {
-      objValidationRes.reason = convertYupErrToObj(objValidationRes.reason)
+      // console.log('-----------------------')
+      // console.log(objValidationRes.reason)
+      objValidationRes.reason = normalizeYupErrToObj(objValidationRes.reason)
+      // TODO: shit code???
+      // ?.map(i => i.errors)
+      // .flat()
     }
 
     expect(objValidationRes).toMatchObject(output)
@@ -114,17 +119,20 @@ describe('runtimeSchemaValidation', () => {
     })
     test('51', async () => {
       await validateDataAgainstSchema(T.number, '3', {
-        reason: {
-          errors: ['this must be a `number` type, but the final value was: `"3"`.'],
-        },
+        reason: [
+          { path: '', errors: ['this must be a `number` type, but the final value was: `"3"`.'] },
+        ],
         status: 'rejected',
       })
     })
     test('52', async () => {
       await validateDataAgainstSchema(T.boolean, 'true', {
-        reason: {
-          errors: ['this must be a `boolean` type, but the final value was: `"true"`.'],
-        },
+        reason: [
+          {
+            path: '',
+            errors: ['this must be a `boolean` type, but the final value was: `"true"`.'],
+          },
+        ],
         status: 'rejected',
       })
     })
@@ -137,9 +145,7 @@ describe('runtimeSchemaValidation', () => {
     test('7', async () => {
       await validateDataAgainstSchema(T.string, null, {
         status: 'rejected',
-        reason: {
-          errors: ['this cannot be null'],
-        },
+        reason: [{ path: '', errors: ['this cannot be null'] }],
       })
     })
 
@@ -152,9 +158,12 @@ describe('runtimeSchemaValidation', () => {
     test('9', async () => {
       await validateDataAgainstSchema(T.null_boolean, 'true', {
         status: 'rejected',
-        reason: {
-          errors: ['this must be a `boolean` type, but the final value was: `"true"`.'],
-        },
+        reason: [
+          {
+            path: '',
+            errors: ['this must be a `boolean` type, but the final value was: `"true"`.'],
+          },
+        ],
       })
     })
 
@@ -167,12 +176,16 @@ describe('runtimeSchemaValidation', () => {
         { bool: '1234', num: true },
         {
           status: 'rejected',
-          reason: {
-            errors: [
-              'bool must be a `boolean` type, but the final value was: `"1234"`.',
-              'num must be a `number` type, but the final value was: `true`.',
-            ],
-          },
+          reason: [
+            {
+              path: 'bool',
+              errors: ['bool must be a `boolean` type, but the final value was: `"1234"`.'],
+            },
+            {
+              path: 'num',
+              errors: ['num must be a `number` type, but the final value was: `true`.'],
+            },
+          ],
         }
       )
     })
@@ -186,12 +199,17 @@ describe('runtimeSchemaValidation', () => {
         { bool: '1234', num: true },
         {
           status: 'rejected',
-          reason: {
-            errors: [
-              'bool must be a `boolean` type, but the final value was: `"1234"`.',
-              'num must be a `number` type, but the final value was: `true`.',
-            ],
-          },
+          reason: [
+            {
+              path: 'bool',
+              errors: ['bool must be a `boolean` type, but the final value was: `"1234"`.'],
+            },
+            {
+              path: 'num',
+              errors: ['num must be a `number` type, but the final value was: `true`.'],
+            },
+            ,
+          ],
         }
       )
     })
@@ -224,7 +242,12 @@ describe('runtimeSchemaValidation', () => {
         },
         {
           status: 'rejected',
-          reason: { errors: ['dynKey2 must be a `string` type, but the final value was: `3`.'] },
+          reason: [
+            {
+              path: 'dynKey2',
+              errors: ['dynKey2 must be a `string` type, but the final value was: `3`.'],
+            },
+          ],
         }
       )
     })
@@ -250,7 +273,7 @@ describe('runtimeSchemaValidation', () => {
           `!lorem ipsum!${new Date().toISOString()}`,
           {
             status: 'rejected',
-            reason: { errors: ['invalid Date'] },
+            reason: [{ path: '', errors: ['invalid Date'] }],
           }
         )
       })
@@ -259,9 +282,9 @@ describe('runtimeSchemaValidation', () => {
         await validateDataAgainstSchema(T._custom.cast_date, 123, {
           status: 'rejected',
 
-          reason: {
-            errors: ['this must be a `string` type, but the final value was: `123`.'],
-          },
+          reason: [
+            { path: '', errors: ['this must be a `string` type, but the final value was: `123`.'] },
+          ],
         })
       })
 
@@ -269,9 +292,7 @@ describe('runtimeSchemaValidation', () => {
         await validateDataAgainstSchema(T._custom.cast_date, new Date().getTime().toString(), {
           status: 'rejected',
 
-          reason: {
-            errors: ['invalid Date'],
-          },
+          reason: [{ path: '', errors: ['invalid Date'] }],
         })
       })
     })
@@ -283,14 +304,14 @@ describe('runtimeSchemaValidation', () => {
     test('5', async () => {
       await validateDataAgainstSchema(T._custom.minMaxNum(1, 5), 6, {
         status: 'rejected',
-        reason: { errors: ['value needs to be > 5'] },
+        reason: [{ path: '', errors: ['value needs to be > 5'] }],
       })
     })
 
     test('2', async () => {
       await validateDataAgainstSchema(T._custom.cast_null_number, 'null', {
         status: 'rejected',
-        reason: { errors: ['invalid number cast'] },
+        reason: [{ path: '', errors: ['invalid number cast'] }],
       })
     })
   })
@@ -301,7 +322,7 @@ describe('runtime custom types parsing ', () => {
     const yupValidator = convertSchemaToYupValidationObject(schema)
     const [out] = await Promise.allSettled([yupValidator.cast(valueIn)])
     if (out.status === 'rejected') {
-      out.reason = convertYupErrToObj(out.reason)
+      out.reason = normalizeYupErrToObj(out.reason)
     }
     return out
   }

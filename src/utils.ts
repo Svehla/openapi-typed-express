@@ -77,10 +77,19 @@ export const deepMerge = (target: any, ...sources: any[]) =>
  * thanks to this function we extract JSON which describe error with better
  * programming API
  */
-// export const convertYupErrToObj = (obj?: any) => {
-//   if (!obj) return undefined
-//   const yErrObj = JSON.parse(JSON.stringify(obj)) as { inner: any[] }
-//   const niceYErrObj = yErrObj?.inner?.map(i => ({ path: i?.path, errors: i?.errors }))
-//   return niceYErrObj
-// }
-export const convertYupErrToObj = (obj: any) => JSON.parse(JSON.stringify(obj))
+export const normalizeYupErrToObj = (obj?: any) => {
+  if (!obj) return undefined
+  const yErrObj = JSON.parse(JSON.stringify(obj)) as { inner: any[] }
+  const niceYErrObj = yErrObj?.inner?.map(i => ({ path: i?.path, errors: i?.errors }))
+  // const niceYErrObj = yErrObj?.inner?.map(i => {
+  //   const x = {
+  //     errors: i?.errors,
+  //   }
+  //   if (i?.path) {
+  //     // @ts-ignore
+  //     x.path = i.path
+  //   }
+  //   return x
+  // })
+  return niceYErrObj
+}
