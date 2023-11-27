@@ -134,7 +134,6 @@ describe('typedExpressDocs', () => {
             z: '1234',
           },
         }
-
         const lazyFn = apiDoc({
           params: {
             message: T.boolean,
@@ -153,30 +152,37 @@ describe('typedExpressDocs', () => {
         })(() => {
           expect('you shall not').toBe('pass')
         })
-
         const metadata = lazyFn(__expressOpenAPIHack__)
         metadata.handle(
           reqData as any,
           {
             status: () => ({
               send: (errorObj: any) => {
+                expect('x').toMatch('x')
                 expect(errorObj).toMatchObject({
                   errors: {
-                    params: {
-                      value: { message: 'hi' },
-                      errors: [
-                        'message must be a `boolean` type, but the final value was: `"hi"`.',
-                      ],
-                    },
-                    query: null,
-                    body: {
-                      value: { a: true, b: 'text', c: { d: 3 } },
-                      errors: [
-                        'a must be a `number` type, but the final value was: `true`.',
-                        'b must be a `boolean` type, but the final value was: `"text"`.',
-                        'c.d must be a `boolean` type, but the final value was: `3`.',
-                      ],
-                    },
+                    params: [
+                      {
+                        path: 'message',
+                        errors: [
+                          'message must be a `boolean` type, but the final value was: `"hi"`.',
+                        ],
+                      },
+                    ],
+                    body: [
+                      {
+                        path: 'a',
+                        errors: ['a must be a `number` type, but the final value was: `true`.'],
+                      },
+                      {
+                        path: 'b',
+                        errors: ['b must be a `boolean` type, but the final value was: `"text"`.'],
+                      },
+                      {
+                        path: 'c.d',
+                        errors: ['c.d must be a `boolean` type, but the final value was: `3`.'],
+                      },
+                    ],
                   },
                 })
               },
@@ -185,13 +191,13 @@ describe('typedExpressDocs', () => {
           () => null
         )
       })
+
       test('2 - enum error validation', () => {
         const reqData = {
           body: {
             enum: 'b',
           },
         }
-
         const lazyFn = apiDoc({
           body: T.object({
             enum: T.enum(['a']),
@@ -200,8 +206,8 @@ describe('typedExpressDocs', () => {
         })(() => {
           expect('you shall not').toBe('pass')
         })
-
         const metadata = lazyFn(__expressOpenAPIHack__)
+
         metadata.handle(
           reqData as any,
           {
@@ -209,15 +215,14 @@ describe('typedExpressDocs', () => {
               send: (errorObj: any) => {
                 expect(errorObj).toMatchObject({
                   errors: {
-                    params: null,
-                    query: null,
-                    body: {
-                      value: { enum: 'b' },
-                      errors: ['enum must be one of the following values: a'],
-
-                      name: 'ValidationError',
-                      message: 'enum must be one of the following values: a',
-                    },
+                    params: undefined,
+                    query: undefined,
+                    body: [
+                      {
+                        errors: ['enum must be one of the following values: a'],
+                        path: 'enum',
+                      },
+                    ],
                   },
                 })
               },

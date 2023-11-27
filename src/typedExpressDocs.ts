@@ -1,4 +1,4 @@
-import { DeepPartial, convertYupErrToObj, deepMerge, mergePaths } from './utils'
+import { DeepPartial, normalizeYupErrToObj, deepMerge, mergePaths } from './utils'
 import { NextFunction, Request, Response } from 'express'
 import { tSchema as T } from './schemaBuilder'
 import { UrlsMethodDocs, convertUrlsMethodsSchemaToOpenAPI } from './openAPIFromSchema'
@@ -96,9 +96,9 @@ export const apiDoc =
 
           const errObj = {
             errors: {
-              params: convertYupErrToObj(paramsErrors),
-              query: convertYupErrToObj(queryErrors),
-              body: convertYupErrToObj(bodyErrors),
+              params: normalizeYupErrToObj(paramsErrors),
+              query: normalizeYupErrToObj(queryErrors),
+              body: normalizeYupErrToObj(bodyErrors),
             },
           }
           res.status(400).send(errObj)
