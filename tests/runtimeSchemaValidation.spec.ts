@@ -149,6 +149,54 @@ describe('runtimeSchemaValidation', () => {
       })
     })
 
+    test('7.1', async () => {
+      await validateDataAgainstSchema(
+        T.object({ x: T.list(T.string) }),
+        { x: [true] },
+        {
+          status: 'rejected',
+          reason: [
+            {
+              path: 'x[0]',
+              errors: ['x[0] must be a `string` type, but the final value was: `true`.'],
+            },
+          ],
+        }
+      )
+    })
+
+    test('7.2', async () => {
+      await validateDataAgainstSchema(
+        T.object({ x: T.list(T.boolean) }),
+        { x: ['true'] },
+        {
+          status: 'rejected',
+          reason: [
+            {
+              path: 'x[0]',
+              errors: ['x[0] must be a `boolean` type, but the final value was: `"true"`.'],
+            },
+          ],
+        }
+      )
+    })
+
+    test('7.2', async () => {
+      await validateDataAgainstSchema(
+        T.object({ x: T.list(T.string) }),
+        { x: [3] },
+        {
+          status: 'rejected',
+          reason: [
+            {
+              path: 'x[0]',
+              errors: ['x[0] must be a `string` type, but the final value was: `3`.'],
+            },
+          ],
+        }
+      )
+    })
+
     test('8', async () => {
       await validateDataAgainstSchema(T.null_number, undefined, {
         status: 'fulfilled',
@@ -255,6 +303,12 @@ describe('runtimeSchemaValidation', () => {
 
   describe('custom types', () => {
     describe('date', () => {
+      test('0', async () => {
+        await validateDataAgainstSchema(T.list(T._custom.cast_date), [new Date().toISOString()], {
+          status: 'fulfilled',
+        })
+      })
+
       test('1', async () => {
         await validateDataAgainstSchema(T._custom.cast_date, new Date().toISOString(), {
           status: 'fulfilled',
@@ -293,6 +347,12 @@ describe('runtimeSchemaValidation', () => {
           status: 'rejected',
 
           reason: [{ path: '', errors: ['invalid Date'] }],
+        })
+      })
+
+      test('6', async () => {
+        await validateDataAgainstSchema(T.list(T._custom.minMaxNum(0, 1)), [3], {
+          status: 'rejected',
         })
       })
     })

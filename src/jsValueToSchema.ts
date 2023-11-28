@@ -1,5 +1,5 @@
 import { tSchema as T } from './schemaBuilder'
-import { TSchema } from './tsSchema'
+import { InferSchemaType, TSchema } from './tsSchema'
 
 // TODO: add proper TS output schema types
 // TODO: add tests
@@ -34,4 +34,55 @@ export const jsValueToSchema = (jsValue: any): TSchema => {
   }
 
   return T.any
+}
+
+export const tSchemaToJSValue = <T extends TSchema>(schema: T): InferSchemaType<T> => {
+  switch (schema.type) {
+    case 'enum':
+      return schema.options[0]
+
+    case 'object':
+      // @ts-expect-error
+      return Object.fromEntries(
+        Object.entries(schema.properties)
+          // TODO: put quotes only if its needs to be serialized!
+          .map(([k, v]) => [k, tSchemaToJSValue(v)])
+      )
+
+    case 'hashMap':
+      // @ts-expect-error
+      return {
+        key1: tSchemaToJSValue(schema.property),
+        key2: tSchemaToJSValue(schema.property),
+      }
+
+    case 'array':
+      // @ts-expect-error
+      return [tSchemaToJSValue(schema.items), tSchemaToJSValue(schema.items)]
+
+    case 'oneOf':
+      return tSchemaToJSValue(schema.options?.[0])
+
+    case 'any':
+      // @ts-expect-error
+      return null
+
+    case 'string':
+      // @ts-expect-error
+      return 'text content'
+
+    case 'boolean':
+      // @ts-expect-error
+      return true
+
+    case 'number':
+      // @ts-expect-error
+      return 1.1 // 1 should be parsed as a boolean xd
+
+    case 'customType':
+      return tSchemaToJSValue(schema.serializedInheritFromSchema)
+
+    default:
+      throw new Error(`unsupported type: ${JSON.stringify(schema)}`)
+  }
 }

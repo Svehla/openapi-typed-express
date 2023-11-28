@@ -129,6 +129,8 @@ describe('typedExpressDocs', () => {
             c: {
               d: 3,
             },
+
+            labels: [true],
           },
           query: {
             z: '1234',
@@ -147,6 +149,7 @@ describe('typedExpressDocs', () => {
             c: T.object({
               d: T.boolean,
             }),
+            labels: T.list(T.string),
           }),
           returns: T.null_string,
         })(() => {
@@ -158,7 +161,6 @@ describe('typedExpressDocs', () => {
           {
             status: () => ({
               send: (errorObj: any) => {
-                expect('x').toMatch('x')
                 expect(errorObj).toMatchObject({
                   errors: {
                     params: [
@@ -171,6 +173,12 @@ describe('typedExpressDocs', () => {
                     ],
                     body: [
                       {
+                        path: 'labels[0]',
+                        errors: [
+                          'labels[0] must be a `string` type, but the final value was: `true`.',
+                        ],
+                      },
+                      {
                         path: 'a',
                         errors: ['a must be a `number` type, but the final value was: `true`.'],
                       },
@@ -182,6 +190,8 @@ describe('typedExpressDocs', () => {
                         path: 'c.d',
                         errors: ['c.d must be a `boolean` type, but the final value was: `3`.'],
                       },
+                      // casting array values is not working because of transform cannot turn of cast :|
+                      // bug: https://github.com/jquense/yup/issues/1259
                     ],
                   },
                 })

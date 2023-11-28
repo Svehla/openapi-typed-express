@@ -38,16 +38,62 @@ export const convertSchemaToYupValidationObject = (
         return [k, value]
       }, schema.properties)
     )
-    //
   } else if (schema?.type === 'boolean') {
-    yupValidator = yupValidator.boolean().strict()
+    // yupValidator = yupValidator.boolean().strict()
+    yupValidator = yup
+      .mixed()
+      // instead of strict mode which is not working for casting??
+      .test({
+        name: 'is-strict',
+        message: d =>
+          `${d.path} must be a \`boolean\` type, but the final value was: \`${JSON.stringify(
+            d.value
+          )}\`.`,
+        test: value => {
+          if (schema.required === false && (value === null || value === undefined)) return true
+          if (typeof value === 'boolean') return true
+          return false
+        },
+      })
     //
   } else if (schema?.type === 'number') {
-    yupValidator = yupValidator.number().strict()
+    // yupValidator = yupValidator.number().strict()
+    yupValidator = yup
+      .mixed()
+      // instead of strict mode which is not working for casting??
+      .test({
+        name: 'is-strict',
+        message: d =>
+          `${d.path} must be a \`number\` type, but the final value was: \`${JSON.stringify(
+            d.value
+          )}\`.`,
+        test: value => {
+          if (schema.required === false && (value === null || value === undefined)) return true
+          if (typeof value === 'number' && !isNaN(value)) return true
+          return false
+        },
+      })
     //
   } else if (schema?.type === 'string') {
-    yupValidator = yupValidator.string().strict()
-    //
+    // yupValidator = yupValidator.string().strict()
+    yupValidator = yup
+      .mixed()
+      // instead of strict mode which is not working for casting??
+      .test({
+        name: 'is-strict',
+        message: d =>
+          `${d.path} must be a \`string\` type, but the final value was: \`${JSON.stringify(
+            d.value
+          )}\`.`,
+        test: value => {
+          if (schema.required === false && (value === null || value === undefined)) return true
+          if (typeof value === 'string') return true
+          return false
+        },
+      })
+    // cannot use strict mode because of custom type transform...
+    // strict is not working and yup casting is broken...
+    // .strict()
   } else if (schema?.type === 'customType') {
     yupValidator = yup.mixed()
     // transform is not working with the { strict: true } | .strict()... fucking fuck!!!!

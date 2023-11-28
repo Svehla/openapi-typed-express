@@ -5,6 +5,7 @@ import { UrlsMethodDocs, convertUrlsMethodsSchemaToOpenAPI } from './openAPIFrom
 import { convertSchemaToYupValidationObject } from './runtimeSchemaValidation'
 import { parseUrlFromExpressRegexp } from './expressRegExUrlParser'
 import { InferSchemaType, TSchema } from './tsSchema'
+import { tSchemaToJSValue } from './jsValueToSchema'
 
 // symbol as a key is not sended via express down to the _routes
 export const __expressTypedHack_key__ = '__expressTypedHack_key__'
@@ -75,13 +76,12 @@ export const apiDoc =
           queryValidationRes,
           bodyValidationRes,
         ] = await Promise.allSettled([
-          // strict is not working with transform...
+          // strict is not working with transform for custom data types...
           paramsValidator?.validate(req.params, { abortEarly: false }),
           queryValidator?.validate(req.query, { abortEarly: false }),
           bodyValidator?.validate(req.body, { abortEarly: false }),
         ])
 
-        // console.log(paramValidationRes, queryValidationRes, bodyValidationRes)
         if (
           paramValidationRes.status === 'rejected' ||
           queryValidationRes.status === 'rejected' ||
@@ -279,3 +279,16 @@ export const initApiDocs = (
     customOpenAPIType
   )
 }
+
+export const mock_apiDoc =
+  <T extends (req: Request, res: Response, next: NextFunction) => any>(
+    a: Parameters<typeof apiDoc>[0]
+  ) =>
+  (_handler: T) => {
+    return apiDoc(a)(
+      // @ts-ignore TS infinite deep recursion
+      (_req, res) => {
+        res.send(a.returns ? tSchemaToJSValue(a.returns) : undefined)
+      }
+    )
+  }
