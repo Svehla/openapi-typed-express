@@ -282,15 +282,18 @@ export const initApiDocs = (
   )
 }
 
-export const mock_apiDoc =
+export const getMock_apiDocInstance =
+  ({ errorTransformer = (e => e) as (err: any) => any } = {}) =>
   <T extends (req: Request, res: Response, next: NextFunction) => any>(
     a: Parameters<typeof apiDoc>[0]
   ) =>
   (_handler: T) => {
-    return apiDoc(a)(
+    return getApiDocInstance({ errorTransformer })(a)(
       // @ts-ignore TS infinite deep recursion
       (_req, res) => {
         res.send(a.returns ? tSchemaToJSValue(a.returns) : undefined)
       }
     )
   }
+
+export const mock_apiDoc = getMock_apiDocInstance()
