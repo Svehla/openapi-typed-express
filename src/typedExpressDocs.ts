@@ -28,7 +28,8 @@ type UseEmptyObjectAsDefault<T> = T extends Record<any, any> ? T : {}
 
 type WrapToTObject<T> = { type: 'object'; required: true; properties: T }
 
-export const apiDoc =
+export const getApiDocInstance =
+  ({ errorTransformer = (e => e) as (err: any) => any } = {}) =>
   <C extends Config>(docs: C) =>
   (
     handle: (
@@ -101,7 +102,7 @@ export const apiDoc =
               body: normalizeYupErrToObj(bodyErrors),
             },
           }
-          res.status(400).send(errObj)
+          res.status(400).send(errorTransformer(errObj))
           return
         }
 
@@ -132,6 +133,7 @@ export const apiDoc =
     return lazyInitializeHandler
   }
 
+export const apiDoc = getApiDocInstance()
 // --------------------------------------------------------------------
 // ------------- Internal express struct handlers resolver ------------
 // --------------------------------------------------------------------

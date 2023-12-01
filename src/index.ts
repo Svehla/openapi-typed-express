@@ -3,7 +3,7 @@ export { InferSchemaType, TSchema } from './tsSchema'
 export { convertSchemaToYupValidationObject } from './runtimeSchemaValidation'
 import { tCustom } from './customTypes'
 import { tSchema as rawTSchema } from './schemaBuilder'
-export { apiDoc, initApiDocs, mock_apiDoc } from './typedExpressDocs'
+export { apiDoc, getApiDocInstance, initApiDocs, mock_apiDoc } from './typedExpressDocs'
 export { codegenSchemaToJSCode } from './codegen'
 
 export const tSchema = {
