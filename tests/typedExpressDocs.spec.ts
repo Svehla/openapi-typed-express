@@ -1,4 +1,4 @@
-import { __expressOpenAPIHack__, apiDoc } from '../src/typedExpressDocs'
+import { __expressOpenAPIHack__, apiDoc, getApiDocInstance } from '../src/typedExpressDocs'
 import { tSchema as T } from '../src'
 
 const tCustom = T._custom
@@ -119,6 +119,50 @@ describe('typedExpressDocs', () => {
       metadata.handle(reqData as any, {} as any, () => null)
     })
 
+    describe('custom instance error formatter', () => {
+      test('1 enum with custom errors', () => {
+        const customApiDoc = getApiDocInstance({
+          errorFormatter: e => ({ ____customErrorsWrapper____: e.errors }),
+        })
+
+        const reqData = {
+          body: {
+            enum: 'b',
+          },
+        }
+        const lazyFn = customApiDoc({
+          body: T.object({ enum: T.enum(['a']) }),
+          returns: T.string,
+        })(() => {
+          expect('you shall not').toBe('pass')
+        })
+        const metadata = lazyFn(__expressOpenAPIHack__)
+
+        metadata.handle(
+          reqData as any,
+          {
+            status: () => ({
+              send: (errorObj: any) => {
+                expect(errorObj).toMatchObject({
+                  ____customErrorsWrapper____: {
+                    params: undefined,
+                    query: undefined,
+                    body: [
+                      {
+                        errors: ['enum must be one of the following values: a'],
+                        path: 'enum',
+                      },
+                    ],
+                  },
+                })
+              },
+            }),
+          } as any,
+          () => null
+        )
+      })
+    })
+
     describe('errors', () => {
       test('1 - all params', () => {
         const reqData = {
@@ -192,46 +236,6 @@ describe('typedExpressDocs', () => {
                       },
                       // casting array values is not working because of transform cannot turn of cast :|
                       // bug: https://github.com/jquense/yup/issues/1259
-                    ],
-                  },
-                })
-              },
-            }),
-          } as any,
-          () => null
-        )
-      })
-
-      test('2 - enum error validation', () => {
-        const reqData = {
-          body: {
-            enum: 'b',
-          },
-        }
-        const lazyFn = apiDoc({
-          body: T.object({
-            enum: T.enum(['a']),
-          }),
-          returns: T.string,
-        })(() => {
-          expect('you shall not').toBe('pass')
-        })
-        const metadata = lazyFn(__expressOpenAPIHack__)
-
-        metadata.handle(
-          reqData as any,
-          {
-            status: () => ({
-              send: (errorObj: any) => {
-                expect(errorObj).toMatchObject({
-                  errors: {
-                    params: undefined,
-                    query: undefined,
-                    body: [
-                      {
-                        errors: ['enum must be one of the following values: a'],
-                        path: 'enum',
-                      },
                     ],
                   },
                 })

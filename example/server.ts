@@ -4,6 +4,7 @@ import { router } from './userRouter'
 import packageJSON from '../package.json'
 import swaggerUi from 'swagger-ui-express'
 import { queryParser } from 'express-query-parser'
+import { getMock_apiDocInstance } from '../src/typedExpressDocs'
 
 const app = express()
 const port = 5000
@@ -58,9 +59,16 @@ app.get(
   })
 )
 
+const customErrApiDoc = getMock_apiDocInstance({
+  errorFormatter: e => ({
+    success: false,
+    sorry___someErrors: e.errors,
+  }),
+})
+
 app.get(
   '/',
-  apiDoc({
+  customErrApiDoc({
     query: {
       s: T.null_string,
       b: T.null_boolean,
@@ -72,12 +80,21 @@ app.get(
       not_exist_b: T.null_boolean,
       not_exist_n: T.number,
     },
-    returns: T.string,
+    body: T.object({
+      aa: T.object({
+        aa: T.object({
+          aa: T.number,
+          bb: T.number,
+          cc: T.number,
+        }),
+      }),
+    }),
+    returns: T.object({ x: T.string }),
   })((req, res) => {
-    const x = req.query
-    res.send('ok')
+    throw new Error('not implemented yet')
   })
 )
+
 const string3PlusChars = T.custom_string(a => {
   if (a.length < 3) {
     throw new Error('length needs to be >= 3')

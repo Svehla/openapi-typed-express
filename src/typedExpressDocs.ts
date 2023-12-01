@@ -29,7 +29,7 @@ type UseEmptyObjectAsDefault<T> = T extends Record<any, any> ? T : {}
 type WrapToTObject<T> = { type: 'object'; required: true; properties: T }
 
 export const getApiDocInstance =
-  ({ errorTransformer = (e => e) as (err: any) => any } = {}) =>
+  ({ errorFormatter = (e => e) as (err: any) => any } = {}) =>
   <C extends Config>(docs: C) =>
   (
     handle: (
@@ -102,7 +102,7 @@ export const getApiDocInstance =
               body: normalizeYupErrToObj(bodyErrors),
             },
           }
-          res.status(400).send(errorTransformer(errObj))
+          res.status(400).send(errorFormatter(errObj))
           return
         }
 
@@ -283,12 +283,12 @@ export const initApiDocs = (
 }
 
 export const getMock_apiDocInstance =
-  ({ errorTransformer = (e => e) as (err: any) => any } = {}) =>
+  ({ errorFormatter = (e => e) as (err: any) => any } = {}) =>
   <T extends (req: Request, res: Response, next: NextFunction) => any>(
     a: Parameters<typeof apiDoc>[0]
   ) =>
   (_handler: T) => {
-    return getApiDocInstance({ errorTransformer })(a)(
+    return getApiDocInstance({ errorFormatter })(a)(
       // @ts-ignore TS infinite deep recursion
       (_req, res) => {
         res.send(a.returns ? tSchemaToJSValue(a.returns) : undefined)
