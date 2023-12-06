@@ -282,6 +282,7 @@ export const initApiDocs = (
   )
 }
 
+// there are not properly typing inferences
 export const getMock_apiDocInstance =
   ({ errorFormatter = (e => e) as (err: any) => any } = {}) =>
   <T extends (req: Request, res: Response, next: NextFunction) => any>(

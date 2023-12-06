@@ -103,42 +103,53 @@ export type TSchema =
   | TCustomType
   | TOneOf
   | THashMap
+type MakeTOptional<T, Required extends boolean> = Required extends true ? T : T | undefined | null
 
-type MakeOptional<T, Required extends boolean> = Required extends true ? T : T | undefined | null
+// all of this is here to support optional keys of object (not values)
+type GetValues<T> = T extends Record<any, infer Values> ? Values : never
+type GetFilterRequiredKeysUnion<
+  T extends Record<any, { required: boolean }>,
+  IsRequired extends boolean,
+  T1 = GetValues<{ [K in keyof T]: T[K] & { key: K } }> & { required: IsRequired },
+  // generic stops to work if we do not keep this line here
+  T2 = { [K in keyof T1]: T1[K] },
+  // @ts-expect-error
+  T3 = T2['key']
+> = T3
+type InferObjWithOptKeysObject<
+  Properties extends TObject['properties'],
+  ReqKeys = GetFilterRequiredKeysUnion<Properties, true>,
+  OptKeys = GetFilterRequiredKeysUnion<Properties, false>,
+  // @ts-expect-error
+  ReqObjPart = { [K in ReqKeys]: InferSchemaType<Properties[K]> },
+  // @ts-expect-error
+  OptObjPart = { [K in OptKeys]?: InferSchemaType<Properties[K]> },
+  Out = ReqObjPart & OptObjPart,
+  NiceOut = { [K in keyof Out]: Out[K] }
+> = NiceOut
 
 // TODO: write TS tests
 export type InferSchemaType<T extends TSchema | undefined> = T extends undefined
   ? undefined
-  : T extends {
-      type: 'object'
-      properties: infer U
-    }
-  ? MakeOptional<
-      {
-        [K in keyof U]: InferSchemaType<
-          // @ts-expect-error
-          U[K]
-        >
-      },
-      T['required']
-    >
+  : T extends { type: 'object' }
+  ? MakeTOptional<InferObjWithOptKeysObject<T['properties']>, T['required']>
   : T extends { type: 'array'; items: any }
-  ? MakeOptional<InferSchemaType<T['items']>[], T['required']>
+  ? MakeTOptional<InferSchemaType<T['items']>[], T['required']>
   : T extends { type: 'boolean' }
-  ? MakeOptional<boolean, T['required']>
+  ? MakeTOptional<boolean, T['required']>
   : T extends { type: 'string' }
-  ? MakeOptional<string, T['required']>
+  ? MakeTOptional<string, T['required']>
   : T extends { type: 'oneOf' }
   ? // TODO: TS is working for iterating over union? if yes, than cool af!
-    MakeOptional<InferSchemaType<T['options'][number]>, T['required']>
+    MakeTOptional<InferSchemaType<T['options'][number]>, T['required']>
   : T extends { type: 'enum' }
-  ? MakeOptional<T['options'][number], T['required']>
+  ? MakeTOptional<T['options'][number], T['required']>
   : T extends { type: 'number' }
-  ? MakeOptional<number, T['required']>
+  ? MakeTOptional<number, T['required']>
   : T extends { type: 'hashMap' }
-  ? MakeOptional<Record<string, InferSchemaType<T['property']>>, T['required']>
+  ? MakeTOptional<Record<string, InferSchemaType<T['property']>>, T['required']>
   : T extends { type: 'customType' }
-  ? MakeOptional<ReturnType<T['syncParser']>, T['required']>
+  ? MakeTOptional<ReturnType<T['syncParser']>, T['required']>
   : T extends { type: 'any' }
   ? any
   : never
