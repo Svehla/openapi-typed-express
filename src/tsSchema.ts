@@ -110,12 +110,12 @@ type GetValues<T> = T extends Record<any, infer Values> ? Values : never
 type GetFilterRequiredKeysUnion<
   T extends Record<any, { required: boolean }>,
   IsRequired extends boolean,
-  T1 = GetValues<{ [K in keyof T]: T[K] & { key: K } }> & { required: IsRequired },
-  // generic stops to work if we do not keep this line here
-  T2 = { [K in keyof T1]: T1[K] },
+  EnhancedObjects = { [K in keyof T]: T[K] & { key: K } },
+  T1 = GetValues<EnhancedObjects> & { required: IsRequired },
   // @ts-expect-error
-  T3 = T2['key']
-> = T3
+  T2 = T1['key']
+> = T2
+
 type InferObjWithOptKeysObject<
   Properties extends TObject['properties'],
   ReqKeys = GetFilterRequiredKeysUnion<Properties, true>,
@@ -124,14 +124,28 @@ type InferObjWithOptKeysObject<
   ReqObjPart = { [K in ReqKeys]: InferSchemaType<Properties[K]> },
   // @ts-expect-error
   OptObjPart = { [K in OptKeys]?: InferSchemaType<Properties[K]> },
-  Out = ReqObjPart & OptObjPart,
-  NiceOut = { [K in keyof Out]: Out[K] }
-> = NiceOut
+  Out = ReqObjPart & OptObjPart
+> = Out
 
 // TODO: write TS tests
 export type InferSchemaType<T extends TSchema | undefined> = T extends undefined
   ? undefined
-  : T extends { type: 'object' }
+  : //  worst but faster implementation of object (missing optional keys { key?: ... })
+  // T extends {
+  //     type: 'object'
+  //     properties: infer U
+  //   }
+  // ? MakeTOptional<
+  //     {
+  //       [K in keyof U]: InferSchemaType<
+  //         // @ts-expect-error
+  //         U[K]
+  //       >
+  //     },
+  //     T['required']
+  //   >
+  // :
+  T extends { type: 'object' }
   ? MakeTOptional<InferObjWithOptKeysObject<T['properties']>, T['required']>
   : T extends { type: 'array'; items: any }
   ? MakeTOptional<InferSchemaType<T['items']>[], T['required']>
@@ -153,3 +167,18 @@ export type InferSchemaType<T extends TSchema | undefined> = T extends undefined
   : T extends { type: 'any' }
   ? any
   : never
+
+type X = InferSchemaType<{
+  type: 'object'
+  properties: {
+    b1: {
+      type: 'boolean'
+      required: true
+    }
+    b2: {
+      type: 'boolean'
+      required: false
+    }
+  }
+  required: true
+}>
