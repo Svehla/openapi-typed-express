@@ -1,5 +1,7 @@
 // ----------------------- schema ------------------------
 
+import { NiceMerge } from './generics'
+
 export type TList = {
   type: 'array'
   items: TSchema
@@ -125,6 +127,8 @@ type InferObjWithOptKeysObject<
   ReqObjPart = { [K in ReqKeys]: InferSchemaType<Properties[K]> },
   // @ts-expect-error
   OptObjPart = { [K in OptKeys]?: InferSchemaType<Properties[K]> },
+  // NiceMerge cannot be there because it do infinite recursion on larger projects
+  // Out = NiceMerge<ReqObjPart, OptObjPart>
   Out = ReqObjPart & OptObjPart
 > = Out
 

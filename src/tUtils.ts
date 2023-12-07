@@ -2,7 +2,27 @@ import { T } from '.'
 import { NiceMerge, NiceOmit, NicePick } from './generics'
 import { TObject } from './tsSchema'
 
-// TODO: add unit tests
+// not sure how when and what is the final solution for those problems and if them should be here or in the lib codebase
+// nicer, smaller, but more abstract solution for omitting...
+/*
+const omitAttrs = <
+  U extends Record<any, any>,
+  KeysToOmit extends (keyof U)[],
+  Out = Omit<U, KeysToOmit[number]>,
+  NiceOut = { [K in keyof Out]: Out[K] }
+>(
+  obj: U,
+  ...attrsName: KeysToOmit
+): NiceOut => {
+  const objCopy = { ...obj }
+  attrsName.forEach(key => {
+    delete objCopy[key]
+  })
+  return objCopy
+}
+*/
+
+// TODO: add typed unit tests
 
 export const omitTObject = <
   TObj extends TObject,
