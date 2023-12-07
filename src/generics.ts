@@ -6,7 +6,7 @@ export type DeepWriteable<T> = {
 export type NiceOmit<
   //
   T,
-  K extends keyof any,
+  K extends keyof T,
   T0 = Omit<T, K>,
   T1 = { [K in keyof T0]: T0[K] }
 > = T1
@@ -14,7 +14,7 @@ export type NiceOmit<
 export type NicePick<
   //
   T,
-  K extends keyof any,
+  K extends keyof T,
   T0 = Pick<T, K>,
   T1 = { [K in keyof T0]: T0[K] }
 > = T1
