@@ -11,6 +11,7 @@ export {
   mock_apiDoc,
 } from './typedExpressDocs'
 export { codegenSchemaToJSCode } from './codegen'
+export { tUtils } from './tUtils'
 
 export const tSchema = {
   ...rawTSchema,

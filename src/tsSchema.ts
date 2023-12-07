@@ -103,6 +103,7 @@ export type TSchema =
   | TCustomType
   | TOneOf
   | THashMap
+
 type MakeTOptional<T, Required extends boolean> = Required extends true ? T : T | undefined | null
 
 // all of this is here to support optional keys of object (not values)
