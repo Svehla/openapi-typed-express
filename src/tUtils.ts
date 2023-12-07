@@ -1,3 +1,5 @@
+import { T } from '.'
+import { NiceMerge, NiceOmit, NicePick } from './generics'
 import { TObject } from './tsSchema'
 
 // TODO: add unit tests
@@ -5,15 +7,11 @@ import { TObject } from './tsSchema'
 export const omitTObject = <
   TObj extends TObject,
   PropsToOmit extends (keyof TObj['properties'])[],
-  NewProperties = Omit<TObj['properties'], PropsToOmit[number]>,
-  NiceProperties = { [K in keyof NewProperties]: NewProperties[K] },
-  Out = Omit<TObj, 'properties'> & {
-    properties: NiceProperties
-  },
-  NiceOut = { [K in keyof Out]: Out[K] }
+  NewProperties = NiceOmit<TObj['properties'], PropsToOmit[number]>,
+  Out = NiceMerge<Omit<TObj, 'properties'>, { properties: NewProperties }>
 >(
   obj: TObj,
-  attrsName: PropsToOmit
+  ...attrsName: PropsToOmit
 ) => {
   const propertiesCopy = { ...obj.properties }
   attrsName.forEach(key => {
@@ -21,19 +19,15 @@ export const omitTObject = <
     delete propertiesCopy[key]
   })
 
-  const out = { ...obj, properties: propertiesCopy } as NiceOut
+  const out = { ...obj, properties: propertiesCopy } as Out
   return out
 }
 
 export const pickTObject = <
   TObj extends TObject,
   PropsToPick extends (keyof TObj['properties'])[],
-  NewProperties = Pick<TObj['properties'], PropsToPick[number]>,
-  NiceProperties = { [K in keyof NewProperties]: NewProperties[K] },
-  Out = Omit<TObj, 'properties'> & {
-    properties: NiceProperties
-  },
-  NiceOut = { [K in keyof Out]: Out[K] }
+  NewProperties = NicePick<TObj['properties'], PropsToPick[number]>,
+  Out = NiceMerge<Omit<TObj, 'properties'>, { properties: NewProperties }>
 >(
   obj: TObj,
   ...attrsName: PropsToPick
@@ -44,7 +38,7 @@ export const pickTObject = <
     propertiesCopy[key] = obj.properties[key]
   })
 
-  const out = { ...obj, properties: propertiesCopy } as NiceOut
+  const out = { ...obj, properties: propertiesCopy } as Out
   return out
 }
 

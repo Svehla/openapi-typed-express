@@ -1,11 +1,6 @@
+import { DeepWriteable, NiceMerge } from './generics'
 import { InferSchemaType, TSchema } from './tsSchema'
 import { mapEntries } from './utils'
-
-// ----------------------- type-utils ------------------------
-type NiceMerge<T, U, T0 = T & U, T1 = { [K in keyof T0]: T0[K] }> = T1
-type DeepWriteable<T> = {
-  -readonly [P in keyof T]: DeepWriteable<T[P]>
-}
 
 // --------- builder functions ---------
 
