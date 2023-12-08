@@ -146,11 +146,19 @@ export const tSchema = {
   custom_any: (validator: (a: any) => void) => tNonNullable(tAddValidator(tAny, validator)),
   custom_null_any: (validator: (a: any) => void) => tNonNullable(tAddValidator(tAny, validator)),
 
-  oneOf: <T extends readonly any[] | any[]>(options: T) => tNonNullable(tOneOf(options)),
-  null_oneOf: <T extends readonly any[] | any[]>(options: T) => tNullable(tOneOf(options)),
+  oneOf: <T extends readonly Record<any, any>[] | Record<any, any>[]>(options: T) =>
+    tNonNullable(tOneOf(options)),
 
-  enum: <T extends readonly any[] | any[]>(options: T) => tNonNullable(tEnum(options)),
-  null_enum: <T extends readonly any[] | any[]>(options: T) => tNullable(tEnum(options)),
+  null_oneOf: <T extends readonly Record<any, any>[] | Record<any, any>[]>(options: T) =>
+    tNullable(tOneOf(options)),
+
+  enum: <T extends readonly (string | number | boolean)[] | (string | number | boolean)[]>(
+    options: T
+  ) => tNonNullable(tEnum(options)),
+
+  null_enum: <T extends readonly (string | number | boolean)[] | (string | number | boolean)[]>(
+    options: T
+  ) => tNullable(tEnum(options)),
 
   object: <T extends Record<string, TSchema>>(args: T) => tNonNullable(tObject(args)),
   null_object: <T extends Record<string, TSchema>>(args: T) => tNullable(tObject(args)),
