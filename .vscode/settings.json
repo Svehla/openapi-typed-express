@@ -27,12 +27,7 @@
     "editor.formatOnSave": false
   },
   "editor.codeActionsOnSave": {
-    "source.fixAll.eslint": true
+    "source.fixAll.eslint": "explicit"
   },
-  "cSpell.words": [
-    "asynciterable",
-    "codegen",
-    "Jakub",
-    "Švehla"
-  ]
+  "cSpell.words": ["asynciterable", "codegen", "Jakub", "Švehla"]
 }

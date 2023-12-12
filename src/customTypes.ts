@@ -1,4 +1,4 @@
-import { tSchema as T } from './schemaBuilder'
+import { T } from './schemaBuilder'
 
 // ----------------------------------------------------------
 // ----------------------- cast types -----------------------

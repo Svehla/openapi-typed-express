@@ -1,5 +1,5 @@
 import { __expressOpenAPIHack__, apiDoc, getApiDocInstance } from '../src/typedExpressDocs'
-import { tSchema as T } from '../src'
+import { T } from '../src'
 
 const tCustom = T._custom
 

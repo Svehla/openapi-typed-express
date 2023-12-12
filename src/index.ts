@@ -2,7 +2,7 @@ export { jsValueToSchema, tSchemaToJSValue } from './jsValueToSchema'
 export { InferSchemaType, TSchema } from './tsSchema'
 export { convertSchemaToYupValidationObject } from './runtimeSchemaValidation'
 import { tCustom } from './customTypes'
-import { tSchema as rawTSchema } from './schemaBuilder'
+import { T as rawT } from './schemaBuilder'
 export {
   apiDoc,
   getApiDocInstance,
@@ -13,11 +13,9 @@ export {
 export { codegenSchemaToJSCode } from './codegen'
 export { tUtils } from './tUtils'
 
-export const tSchema = {
-  ...rawTSchema,
-
+const tSchema = {
+  ...rawT,
   _custom: tCustom,
 }
 
 export const T = tSchema
-export const TT = tSchema

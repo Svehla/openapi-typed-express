@@ -17,7 +17,7 @@ So you can just simply wrap your endpoint with the `apiDoc(...)` and initialize 
 
 ```typescript
 import express from 'express'
-import { apiDoc, initApiDocs, tSchema as T } from 'swagger-typed-express-docs'
+import { apiDoc, initApiDocs, T } from 'swagger-typed-express-docs'
 import swaggerUi from 'swagger-ui-express'
 
 const app = express()
@@ -94,7 +94,7 @@ and define a meta-information about inputs & outputs of each API handler.
 example usage:
 
 ```typescript
-import { tSchema as T } from 'swagger-typed-express-docs'
+import { T } from 'swagger-typed-express-docs'
 
 app.get(
   '/',

@@ -1,5 +1,5 @@
 import { convertSchemaToYupValidationObject } from '../src'
-import { tSchema as T } from '../src'
+import { T } from '../src'
 import { normalizeYupErrToObj } from '../src/utils'
 
 describe('runtimeSchemaValidation', () => {

@@ -1,4 +1,4 @@
-import { tSchema as T } from './schemaBuilder'
+import { T } from './schemaBuilder'
 import { InferSchemaType, TSchema } from './tsSchema'
 
 // TODO: add proper TS output schema types

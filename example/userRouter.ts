@@ -1,5 +1,5 @@
 import express from 'express'
-import { apiDoc, InferSchemaType, tSchema as T } from '../src'
+import { apiDoc, InferSchemaType, T } from '../src'
 
 export const router = express.Router()
 

@@ -119,7 +119,7 @@ const deepNullable = (schema: TSchema): any => {
   return tNullable(schema) as TSchema
 }
 
-export const tSchema = {
+export const T = {
   // is null_ proper prefix for informing user that its null"able", not JS null field?
   // my TS infer handler handle it as undefined, not null... typed-express-docs is not supporting null / undef
   // so I guess it doesn't matter and null"able" is nice JS readable API

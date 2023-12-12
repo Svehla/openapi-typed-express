@@ -1,6 +1,6 @@
 import { DeepPartial, normalizeYupErrToObj, deepMerge, mergePaths } from './utils'
 import { NextFunction, Request, Response } from 'express'
-import { tSchema as T } from './schemaBuilder'
+import { T } from './schemaBuilder'
 import { UrlsMethodDocs, convertUrlsMethodsSchemaToOpenAPI } from './openAPIFromSchema'
 import { convertSchemaToYupValidationObject } from './runtimeSchemaValidation'
 import { parseUrlFromExpressRegexp } from './expressRegExUrlParser'
