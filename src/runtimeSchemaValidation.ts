@@ -9,8 +9,9 @@ yup.addMethod(yup.mixed, 'oneOfSchemas', function oneOfSchemas(schemas: any[], m
   return this.test(
     'one-of-schemas-exact',
     message || 'Not all items in ${path} match one of the allowed schemas',
-    item => {
-      return schemas.some(schema => schema.isValidSync(item))
+    async item => {
+      const areValid = await Promise.all(schemas.map(schema => schema.isValid(item)))
+      return areValid.some(i => i === true)
     }
   )
 })

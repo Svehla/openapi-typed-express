@@ -22,8 +22,8 @@ describe('runtimeSchemaValidation', () => {
     expect(objValidationRes).toMatchObject(output)
   }
 
+  const delay = (ms: number) => new Promise(res => setTimeout(res, ms))
   describe('async custom types validations', () => {
-    const delay = (ms: number) => new Promise(res => setTimeout(res, ms))
     test('1', async () => {
       await validateDataAgainstSchema(
         T.addValidator(
@@ -45,6 +45,25 @@ describe('runtimeSchemaValidation', () => {
           async () => await delay(10)
         ),
         'x',
+        { status: 'fulfilled' }
+      )
+    })
+  })
+
+  describe.only('adding custom validation function', () => {
+    test('1', async () => {
+      const tAsyncType = T.addValidator(
+        T.customType('uniq_id_in_da_db', v => v, T.string),
+        async () => await delay(10)
+      )
+
+      await validateDataAgainstSchema(
+        T.oneOf([
+          T.object({
+            x: tAsyncType,
+          }),
+        ] as const),
+        { x: 'x' },
         { status: 'fulfilled' }
       )
     })
