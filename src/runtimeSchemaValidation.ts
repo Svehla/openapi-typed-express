@@ -20,20 +20,21 @@ yup.addMethod(yup.mixed, 'oneOfSchemas', function oneOfSchemas(schemas: any[], m
  * .required() is here to be sure that key in object is defined even if the value is null
  */
 export const convertSchemaToYupValidationObject = (
-  schema: TSchema
+  schema: TSchema,
+  extra?: { customTypesMode?: 'decode' | 'encode' }
 ): yup.MixedSchema<any, any, any> => {
   // let yv = null as any
   // yup validator
   let yupValidator = yup as any
 
   if (schema?.type === 'array') {
-    yupValidator = yupValidator.array().of(convertSchemaToYupValidationObject(schema.items))
+    yupValidator = yupValidator.array().of(convertSchemaToYupValidationObject(schema.items, extra))
     //
   } else if (schema?.type === 'object') {
     // TODO: possible infinite TS recursion while inferring return type
     yupValidator = yupValidator.object(
       mapEntries(([k, v]) => {
-        const yupValue = convertSchemaToYupValidationObject(v)
+        const yupValue = convertSchemaToYupValidationObject(v, extra)
         // keys of object needs to be required if value is required
         const value = v.required && yupValue.required ? yupValue.required() : yupValue
         return [k, value]
@@ -101,7 +102,7 @@ export const convertSchemaToYupValidationObject = (
   } else if (schema?.type === 'customType') {
     yupValidator = yup.mixed()
     // transform is not working with the { strict: true } | .strict()... fucking fuck!!!!
-    // this lib is not supporting yup castng, only transform for custom types are enable
+    // this lib is not supporting yup casting, only transform for custom types are enable
     yupValidator = yupValidator
       .transform(function (value: any) {
         if (schema.required === false && (value === null || value === undefined)) {
@@ -110,15 +111,21 @@ export const convertSchemaToYupValidationObject = (
 
         try {
           const parentTypeValidator = convertSchemaToYupValidationObject(
-            schema.inheritTSchema
+            schema.parentTSchema,
+            extra
           )
           parentTypeValidator.validateSync(value, { abortEarly: false })
 
           // parser cannot return Promise!
           // https://github.com/jquense/yup/issues/238
-          const parsedValue = schema.encoder(value)
-
-          return parsedValue
+          // TODO: syncDecoder/syncEncoder cannot be async function, only validator can be
+          if (extra?.customTypesMode === 'encode') {
+            const parsedValue = schema.syncEncoder(value) // TODO: put param if it should decode, or encode
+            return parsedValue
+          } else {
+            const parsedValue = schema.syncDecoder(value) // TODO: put param if it should decode, or encode
+            return parsedValue
+          }
         } catch (err) {
           // err is value => then the value will be transformed into proper yup error
           return err
@@ -148,7 +155,9 @@ export const convertSchemaToYupValidationObject = (
 
     yupValidator = yup.lazy(v =>
       yup
-        .object(mapEntries(([k]) => [k, convertSchemaToYupValidationObject(schema.property)], v))
+        .object(
+          mapEntries(([k]) => [k, convertSchemaToYupValidationObject(schema.property, extra)], v)
+        )
         .required()
     )
   } else if (schema?.type === 'enum') {
@@ -157,7 +166,7 @@ export const convertSchemaToYupValidationObject = (
   } else if (schema?.type === 'oneOf') {
     yupValidator = yupValidator
       .mixed()
-      .oneOfSchemas(schema.options.map(i => convertSchemaToYupValidationObject(i)))
+      .oneOfSchemas(schema.options.map(i => convertSchemaToYupValidationObject(i, extra)))
     //
   } else {
     throw new Error(`unsupported type ${(schema as any)?.type}`)

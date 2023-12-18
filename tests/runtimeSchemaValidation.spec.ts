@@ -1,4 +1,4 @@
-import { convertSchemaToYupValidationObject } from '../src'
+import { InferSchemaType, convertSchemaToYupValidationObject } from '../src'
 import { T } from '../src'
 import { normalizeYupErrToObj } from '../src/utils'
 
@@ -50,7 +50,7 @@ describe('runtimeSchemaValidation', () => {
     })
   })
 
-  describe.only('async validation inside enums', () => {
+  describe('async validation inside enums', () => {
     test('1', async () => {
       const tAsyncType = T.addValidator(
         T.customType('uniq_id_in_da_db', T.string, v => v),
@@ -431,6 +431,31 @@ describe('runtime custom types parsing ', () => {
         status: 'fulfilled',
         value: 5,
       })
+    })
+  })
+
+  describe('custom types encoder + decoder', () => {
+    test('1', async () => {
+      const x = T.object({
+        x: T.customType(
+          'x',
+          T.string,
+          p => ('in: ' + p[0]) as `in: ${string}`,
+          p => 'out: ' + p[p.length - 1]
+        ),
+      })
+      const decoderInVal = convertSchemaToYupValidationObject(x, { customTypesMode: 'decode' })
+      const encoderOutVal = convertSchemaToYupValidationObject(x, { customTypesMode: 'encode' })
+
+      type _In = InferSchemaType<typeof x>
+      // it's not possible to get Type of decoder
+      // type Out = InferSchemaType<typeof x>
+
+      const o1 = decoderInVal.validateSync({ x: 'foo_bar' })
+      const o2 = encoderOutVal.validateSync({ x: 'foo_bar' })
+
+      expect(o1).toEqual({ x: 'in: f' })
+      expect(o2).toEqual({ x: 'out: r' })
     })
   })
 })

@@ -111,7 +111,7 @@ export const getApiDocInstance =
         if (queryValidator) req.query = queryValidationRes.value
         if (bodyValidator) req.body = bodyValidationRes.value
 
-        // TODO: apply serializer for custom scalar types like `Date -> string` (reverse parser)
+        // TODO: apply encoder (serializer) for custom types like `Date -> string` (reverse decoder (parser))
         // @ts-ignore => if this ignore is missing, there is potential infinite ts recursion...
         return handle(req as any, res, next)
       }

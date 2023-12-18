@@ -12,12 +12,16 @@ describe('schemaBuilder', () => {
     h: {
       ...T.customType('h', T.string, value => value),
       // @ts-expect-error hack for raw JSON schema comparison
-      encoder: undefined,
+      syncDecoder: undefined,
+      // @ts-expect-error hack for raw JSON schema comparison
+      syncEncoder: undefined,
     },
     i: {
       ...T.customType('i', T.string, value => value),
       // @ts-expect-error hack for raw JSON schema comparison
-      encoder: undefined,
+      syncDecoder: undefined,
+      // @ts-expect-error hack for raw JSON schema comparison
+      syncEncoder: undefined,
     },
   })
 
@@ -54,21 +58,23 @@ describe('schemaBuilder', () => {
           type: 'customType',
           name: 'custom_h',
           required: true,
-          inheritTSchema: {
+          parentTSchema: {
             required: true,
             type: 'string',
           },
-          parser: undefined,
+          syncEncoder: undefined,
+          syncDecoder: undefined,
         },
         i: {
           type: 'customType',
           name: 'custom_i',
           required: true,
-          inheritTSchema: {
+          parentTSchema: {
             required: true,
             type: 'string',
           },
-          parser: undefined,
+          syncEncoder: undefined,
+          syncDecoder: undefined,
         },
       },
     })

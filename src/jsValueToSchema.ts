@@ -80,7 +80,7 @@ export const tSchemaToJSValue = <T extends TSchema>(schema: T): InferSchemaType<
       return 1.1 // 1 should be parsed as a boolean xd
 
     case 'customType':
-      return tSchemaToJSValue(schema.inheritTSchema)
+      return tSchemaToJSValue(schema.parentTSchema)
 
     default:
       throw new Error(`unsupported type: ${JSON.stringify(schema)}`)
