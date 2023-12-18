@@ -27,7 +27,7 @@ describe('runtimeSchemaValidation', () => {
     test('1', async () => {
       await validateDataAgainstSchema(
         T.addValidator(
-          T.customType('uniq_id_in_da_db', v => v, T.string),
+          T.customType('uniq_id_in_da_db', T.string, v => v),
           async () => {
             await delay(10)
             throw new Error('value is invalid!!!!')
@@ -41,7 +41,7 @@ describe('runtimeSchemaValidation', () => {
     test('2', async () => {
       await validateDataAgainstSchema(
         T.addValidator(
-          T.customType('uniq_id_in_da_db', v => v, T.string),
+          T.customType('uniq_id_in_da_db', T.string, v => v),
           async () => await delay(10)
         ),
         'x',
@@ -50,10 +50,10 @@ describe('runtimeSchemaValidation', () => {
     })
   })
 
-  describe.only('adding custom validation function', () => {
+  describe.only('async validation inside enums', () => {
     test('1', async () => {
       const tAsyncType = T.addValidator(
-        T.customType('uniq_id_in_da_db', v => v, T.string),
+        T.customType('uniq_id_in_da_db', T.string, v => v),
         async () => await delay(10)
       )
 

@@ -40,6 +40,7 @@ export const convertSchemaToYupValidationObject = (
       }, schema.properties)
     )
   } else if (schema?.type === 'boolean') {
+    // we cannot use default yup boolean because its not working for .validate() without casting with support of custom transform
     // yupValidator = yupValidator.boolean().strict()
     yupValidator = yup
       .mixed()
@@ -58,6 +59,7 @@ export const convertSchemaToYupValidationObject = (
       })
     //
   } else if (schema?.type === 'number') {
+    // we cannot use default yup boolean because its not working for .validate() without casting with support of custom transform
     // yupValidator = yupValidator.number().strict()
     yupValidator = yup
       .mixed()
@@ -76,6 +78,7 @@ export const convertSchemaToYupValidationObject = (
       })
     //
   } else if (schema?.type === 'string') {
+    // we cannot use default yup boolean because its not working for .validate() without casting with support of custom transform
     // yupValidator = yupValidator.string().strict()
     yupValidator = yup
       .mixed()
@@ -107,13 +110,13 @@ export const convertSchemaToYupValidationObject = (
 
         try {
           const parentTypeValidator = convertSchemaToYupValidationObject(
-            schema.serializedInheritFromSchema
+            schema.inheritTSchema
           )
           parentTypeValidator.validateSync(value, { abortEarly: false })
 
           // parser cannot return Promise!
           // https://github.com/jquense/yup/issues/238
-          const parsedValue = schema.syncParser(value)
+          const parsedValue = schema.encoder(value)
 
           return parsedValue
         } catch (err) {

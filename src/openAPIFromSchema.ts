@@ -63,7 +63,7 @@ const toOpenAPISchema = (schema: TSchema): any => {
       return anyTypeOpenAPI
 
     case 'customType':
-      return toOpenAPISchema(schema.serializedInheritFromSchema)
+      return toOpenAPISchema(schema.inheritTSchema)
 
     default:
       return {

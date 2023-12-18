@@ -59,17 +59,21 @@ const tList = <T extends TSchema>(items: T) => ({
 
 // TODO: add config extra args like min/max/length/whatever
 // TODO: add serializers for res.send()?
-export const tCustomType = <Name extends string, R, ParentType extends TSchema>(
+export const tCustomType = <Name extends string, ParentType extends TSchema, R>(
   name: Name,
-  syncParser: (value: InferSchemaType<ParentType>) => R,
-  // TODO: return values could serialize in the future... but it's not mandatory right now
-  serializedInheritFromSchema = tAny as ParentType
+  inheritTSchema: ParentType,
+  encoder: (value: InferSchemaType<ParentType>) => R
+  // TODO:
+  //   should I add decoder into res.send()?
+  //   return values could serialize in the future... but it's not mandatory right now
+  // decoder?: (value: R) => InferSchemaType<ParentType>
 ) => ({
   name: `custom_${name}` as const,
   type: 'customType' as const,
-  serializedInheritFromSchema,
+  inheritTSchema,
   required: true as const,
-  syncParser,
+  encoder,
+  // decoder,
 })
 
 const tNonNullable = <T extends { required: any }>(
@@ -112,7 +116,7 @@ const deepNullable = (schema: TSchema): any => {
   } else if (schema.type === 'customType') {
     return {
       ...tNullable(schema),
-      serializedInheritFromSchema: deepNullable(schema.serializedInheritFromSchema),
+      inheritTSchema: deepNullable(schema.inheritTSchema),
     }
     // ???
   }

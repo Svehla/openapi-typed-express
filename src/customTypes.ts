@@ -4,28 +4,24 @@ import { T } from './schemaBuilder'
 // ----------------------- cast types -----------------------
 const tDate = T.customType(
   'date',
+  T.string, // I could custom T.IsoString type with validtor fn
   value => {
     const parsedValue = new Date(value)
     if (isNaN(parsedValue?.getTime())) {
       throw new Error('invalid Date')
     }
     return parsedValue
-  },
-  T.string // I could custom T.IsoString type with validtor fn
+  }
 )
 
 // TODO: how to solve basic types (boolean|string) casting?
-const tCast_number = T.customType(
-  'cast_number',
-  value => {
-    const parsedValue = Number(value)
-    if (isNaN(parsedValue)) {
-      throw new Error('invalid number cast')
-    }
-    return parsedValue
-  },
-  T.string
-)
+const tCast_number = T.customType('cast_number', T.string, value => {
+  const parsedValue = Number(value)
+  if (isNaN(parsedValue)) {
+    throw new Error('invalid number cast')
+  }
+  return parsedValue
+})
 
 // ----- ---------------------------------------------------------- ----
 // ----- more exact format runtime validation without changing type ----

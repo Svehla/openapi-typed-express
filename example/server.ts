@@ -30,21 +30,21 @@ app.get(
     body: T.object({
       obj: T.object({
         a: T.addValidator(
-          T.customType('uniq_id_in_da_db_a', v => v, T.string),
+          T.customType('uniq_id_in_da_db_a', T.string, v => v),
           async () => {
             await delay(10)
             throw new Error('value is... invalid!!!!')
           }
         ),
         b: T.addValidator(
-          T.customType('uniq_id_in_da_db_b', v => v, T.string),
+          T.customType('uniq_id_in_da_db_b', T.string, v => v),
           async () => {
             await delay(1_000)
             throw new Error('value is ... ... ... invalid!!!!')
           }
         ),
         c: T.addValidator(
-          T.customType('uniq_id_in_da_db_c', v => v, T.string),
+          T.customType('uniq_id_in_da_db_c', T.string, v => v),
           async () => {
             await delay(1_000)
             throw new Error('value is ... ... ... invalid!!!!')
