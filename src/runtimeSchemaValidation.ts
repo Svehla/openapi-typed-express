@@ -2,6 +2,23 @@ import * as yup from 'yup'
 import { mapEntries } from './utils'
 import { TSchema } from './tsSchema'
 
+/**
+ * yup errors are stringified into stack trace
+ * thanks to this function we extract JSON which describe error with better
+ * programming API
+ */
+export const normalizeAbortEarlyYupErr = (obj?: any) => {
+  if (!obj) return undefined
+  const yErrObj = JSON.parse(JSON.stringify(obj)) as { inner: any[] }
+  // console.log(yErrObj)
+  const niceYErrObj = [
+    // @ ts-expect-error
+    // yErrObj.errors ? { path: yErrObj.path ?? '', errors: yErrObj.errors } : undefined,
+    ...yErrObj?.inner?.map(i => ({ path: i?.path, errors: i?.errors })),
+  ].filter(Boolean)
+  return niceYErrObj
+}
+
 export const convertSchemaToYupValidationObject = (
   schema: TSchema,
   extra?: { customTypesMode?: 'decode' | 'encode'; runAsyncValidations?: boolean }
@@ -153,6 +170,9 @@ export const convertSchemaToYupValidationObject = (
     yupValidator = yupValidator
       .mixed()
       .transform((value: any) => {
+        if (schema.required === false && (value === null || value === undefined)) {
+          return value
+        }
         // cannot run async function inside .transform
         const extraNoAsyncValidation = { ...extra, runAsyncValidations: false }
 
@@ -182,10 +202,12 @@ export const convertSchemaToYupValidationObject = (
         test: async function (transformedValue: any, conf: any) {
           try {
             // test that everything is valid... one of option, async validation
-
             if (transformedValue instanceof Error) throw transformedValue
             const value = conf.originalValue
 
+            if (schema.required === false && (value === null || value === undefined)) {
+              return true
+            }
             // this is duplicated code with .transform( method, but i dunno how to handle yup context info share
 
             const extraNoAsyncValidation = { ...extra, runAsyncValidations: false }
@@ -199,7 +221,9 @@ export const convertSchemaToYupValidationObject = (
             const activeTSchema = schema.options[matchOptionIndex]
 
             // run async validations...
-            await convertSchemaToYupValidationObject(activeTSchema, extra).validate(value)
+            await convertSchemaToYupValidationObject(activeTSchema, extra).validate(value, {
+              abortEarly: false,
+            })
             return true
           } catch (err: any) {
             return this.createError({ path: this.path, message: (err as Error)?.message ?? '' })

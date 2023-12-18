@@ -1,6 +1,6 @@
 import { InferSchemaType, convertSchemaToYupValidationObject } from '../src'
 import { T } from '../src'
-import { normalizeYupErrToObj } from '../src/utils'
+import { normalizeAbortEarlyYupErr } from '../src/runtimeSchemaValidation'
 
 const delay = (ms: number) => new Promise(res => setTimeout(res, ms))
 
@@ -12,12 +12,7 @@ const validateDataAgainstSchema = async (schema: any, objToValidate: any, output
   ])
 
   if (objValidationRes.status === 'rejected') {
-    // console.log('-----------------------')
-    // console.log(objValidationRes.reason)
-    objValidationRes.reason = normalizeYupErrToObj(objValidationRes.reason)
-    // TODO: shit code???
-    // ?.map(i => i.errors)
-    // .flat()
+    objValidationRes.reason = normalizeAbortEarlyYupErr(objValidationRes.reason)
   }
 
   expect(objValidationRes).toMatchObject(output)
@@ -402,7 +397,7 @@ describe('runtime custom types parsing ', () => {
     const yupValidator = convertSchemaToYupValidationObject(schema)
     const [out] = await Promise.allSettled([yupValidator.cast(valueIn)])
     if (out.status === 'rejected') {
-      out.reason = normalizeYupErrToObj(out.reason)
+      out.reason = normalizeAbortEarlyYupErr(out.reason)
     }
     return out
   }
@@ -554,11 +549,17 @@ describe('runtime custom types parsing ', () => {
             T.boolean,
           ] as const)
         ),
+        y: T.null_oneOf([T.boolean] as const),
+        ny: T.null_oneOf([T.boolean] as const),
       })
 
       await validateDataAgainstSchema(
         x,
-        { x: [{ castNum: 4 }, true, false, { castNum: 124 }] },
+        {
+          x: [{ castNum: 4 }, true, false, { castNum: 124 }],
+          y: true,
+          ny: undefined,
+        },
         {
           status: 'rejected',
           reason: [
