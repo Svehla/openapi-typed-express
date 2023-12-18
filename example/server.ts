@@ -25,6 +25,36 @@ const delay = (ms: number) => new Promise(res => setTimeout(res, ms))
 // TODO: check if it works properly
 
 app.get(
+  '/x',
+  apiDoc({
+    body: T.object({
+      x: T.list(
+        T.oneOf([
+          T.object({
+            castNum: T.addValidator(
+              T.customType('x', T.string, x => {
+                const n = parseFloat(x)
+                if (n.toString() !== x.toString()) throw new Error('Non parsable number')
+                return n
+              }),
+              async v => {
+                await delay(100)
+                if (v.toString().includes('3')) throw new Error('cannot include number 3')
+              }
+            ),
+          }),
+          T.boolean,
+        ] as const)
+      ),
+    }),
+    returns: T.string,
+  })((req, res) => {
+    console.log(req.body)
+    res.send(req.body as any)
+  })
+)
+
+app.get(
   '/async-invalid',
   apiDoc({
     body: T.object({

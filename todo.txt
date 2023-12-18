@@ -3,4 +3,7 @@ missing validations for
 - files
 - http headers
 - etc...
-- > with custom error messages
+- with custom error messages
+
+bugs:
+- oneOf is not working with encoders/decoders... fuuuck!!!!

@@ -2,27 +2,28 @@ import { InferSchemaType, convertSchemaToYupValidationObject } from '../src'
 import { T } from '../src'
 import { normalizeYupErrToObj } from '../src/utils'
 
-describe('runtimeSchemaValidation', () => {
-  // TODO: create function to test if parsed cast value is proper
-  const validateDataAgainstSchema = async (schema: any, objToValidate: any, output: any) => {
-    const yupValidator = convertSchemaToYupValidationObject(schema)
-    const [objValidationRes] = await Promise.allSettled([
-      yupValidator.validate(objToValidate, { abortEarly: false }),
-    ])
+const delay = (ms: number) => new Promise(res => setTimeout(res, ms))
 
-    if (objValidationRes.status === 'rejected') {
-      // console.log('-----------------------')
-      // console.log(objValidationRes.reason)
-      objValidationRes.reason = normalizeYupErrToObj(objValidationRes.reason)
-      // TODO: shit code???
-      // ?.map(i => i.errors)
-      // .flat()
-    }
+// TODO: create function to test if parsed cast value is proper
+const validateDataAgainstSchema = async (schema: any, objToValidate: any, output: any) => {
+  const yupValidator = convertSchemaToYupValidationObject(schema)
+  const [objValidationRes] = await Promise.allSettled([
+    yupValidator.validate(objToValidate, { abortEarly: false }),
+  ])
 
-    expect(objValidationRes).toMatchObject(output)
+  if (objValidationRes.status === 'rejected') {
+    // console.log('-----------------------')
+    // console.log(objValidationRes.reason)
+    objValidationRes.reason = normalizeYupErrToObj(objValidationRes.reason)
+    // TODO: shit code???
+    // ?.map(i => i.errors)
+    // .flat()
   }
 
-  const delay = (ms: number) => new Promise(res => setTimeout(res, ms))
+  expect(objValidationRes).toMatchObject(output)
+}
+
+describe('runtimeSchemaValidation', () => {
   describe('async custom types validations', () => {
     test('1', async () => {
       await validateDataAgainstSchema(
@@ -456,6 +457,122 @@ describe('runtime custom types parsing ', () => {
 
       expect(o1).toEqual({ x: 'in: f' })
       expect(o2).toEqual({ x: 'out: r' })
+    })
+
+    // BUG: encoders+decoders are not working inside T.oneOf (with async validations...)
+    // const tISODate = T.addValidator(T.string, str => {
+    //   const parsedDate = new Date(str)
+    //   if (parsedDate.toISOString() !== str) {
+    //     throw new Error('invalid ISO string format')
+    //   }
+    // })
+
+    // const x = T.object({
+    //   x: T.oneOf([tISODate] as const),
+    // })
+    test('2', async () => {
+      const x = T.object({
+        x: T.oneOf([
+          T.boolean,
+          T.addValidator(
+            T.customType(
+              'x',
+              T.string,
+              p => ('in: ' + p[0]) as `in: ${string}`,
+              p => 'out: ' + p[p.length - 1]
+            ),
+            async () => {
+              await delay(100)
+            }
+          ),
+          T.number,
+        ] as const),
+      })
+      const decoderInVal = convertSchemaToYupValidationObject(x, { customTypesMode: 'decode' })
+      const encoderOutVal = convertSchemaToYupValidationObject(x, { customTypesMode: 'encode' })
+
+      type _In = InferSchemaType<typeof x>
+      // it's not possible to get Type of decoder
+      // type Out = InferSchemaType<typeof x>
+
+      const o1 = await decoderInVal.validate({ x: 'foo_bar' })
+      const o2 = await encoderOutVal.validate({ x: 'foo_bar' })
+
+      expect(o1).toEqual({ x: 'in: f' })
+      expect(o2).toEqual({ x: 'out: r' })
+    })
+
+    //  async validations + custom type parsing + union nesting
+    test('3', async () => {
+      const x = T.object({
+        x: T.list(
+          T.oneOf([
+            T.object({
+              castNum: T.addValidator(
+                T.customType('x', T.string, x => {
+                  const n = parseFloat(x)
+                  if (n.toString() !== x.toString()) throw new Error('Non parsable number')
+                  return n
+                }),
+                async v => {
+                  await delay(100)
+                  if (v.toString().includes('3')) throw new Error('cannot include number 3')
+                }
+              ),
+            }),
+            T.boolean,
+          ] as const)
+        ),
+      })
+
+      const validator = convertSchemaToYupValidationObject(x)
+
+      const o1 = await validator.validate({
+        x: [{ castNum: '4' }, true, false, { castNum: '124' }],
+      })
+
+      expect(o1).toEqual({ x: [{ castNum: 4 }, true, false, { castNum: 124 }] })
+    })
+
+    test('3', async () => {
+      const x = T.object({
+        x: T.list(
+          T.oneOf([
+            T.object({
+              castNum: T.addValidator(
+                T.customType('x', T.string, x => {
+                  const n = parseFloat(x)
+                  if (n.toString() !== x.toString()) throw new Error('Non parsable number')
+                  return n
+                }),
+                async v => {
+                  await delay(100)
+                  if (v.toString().includes('3')) throw new Error('cannot include number 3')
+                }
+              ),
+            }),
+            T.boolean,
+          ] as const)
+        ),
+      })
+
+      await validateDataAgainstSchema(
+        x,
+        { x: [{ castNum: 4 }, true, false, { castNum: 124 }] },
+        {
+          status: 'rejected',
+          reason: [
+            {
+              errors: ['Not all items in x[0] match one of the allowed schemas'],
+              path: 'x[0]',
+            },
+            {
+              errors: ['Not all items in x[3] match one of the allowed schemas'],
+              path: 'x[3]',
+            },
+          ],
+        }
+      )
     })
   })
 })

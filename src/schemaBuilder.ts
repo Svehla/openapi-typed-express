@@ -27,6 +27,7 @@ const tAny = {
 
 const tOneOf = <T extends readonly any[] | any[]>(options: T) => ({
   type: 'oneOf' as const,
+  // one of should not have required!
   required: true as const,
   options: options as unknown as DeepWriteable<T>,
 })
@@ -88,6 +89,7 @@ const tNullable = <T extends { required: any }>(
   required: false as const,
 })
 
+// We cannot match tOneOf value by async validator
 const tAddValidator = <T extends TSchema>(
   schema: T,
   validator: (val: InferSchemaType<T>) => void
@@ -96,7 +98,7 @@ const tAddValidator = <T extends TSchema>(
   validator,
 })
 
-// TODO: create a recursive deepNullable(...) wrapper
+// TODO: create a typed recursive deepNullable(...) wrapper
 // TODO: add types
 // TODO: add tests
 const deepNullable = (schema: TSchema): any => {
