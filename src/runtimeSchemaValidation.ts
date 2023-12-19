@@ -95,6 +95,11 @@ export const convertSchemaToYupValidationObject = (
     // this lib is not supporting yup casting, only transform for custom types are enable
     yupValidator = yupValidator
       .transform(function (value: any) {
+        if (schema.parentTSchema.type === 'customType')
+          throw new Error('Parent type cannot be customType')
+
+        if (schema.parentTSchema.type === 'oneOf') throw new Error('Parent type cannot be oneOf')
+
         if (schema.required === false && (value === null || value === undefined)) {
           return value
         }
@@ -107,6 +112,7 @@ export const convertSchemaToYupValidationObject = (
           parentTypeValidator.validateSync(value, { abortEarly: false })
 
           // parser cannot return Promise! https://github.com/jquense/yup/issues/238
+          // TODO: decode & encode | parser & serializer
           if (extra?.customTypesMode === 'encode') {
             const parsedValue = schema.syncEncoder(value)
             return parsedValue

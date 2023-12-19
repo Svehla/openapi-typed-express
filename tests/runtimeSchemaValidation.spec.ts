@@ -19,16 +19,13 @@ const validateDataAgainstSchema = async (schema: any, objToValidate: any, output
 }
 
 describe('runtimeSchemaValidation', () => {
-  describe('async custom types validations', () => {
+  describe('async types validations', () => {
     test('1', async () => {
       await validateDataAgainstSchema(
-        T.addValidator(
-          T.customType('uniq_id_in_da_db', T.string, v => v),
-          async () => {
-            await delay(10)
-            throw new Error('value is invalid!!!!')
-          }
-        ),
+        T.addValidator(T.string, async () => {
+          await delay(10)
+          throw new Error('value is invalid!!!!')
+        }),
         'x',
         { status: 'rejected' }
       )
@@ -36,10 +33,7 @@ describe('runtimeSchemaValidation', () => {
 
     test('2', async () => {
       await validateDataAgainstSchema(
-        T.addValidator(
-          T.customType('uniq_id_in_da_db', T.string, v => v),
-          async () => await delay(10)
-        ),
+        T.addValidator(T.string, async () => await delay(10)),
         'x',
         { status: 'fulfilled' }
       )
@@ -48,10 +42,7 @@ describe('runtimeSchemaValidation', () => {
 
   describe('async validation inside enums', () => {
     test('1', async () => {
-      const tAsyncType = T.addValidator(
-        T.customType('uniq_id_in_da_db', T.string, v => v),
-        async () => await delay(10)
-      )
+      const tAsyncType = T.addValidator(T.string, async () => await delay(10))
 
       await validateDataAgainstSchema(
         T.oneOf([
@@ -429,8 +420,10 @@ describe('runtime custom types parsing ', () => {
       })
     })
   })
+})
 
-  describe('custom types encoder + decoder', () => {
+describe('experimental custom types', () => {
+  describe('encoder + decoder', () => {
     test('1', async () => {
       const x = T.object({
         x: T.customType(
@@ -444,7 +437,7 @@ describe('runtime custom types parsing ', () => {
       const encoderOutVal = convertSchemaToYupValidationObject(x, { customTypesMode: 'encode' })
 
       type _In = InferSchemaType<typeof x>
-      // it's not possible to get Type of decoder
+      // TODO: it's not possible to get Type of decoder?
       // type Out = InferSchemaType<typeof x>
 
       const o1 = decoderInVal.validateSync({ x: 'foo_bar' })
@@ -454,17 +447,6 @@ describe('runtime custom types parsing ', () => {
       expect(o2).toEqual({ x: 'out: r' })
     })
 
-    // BUG: encoders+decoders are not working inside T.oneOf (with async validations...)
-    // const tISODate = T.addValidator(T.string, str => {
-    //   const parsedDate = new Date(str)
-    //   if (parsedDate.toISOString() !== str) {
-    //     throw new Error('invalid ISO string format')
-    //   }
-    // })
-
-    // const x = T.object({
-    //   x: T.oneOf([tISODate] as const),
-    // })
     test('2', async () => {
       const x = T.object({
         x: T.oneOf([
@@ -496,9 +478,65 @@ describe('runtime custom types parsing ', () => {
       expect(o1).toEqual({ x: 'in: f' })
       expect(o2).toEqual({ x: 'out: r' })
     })
+  })
 
+  describe('matching custom types based on sync decoders', () => {
     //  async validations + custom type parsing + union nesting
-    test('3', async () => {
+    test('1', async () => {
+      // TODO: may customType inherit from other custom type?
+      const tCastNumber = T.customType('x', T.string, x => {
+        const n = parseFloat(x)
+        if (n.toString() !== x.toString()) throw new Error('Non parsable number')
+        return n
+      })
+
+      // cannot infer from other custom type
+      const tParseOddSerializedNumbers = T.customType('x', T.string, x => {
+        const n = parseFloat(x)
+        if (n.toString() !== x.toString()) throw new Error('Non parsable number')
+        if (n % 2 === 0) return n.toString()
+        return n
+      })
+
+      const x = T.object({
+        x: T.list(
+          T.oneOf([
+            T.addValidator(tParseOddSerializedNumbers, async () => delay(100)),
+            T.addValidator(tCastNumber, async () => delay(100)),
+            T.number,
+          ] as const)
+        ),
+      })
+
+      const validator = convertSchemaToYupValidationObject(x)
+
+      const o1 = await validator.validate({
+        x: [2, '3', '4'],
+      })
+
+      expect(o1).toEqual({ x: [2, 3, '4'] })
+    })
+
+    test('2 custom type cannot inherit from one of', async () => {
+      try {
+        const _tSomeCustom = T.customType('xxxx', T.oneOf([T.string] as const), v => v)
+      } catch (err) {
+        expect(1).toBe(1)
+      }
+    })
+    test('3 custom type cannot inherit from other custom type', async () => {
+      try {
+        const tSomeCustom = T.customType('xxxx', T.oneOf([T.string] as const), v => v)
+        const _ = T.customType('xxxx', tSomeCustom, v => v)
+      } catch (err) {
+        expect(1).toBe(1)
+      }
+    })
+  })
+
+  describe('union matching based on parser', () => {
+    //  async validations + custom type parsing + union nesting
+    test('1', async () => {
       const x = T.object({
         x: T.list(
           T.oneOf([
@@ -529,7 +567,7 @@ describe('runtime custom types parsing ', () => {
       expect(o1).toEqual({ x: [{ castNum: 4 }, true, false, { castNum: 124 }] })
     })
 
-    test('3', async () => {
+    test('2', async () => {
       const x = T.object({
         x: T.list(
           T.oneOf([

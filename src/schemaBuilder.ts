@@ -58,23 +58,28 @@ const tList = <T extends TSchema>(items: T) => ({
   items,
 })
 
-// TODO: add config extra args like min/max/length/whatever
 // TODO: add serializers for res.send()?
+// TODO: may customType inherit from other custom type?
 export const tCustomType = <Name extends string, ParentTSchema extends TSchema, R>(
   name: Name,
   parentTSchema: ParentTSchema,
   syncDecoder: (value: InferSchemaType<ParentTSchema>) => R,
   // TODO: should encoder stay here?
   syncEncoder = ((v: any) => v as any) as (value: R) => InferSchemaType<ParentTSchema>
-) => ({
-  name: `custom_${name}` as const,
-  type: 'customType' as const,
-  parentTSchema,
-  required: true as const,
-  syncDecoder,
-  syncEncoder,
-})
+) => {
+  if (parentTSchema.type === 'customType') throw new Error('Parent type cannot be customType')
 
+  if (parentTSchema.type === 'oneOf') throw new Error('Parent type cannot be oneOf')
+
+  return {
+    name: `custom_${name}` as const,
+    type: 'customType' as const,
+    parentTSchema,
+    required: true as const,
+    syncDecoder,
+    syncEncoder,
+  }
+}
 const tNonNullable = <T extends { required: any }>(
   a: T
 ): NiceMerge<Omit<T, 'required'>, { required: true }> => ({
