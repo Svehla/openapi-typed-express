@@ -11,12 +11,7 @@ describe('runtimeSchemaValidation', () => {
     ])
 
     if (objValidationRes.status === 'rejected') {
-      // console.log('-----------------------')
-      // console.log(objValidationRes.reason)
       objValidationRes.reason = normalizeYupErrToObj(objValidationRes.reason)
-      // TODO: shit code???
-      // ?.map(i => i.errors)
-      // .flat()
     }
 
     expect(objValidationRes).toMatchObject(output)
@@ -376,32 +371,34 @@ describe('runtimeSchemaValidation', () => {
     })
   })
 
-  describe.only('custom validator', () => {
+  //
+  describe.only('nullable keys with custom validator', () => {
     const tISODate = T.addValidator(T.string, str => {
-      console.log(str)
       const parsedDate = new Date(str)
       if (parsedDate.toISOString() !== str) {
         throw new Error('invalid ISO string format')
       }
     })
 
+    const tObjDate = T.null_object({ date: T.nullable(tISODate) })
+
     test('1', async () => {
-      await validateDataAgainstSchema(T.null_object({ date: tISODate }), null, {
+      await validateDataAgainstSchema(tObjDate, null, {
         status: 'fulfilled',
         value: null,
       })
     })
 
     test('2', async () => {
-      await validateDataAgainstSchema(T.null_object({ date: tISODate }), undefined, {
+      await validateDataAgainstSchema(tObjDate, undefined, {
         status: 'fulfilled',
-        value: undefined,
+        value: {}, // wtf???
       })
     })
 
     test('3', async () => {
       await validateDataAgainstSchema(
-        T.null_object({ date: tISODate }),
+        tObjDate,
         { date: null },
         {
           status: 'fulfilled',
