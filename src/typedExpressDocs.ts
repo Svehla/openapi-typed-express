@@ -1,8 +1,11 @@
-import { DeepPartial, normalizeYupErrToObj, deepMerge, mergePaths } from './utils'
+import { DeepPartial, deepMerge, mergePaths } from './utils'
 import { NextFunction, Request, Response } from 'express'
 import { T } from './schemaBuilder'
 import { UrlsMethodDocs, convertUrlsMethodsSchemaToOpenAPI } from './openAPIFromSchema'
-import { convertSchemaToYupValidationObject } from './runtimeSchemaValidation'
+import {
+  convertSchemaToYupValidationObject,
+  normalizeAbortEarlyYupErr,
+} from './runtimeSchemaValidation'
 import { parseUrlFromExpressRegexp } from './expressRegExUrlParser'
 import { InferSchemaType, TSchema } from './tsSchema'
 import { tSchemaToJSValue } from './jsValueToSchema'
@@ -97,9 +100,9 @@ export const getApiDocInstance =
 
           const errObj = {
             errors: {
-              params: normalizeYupErrToObj(paramsErrors),
-              query: normalizeYupErrToObj(queryErrors),
-              body: normalizeYupErrToObj(bodyErrors),
+              params: normalizeAbortEarlyYupErr(paramsErrors),
+              query: normalizeAbortEarlyYupErr(queryErrors),
+              body: normalizeAbortEarlyYupErr(bodyErrors),
             },
           }
           res.status(400).send(errorFormatter(errObj))
@@ -111,7 +114,7 @@ export const getApiDocInstance =
         if (queryValidator) req.query = queryValidationRes.value
         if (bodyValidator) req.body = bodyValidationRes.value
 
-        // TODO: apply serializer for custom scalar types like `Date -> string` (reverse parser)
+        // TODO: apply encoder (serializer) for custom types like `Date -> string` (reverse decoder (parser))
         // @ts-ignore => if this ignore is missing, there is potential infinite ts recursion...
         return handle(req as any, res, next)
       }

@@ -53,9 +53,9 @@ describe('schemaToJsValue', () => {
       }),
       hash: T.hashMap(T.string),
       custom: T.object({
-        s: T.customType('x', v => v, T.string),
-        b: T.customType('x', v => v, T.boolean),
-        n: T.customType('x', v => v, T.number),
+        s: T.customType('x', T.string, v => v),
+        b: T.customType('x', T.boolean, v => v),
+        n: T.customType('x', T.number, v => v),
       }),
     })
 

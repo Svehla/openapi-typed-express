@@ -57,11 +57,12 @@ export type TCustomType = {
   name: string
   type: 'customType'
   // TODO: find proper name... what about Parent group type or something like that?
-  serializedInheritFromSchema: TSchema
+  parentTSchema: TSchema
   // types are infer from this functions
   // runtime parsing is in this function
-  // TODO: rename to syncParser
-  syncParser: (val: any) => any
+  // TODO: rename to syncDecoder
+  syncDecoder: (val: any) => any
+  syncEncoder: (val: any) => any
 
   // TODO: should I add generic serializer to all types? its mandatory question if I start casting types in this lib...
   required: boolean
@@ -168,7 +169,7 @@ export type InferSchemaType<T extends TSchema | undefined> = T extends undefined
   : T extends { type: 'hashMap' }
   ? MakeTOptional<Record<string, InferSchemaType<T['property']>>, T['required']>
   : T extends { type: 'customType' }
-  ? MakeTOptional<ReturnType<T['syncParser']>, T['required']>
+  ? MakeTOptional<ReturnType<T['syncDecoder']>, T['required']>
   : T extends { type: 'any' }
   ? any
   : never

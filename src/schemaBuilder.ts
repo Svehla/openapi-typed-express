@@ -27,6 +27,7 @@ const tAny = {
 
 const tOneOf = <T extends readonly any[] | any[]>(options: T) => ({
   type: 'oneOf' as const,
+  // one of should not have required!
   required: true as const,
   options: options as unknown as DeepWriteable<T>,
 })
@@ -57,21 +58,28 @@ const tList = <T extends TSchema>(items: T) => ({
   items,
 })
 
-// TODO: add config extra args like min/max/length/whatever
 // TODO: add serializers for res.send()?
-export const tCustomType = <Name extends string, R, ParentType extends TSchema>(
+// TODO: may customType inherit from other custom type?
+export const tCustomType = <Name extends string, ParentTSchema extends TSchema, R>(
   name: Name,
-  syncParser: (value: InferSchemaType<ParentType>) => R,
-  // TODO: return values could serialize in the future... but it's not mandatory right now
-  serializedInheritFromSchema = tAny as ParentType
-) => ({
-  name: `custom_${name}` as const,
-  type: 'customType' as const,
-  serializedInheritFromSchema,
-  required: true as const,
-  syncParser,
-})
+  parentTSchema: ParentTSchema,
+  syncDecoder: (value: InferSchemaType<ParentTSchema>) => R,
+  // TODO: should encoder stay here?
+  syncEncoder = ((v: any) => v as any) as (value: R) => InferSchemaType<ParentTSchema>
+) => {
+  if (parentTSchema.type === 'customType') throw new Error('Parent type cannot be customType')
 
+  if (parentTSchema.type === 'oneOf') throw new Error('Parent type cannot be oneOf')
+
+  return {
+    name: `custom_${name}` as const,
+    type: 'customType' as const,
+    parentTSchema,
+    required: true as const,
+    syncDecoder,
+    syncEncoder,
+  }
+}
 const tNonNullable = <T extends { required: any }>(
   a: T
 ): NiceMerge<Omit<T, 'required'>, { required: true }> => ({
@@ -86,6 +94,7 @@ const tNullable = <T extends { required: any }>(
   required: false as const,
 })
 
+// We cannot match tOneOf value by async validator
 const tAddValidator = <T extends TSchema>(
   schema: T,
   validator: (val: InferSchemaType<T>) => void
@@ -94,7 +103,7 @@ const tAddValidator = <T extends TSchema>(
   validator,
 })
 
-// TODO: create a recursive deepNullable(...) wrapper
+// TODO: create a typed recursive deepNullable(...) wrapper
 // TODO: add types
 // TODO: add tests
 const deepNullable = (schema: TSchema): any => {
@@ -112,7 +121,7 @@ const deepNullable = (schema: TSchema): any => {
   } else if (schema.type === 'customType') {
     return {
       ...tNullable(schema),
-      serializedInheritFromSchema: deepNullable(schema.serializedInheritFromSchema),
+      parentTSchema: deepNullable(schema.parentTSchema),
     }
     // ???
   }

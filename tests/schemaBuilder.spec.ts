@@ -10,14 +10,18 @@ describe('schemaBuilder', () => {
     f: T.any,
     g: T.enum(['a', 'b', 'c', 'd']),
     h: {
-      ...T.customType('h', value => value, T.string),
+      ...T.customType('h', T.string, value => value),
       // @ts-expect-error hack for raw JSON schema comparison
-      syncParser: undefined,
+      syncDecoder: undefined,
+      // @ts-expect-error hack for raw JSON schema comparison
+      syncEncoder: undefined,
     },
     i: {
-      ...T.customType('i', value => value, T.string),
+      ...T.customType('i', T.string, value => value),
       // @ts-expect-error hack for raw JSON schema comparison
-      syncParser: undefined,
+      syncDecoder: undefined,
+      // @ts-expect-error hack for raw JSON schema comparison
+      syncEncoder: undefined,
     },
   })
 
@@ -54,21 +58,23 @@ describe('schemaBuilder', () => {
           type: 'customType',
           name: 'custom_h',
           required: true,
-          serializedInheritFromSchema: {
+          parentTSchema: {
             required: true,
             type: 'string',
           },
-          parser: undefined,
+          syncEncoder: undefined,
+          syncDecoder: undefined,
         },
         i: {
           type: 'customType',
           name: 'custom_i',
           required: true,
-          serializedInheritFromSchema: {
+          parentTSchema: {
             required: true,
             type: 'string',
           },
-          parser: undefined,
+          syncEncoder: undefined,
+          syncDecoder: undefined,
         },
       },
     })
@@ -90,7 +96,7 @@ describe('schemaBuilder', () => {
               e: T.enum(['a', 'b', 'c']),
               o: T.oneOf([T.string, T.boolean]),
               l: T.list(T.string),
-              c: T.customType('a', a => a, T.string),
+              c: T.customType('a', T.string, a => a),
             })
           )
         )
@@ -105,7 +111,7 @@ describe('schemaBuilder', () => {
             e: T.null_enum(['a', 'b', 'c']),
             o: T.null_oneOf([T.null_string, T.null_boolean]),
             l: T.null_list(T.null_string),
-            c: T.nullable(T.customType('a', a => a, T.null_string)),
+            c: T.nullable(T.customType('a', T.null_string, a => a)),
           })
         )
       )

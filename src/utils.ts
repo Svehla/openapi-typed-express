@@ -71,25 +71,3 @@ const coalesceByKey =
 // TODO: write more tests and check if the implementation is good enough
 export const deepMerge = (target: any, ...sources: any[]) =>
   sources.reduce((acc, source) => Object.keys(source).reduce(coalesceByKey(source), acc), target)
-
-/**
- * yup errors are stringified into stack trace
- * thanks to this function we extract JSON which describe error with better
- * programming API
- */
-export const normalizeYupErrToObj = (obj?: any) => {
-  if (!obj) return undefined
-  const yErrObj = JSON.parse(JSON.stringify(obj)) as { inner: any[] }
-  const niceYErrObj = yErrObj?.inner?.map(i => ({ path: i?.path, errors: i?.errors }))
-  // const niceYErrObj = yErrObj?.inner?.map(i => {
-  //   const x = {
-  //     errors: i?.errors,
-  //   }
-  //   if (i?.path) {
-  //     // @ts-ignore
-  //     x.path = i.path
-  //   }
-  //   return x
-  // })
-  return niceYErrObj
-}

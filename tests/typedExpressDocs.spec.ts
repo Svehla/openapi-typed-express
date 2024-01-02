@@ -234,8 +234,6 @@ describe('typedExpressDocs', () => {
                         path: 'c.d',
                         errors: ['c.d must be a `boolean` type, but the final value was: `3`.'],
                       },
-                      // casting array values is not working because of transform cannot turn of cast :|
-                      // bug: https://github.com/jquense/yup/issues/1259
                     ],
                   },
                 })

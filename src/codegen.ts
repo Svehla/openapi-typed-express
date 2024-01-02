@@ -48,7 +48,7 @@ export const codegenSchemaToJSCode = (schema: TSchema): string => {
       str = `T.customType(${schema.name}, ${
         // fn to string xd
         schema.validator?.toString()
-      }, ${schema.serializedInheritFromSchema})`
+      }, ${schema.parentTSchema})`
       break
 
     default:

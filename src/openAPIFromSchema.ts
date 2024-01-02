@@ -8,16 +8,8 @@ type GenerateOpenAPIPathArg = {
   returnsSchema: TSchema | null | undefined
 }
 
-// openapi do not support any types...
-const anyTypeOpenAPI = {
-  oneOf: [
-    //
-    { type: 'string' },
-    { type: 'number' },
-    { type: 'object' },
-    { type: 'array', items: [] },
-  ],
-}
+// openapi do not support any type as typescript do
+const anyTypeOpenAPI = {}
 
 const toOpenAPISchema = (schema: TSchema): any => {
   switch (schema.type) {
@@ -63,7 +55,7 @@ const toOpenAPISchema = (schema: TSchema): any => {
       return anyTypeOpenAPI
 
     case 'customType':
-      return toOpenAPISchema(schema.serializedInheritFromSchema)
+      return toOpenAPISchema(schema.parentTSchema)
 
     default:
       return {

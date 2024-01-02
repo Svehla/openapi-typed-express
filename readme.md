@@ -133,8 +133,11 @@ The library exposes many functions and objects which help you to create schema a
 - `T.nonNullable(...)`
 - `T.any(...)`
 - `T.object(...)`
-- `T.customType(...)`
 - `T.string(...)`
+
+Experimental (not fully working):
+
+- `T.customType(...)`
 
 if you want to see more examples on how to build schema structure by function compositions
 you can check the tests
