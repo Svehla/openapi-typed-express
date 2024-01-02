@@ -381,6 +381,39 @@ describe('runtimeSchemaValidation', () => {
       })
     })
   })
+
+  describe('nullable keys with custom validator', () => {
+    const tISODate = T.addValidator(T.string, _str => {
+      throw new Error('this should never be called')
+    })
+
+    const tObjDate = T.null_object({ date: T.nullable(tISODate) })
+
+    test('1', async () => {
+      await validateDataAgainstSchema(tObjDate, null, {
+        status: 'fulfilled',
+        value: null,
+      })
+    })
+
+    test('2', async () => {
+      await validateDataAgainstSchema(tObjDate, undefined, {
+        status: 'fulfilled',
+        value: {}, // wtf???
+      })
+    })
+
+    test('3', async () => {
+      await validateDataAgainstSchema(
+        tObjDate,
+        { date: null },
+        {
+          status: 'fulfilled',
+          value: { date: null },
+        }
+      )
+    })
+  })
 })
 
 describe('runtime custom types parsing ', () => {

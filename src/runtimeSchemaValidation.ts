@@ -252,6 +252,7 @@ export const convertSchemaToYupValidationObject = (
     yupValidator = yupValidator.test({
       name: 'async-validation',
       test: async function (value: any) {
+        if (schema.required === false && (value === null || value === undefined)) return true
         try {
           // if customType parse something as error, we want to recreate error
           if (value instanceof Error) return false
