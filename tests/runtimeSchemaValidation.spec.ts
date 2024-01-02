@@ -375,6 +375,41 @@ describe('runtimeSchemaValidation', () => {
       })
     })
   })
+
+  describe.only('custom validator', () => {
+    const tISODate = T.addValidator(T.string, str => {
+      console.log(str)
+      const parsedDate = new Date(str)
+      if (parsedDate.toISOString() !== str) {
+        throw new Error('invalid ISO string format')
+      }
+    })
+
+    test('1', async () => {
+      await validateDataAgainstSchema(T.null_object({ date: tISODate }), null, {
+        status: 'fulfilled',
+        value: null,
+      })
+    })
+
+    test('2', async () => {
+      await validateDataAgainstSchema(T.null_object({ date: tISODate }), undefined, {
+        status: 'fulfilled',
+        value: undefined,
+      })
+    })
+
+    test('3', async () => {
+      await validateDataAgainstSchema(
+        T.null_object({ date: tISODate }),
+        { date: null },
+        {
+          status: 'fulfilled',
+          value: { date: null },
+        }
+      )
+    })
+  })
 })
 
 describe('runtime custom types parsing ', () => {

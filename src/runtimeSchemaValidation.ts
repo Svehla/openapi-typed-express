@@ -167,6 +167,7 @@ export const convertSchemaToYupValidationObject = (
   if (schema.validator) {
     yupValidator = yupValidator.test({
       test: async function (value: any) {
+        if (schema.required === false && (value === null || value === undefined)) return true
         try {
           await schema.validator?.(
             // @ts-expect-error
