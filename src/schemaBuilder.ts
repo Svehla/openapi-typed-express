@@ -47,6 +47,7 @@ const tObject = <T extends Record<string, TSchema>>(a: T) => ({
 
 const tHashMap = <T extends TSchema>(a: T) => ({
   type: 'hashMap' as const,
+  // this attribute is here to inform if object key where nested hash map is located is required
   required: true as const,
   property: a,
 })

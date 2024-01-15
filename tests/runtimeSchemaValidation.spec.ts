@@ -305,6 +305,31 @@ describe('runtimeSchemaValidation', () => {
         }
       )
     })
+
+    test.only('14', async () => {
+      await validateDataAgainstSchema(
+        T.object({
+          x1: T.nullable(T.hashMap(T.string)),
+          y1: T.null_hashMap(T.string),
+          x2: T.nullable(T.hashMap(T.string)),
+          y2: T.null_hashMap(T.string),
+          z: T.hashMap(T.string),
+          zz: T.hashMap(T.string),
+        }),
+        {
+          x1: null,
+          y1: undefined,
+          x2: { x2: 'x2' },
+          y2: {},
+          z: {},
+          zz: { zz: 'zz' },
+        },
+        {
+          status: 'fulfilled',
+          // reason: [],
+        }
+      )
+    })
   })
 
   describe('custom types', () => {
@@ -379,6 +404,39 @@ describe('runtimeSchemaValidation', () => {
         status: 'rejected',
         reason: [{ path: '', errors: ['invalid number cast'] }],
       })
+    })
+  })
+
+  describe('nullable keys with custom validator', () => {
+    const tISODate = T.addValidator(T.string, _str => {
+      throw new Error('this should never be called')
+    })
+
+    const tObjDate = T.null_object({ date: T.nullable(tISODate) })
+
+    test('1', async () => {
+      await validateDataAgainstSchema(tObjDate, null, {
+        status: 'fulfilled',
+        value: null,
+      })
+    })
+
+    test('2', async () => {
+      await validateDataAgainstSchema(tObjDate, undefined, {
+        status: 'fulfilled',
+        value: {}, // wtf???
+      })
+    })
+
+    test('3', async () => {
+      await validateDataAgainstSchema(
+        tObjDate,
+        { date: null },
+        {
+          status: 'fulfilled',
+          value: { date: null },
+        }
+      )
     })
   })
 })
