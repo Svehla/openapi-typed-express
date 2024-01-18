@@ -34,10 +34,10 @@ export const convertSchemaToYupValidationObject = (
     // we cannot use default yup boolean because its not working for transform() without automatic casting
     yupValidator = yupValidator.object(
       mapEntries(([k, v]) => {
-        const yupValue = convertSchemaToYupValidationObject(v, extra)
+        let yupValue = convertSchemaToYupValidationObject(v, extra)
         // keys of object needs to be required if value is required
-        const value = v.required && yupValue.required ? yupValue.required() : yupValue
-        return [k, value]
+        yupValue = v.required && yupValue.required ? yupValue.required() : yupValue
+        return [k, yupValue]
       }, schema.properties)
     )
   } else if (schema?.type === 'boolean') {
@@ -142,14 +142,17 @@ export const convertSchemaToYupValidationObject = (
     yupValidator = yup.mixed()
 
     // TODO: check if nullable/required is working properly for hashMap
-    yupValidator = yup.lazy(v =>
-      yup
-        .object(
-          mapEntries(([k]) => [k, convertSchemaToYupValidationObject(schema.property, extra)], v)
-        )
-        // TODO: ???
-        .required()
-    )
+    let objValueValidator = convertSchemaToYupValidationObject(schema.property, extra)
+
+    // check if key is required in the nested object
+    objValueValidator = schema.required === true ? objValueValidator.required() : objValueValidator
+
+    yupValidator = yup.lazy(v => {
+      if (schema.required === false && (v === null || v === undefined)) {
+        return yup.object({}).nullable()
+      }
+      return yup.object(mapEntries(([k]) => [k, objValueValidator], v))
+    })
   } else if (schema?.type === 'enum') {
     yupValidator = yupValidator.mixed().oneOf(schema.options)
   } else if (schema?.type === 'oneOf') {
@@ -241,7 +244,11 @@ export const convertSchemaToYupValidationObject = (
   }
 
   // value (or a key of an object) may be nullable
-  if (schema.required === false) {
+  if (
+    schema.required === false &&
+    // nullable is not working for hashmap because it is lazy field and lazy fields has not nullable methods I guess
+    schema.type !== 'hashMap'
+  ) {
     yupValidator = yupValidator.nullable()
   }
 

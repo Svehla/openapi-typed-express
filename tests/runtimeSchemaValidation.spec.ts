@@ -305,6 +305,31 @@ describe('runtimeSchemaValidation', () => {
         }
       )
     })
+
+    test.only('14', async () => {
+      await validateDataAgainstSchema(
+        T.object({
+          x1: T.nullable(T.hashMap(T.string)),
+          y1: T.null_hashMap(T.string),
+          x2: T.nullable(T.hashMap(T.string)),
+          y2: T.null_hashMap(T.string),
+          z: T.hashMap(T.string),
+          zz: T.hashMap(T.string),
+        }),
+        {
+          x1: null,
+          y1: undefined,
+          x2: { x2: 'x2' },
+          y2: {},
+          z: {},
+          zz: { zz: 'zz' },
+        },
+        {
+          status: 'fulfilled',
+          // reason: [],
+        }
+      )
+    })
   })
 
   describe('custom types', () => {
