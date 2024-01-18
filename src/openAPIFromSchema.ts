@@ -12,9 +12,14 @@ type GenerateOpenAPIPathArg = {
 const anyTypeOpenAPI = {}
 
 const toOpenAPISchema = (schema: TSchema): any => {
+  const obj = {
+    ...(schema.required ? {} : { nullable: true }),
+  } as any
+
   switch (schema.type) {
     case 'enum':
       return {
+        ...obj,
         type: 'string',
         enum: schema.options,
       }
@@ -25,6 +30,7 @@ const toOpenAPISchema = (schema: TSchema): any => {
         .map(([k, v]) => k)
 
       return {
+        ...obj,
         type: 'object',
         // ...schema,
         // TODO: add requires
@@ -35,12 +41,14 @@ const toOpenAPISchema = (schema: TSchema): any => {
 
     case 'hashMap':
       return {
+        ...obj,
         type: 'object',
         additionalProperties: toOpenAPISchema(schema.property),
       }
 
     case 'array':
       return {
+        ...obj,
         type: 'array',
         // ...schema,
         items: toOpenAPISchema(schema.items),
@@ -48,6 +56,7 @@ const toOpenAPISchema = (schema: TSchema): any => {
 
     case 'oneOf':
       return {
+        ...obj,
         oneOf: schema.options.map(option => toOpenAPISchema(option)),
       }
 
@@ -59,6 +68,7 @@ const toOpenAPISchema = (schema: TSchema): any => {
 
     default:
       return {
+        ...obj,
         type: schema.type,
       }
   }

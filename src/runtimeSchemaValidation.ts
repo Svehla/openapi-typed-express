@@ -139,7 +139,6 @@ export const convertSchemaToYupValidationObject = (
     yupValidator = yupValidator.mixed()
     //
   } else if (schema?.type === 'hashMap') {
-    // console.log('xxx')
     yupValidator = yup.mixed()
 
     // TODO: check if nullable/required is working properly for hashMap
@@ -247,7 +246,7 @@ export const convertSchemaToYupValidationObject = (
   // value (or a key of an object) may be nullable
   if (
     schema.required === false &&
-    // hashMap values cannot be nullable, only nested hashMap inside object may be nullable
+    // nullable is not working for hashmap because it is lazy field and lazy fields has not nullable methods I guess
     schema.type !== 'hashMap'
   ) {
     yupValidator = yupValidator.nullable()

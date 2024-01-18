@@ -36,7 +36,7 @@ app.get(
       userId: T.string,
     },
     query: {
-      name: T.String,
+      name: T.string,
       header: T.list(T.enum(['a', 'b', 'c']))),
     },
     body: {
