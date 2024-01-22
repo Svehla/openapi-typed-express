@@ -12,6 +12,7 @@ export {
 } from './typedExpressDocs'
 export { codegenSchemaToJSCode } from './codegen'
 export { tUtils } from './tUtils'
+export { pickTObject, omitTObject } from './tUtils'
 
 const tSchema = {
   ...rawT,
