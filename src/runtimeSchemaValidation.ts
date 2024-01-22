@@ -154,6 +154,7 @@ export const convertSchemaToYupValidationObject = (
       return yup.object(mapEntries(([k]) => [k, objValueValidator], v))
     })
   } else if (schema?.type === 'enum') {
+    // TODO: error message does not return which value was received for better err debug msgs
     yupValidator = yupValidator.mixed().oneOf(schema.options)
   } else if (schema?.type === 'oneOf') {
     /*
