@@ -149,7 +149,7 @@ describe('typedExpressDocs', () => {
                     query: undefined,
                     body: [
                       {
-                        errors: ['enum must be one of the following values: a'],
+                        errors: ['enum must be one of a type, but the final value was: `\"b\"`.'],
                         path: 'enum',
                       },
                     ],

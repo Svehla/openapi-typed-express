@@ -155,7 +155,20 @@ export const convertSchemaToYupValidationObject = (
     })
   } else if (schema?.type === 'enum') {
     // TODO: error message does not return which value was received for better err debug msgs
-    yupValidator = yupValidator.mixed().oneOf(schema.options)
+    yupValidator = yupValidator.mixed().test({
+      name: 'strict-custom-enum',
+      message: (d: any) =>
+        `${d.path} must be one of ${schema.options.join(
+          ', '
+        )} type, but the final value was: \`${JSON.stringify(d.value)}\`.`,
+      test: (value: any) => {
+        if (schema.required === false && (value === null || value === undefined)) return true
+        if (schema.options.includes(value)) return true
+
+        return false
+      },
+    })
+    // .oneOf(schema.options)
   } else if (schema?.type === 'oneOf') {
     /*
     // this works well till we wanted to support oneOf with decoder transform of customType
