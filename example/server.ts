@@ -25,6 +25,23 @@ const delay = (ms: number) => new Promise(res => setTimeout(res, ms))
 // TODO: check if it works properly
 
 app.get(
+  '/xx',
+  apiDoc({
+    // TODO: rename to reqHeaders
+    headers: {
+      x: T._custom.cast_number,
+      authorization: T.string,
+    },
+    returns: T.string,
+  })((req, res) => {
+    const headers = req.headers
+    console.log('headers:')
+    console.log(req.headers)
+    res.send('OK')
+  })
+)
+
+app.get(
   '/x',
   apiDoc({
     body: T.object({

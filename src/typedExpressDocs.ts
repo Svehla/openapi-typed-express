@@ -19,6 +19,8 @@ export const __expressOpenAPIHack__ = Symbol('__expressOpenAPIHack__')
 // --------------------------------------------------------------------------
 
 type Config = {
+  // those are incoming request headers (not the response one)
+  headers?: Record<string, TSchema>
   params?: Record<string, TSchema>
   query?: Record<string, TSchema>
   body?: TSchema
@@ -27,9 +29,12 @@ type Config = {
 
 // eslint-disable-next-line @typescript-eslint/ban-types
 type UseEmptyObjectAsDefault<T> = T extends Record<any, any> ? T : {}
-// type UseEmptyASTObjectAsDefault<T> = T extends void ?
 
 type WrapToTObject<T> = { type: 'object'; required: true; properties: T }
+
+// type WrapToTObjectOrUndef<T> = T extends void
+//   ? undefined
+//   : { type: 'object'; required: true; properties: T }
 
 export const getApiDocInstance =
   ({ errorFormatter = (e => e) as (err: any) => any } = {}) =>
@@ -37,21 +42,28 @@ export const getApiDocInstance =
   (
     handle: (
       // express by default binds empty object for params/body/query
-      req: Request<
-        InferSchemaType<WrapToTObject<UseEmptyObjectAsDefault<C['params']>>>,
-        any,
-        InferSchemaType<C['body']>,
-        InferSchemaType<WrapToTObject<UseEmptyObjectAsDefault<C['query']>>>
-      >,
+      req: Omit<
+        Request<
+          InferSchemaType<WrapToTObject<UseEmptyObjectAsDefault<C['params']>>>,
+          any,
+          InferSchemaType<C['body']>,
+          InferSchemaType<WrapToTObject<UseEmptyObjectAsDefault<C['query']>>>
+        >,
+        'headers'
+      > & { headers: InferSchemaType<WrapToTObject<UseEmptyObjectAsDefault<C['headers']>>> },
       res: Omit<Response, 'send'> & { send: (data: InferSchemaType<C['returns']>) => void },
       next: NextFunction
     ) => void
   ) => {
     // --- this function is called only for initialization of handlers ---
+    const headersSchema = docs.headers ? T.object(docs.headers) : null
     const paramsSchema = docs.params ? T.object(docs.params) : null
     const querySchema = docs.query ? T.object(docs.query) : null
     const bodySchema = docs.body ? docs.body : null
 
+    const headersValidator = headersSchema
+      ? convertSchemaToYupValidationObject(headersSchema)
+      : null
     const paramsValidator = paramsSchema ? convertSchemaToYupValidationObject(paramsSchema) : null
     const queryValidator = querySchema ? convertSchemaToYupValidationObject(querySchema) : null
     const bodyValidator = bodySchema ? convertSchemaToYupValidationObject(bodySchema) : null
@@ -76,21 +88,26 @@ export const getApiDocInstance =
         // TODO: add formBody? i think its not needed in the modern rest-api
         const [
           //
+          headersValidationRes,
           paramValidationRes,
           queryValidationRes,
           bodyValidationRes,
         ] = await Promise.allSettled([
           // strict is not working with transform for custom data types...
+          headersValidator?.validate(req.headers, { abortEarly: false }),
           paramsValidator?.validate(req.params, { abortEarly: false }),
           queryValidator?.validate(req.query, { abortEarly: false }),
           bodyValidator?.validate(req.body, { abortEarly: false }),
         ])
 
         if (
+          headersValidationRes.status === 'rejected' ||
           paramValidationRes.status === 'rejected' ||
           queryValidationRes.status === 'rejected' ||
           bodyValidationRes.status === 'rejected'
         ) {
+          const headersErrors =
+            headersValidationRes.status === 'rejected' ? headersValidationRes.reason : null
           const paramsErrors =
             paramValidationRes.status === 'rejected' ? paramValidationRes.reason : null
           const queryErrors =
@@ -100,16 +117,19 @@ export const getApiDocInstance =
 
           const errObj = {
             errors: {
+              headers: normalizeAbortEarlyYupErr(headersErrors),
               params: normalizeAbortEarlyYupErr(paramsErrors),
               query: normalizeAbortEarlyYupErr(queryErrors),
               body: normalizeAbortEarlyYupErr(bodyErrors),
             },
           }
+
           res.status(400).send(errorFormatter(errObj))
           return
         }
 
         // ==== override casted (transformed) custom types into JS runtime objects ====
+        if (headersValidator) req.headers = headersValidationRes.value
         if (paramsValidator) req.params = paramValidationRes.value
         if (queryValidator) req.query = queryValidationRes.value
         if (bodyValidator) req.body = bodyValidationRes.value
@@ -121,6 +141,7 @@ export const getApiDocInstance =
 
       return {
         apiRouteSchema: {
+          headersSchema,
           paramsSchema,
           querySchema,
           bodySchema,
@@ -185,7 +206,7 @@ type ExpressRouteInternalStruct = {
 const resolveRouteHandlersAndExtractAPISchema = (
   route: ExpressRouteInternalStruct,
   path = '',
-  urlsMethodDocs: UrlsMethodDocs = {}
+  urlsMethodDocsPointer: UrlsMethodDocs = {}
 ) => {
   // get metadata from express routes and resolved nested lazy route handlers
   route.stack.forEach(r => {
@@ -201,7 +222,7 @@ const resolveRouteHandlersAndExtractAPISchema = (
         // pretty weird... sometimes express expose __handle, sometimes handle
         stack.handle ?? stack.__handle,
         routerFullPath,
-        urlsMethodDocs
+        urlsMethodDocsPointer
       )
     } else if (r.name === 'bound dispatch') {
       // === final end routes ===
@@ -228,11 +249,12 @@ const resolveRouteHandlersAndExtractAPISchema = (
           s._swaggerTypedExpressDocs__route_cache = routeMetadataDocs
         }
 
-        if (!urlsMethodDocs[endpointPath]) {
-          urlsMethodDocs[endpointPath] = {}
+        if (!urlsMethodDocsPointer[endpointPath]) {
+          urlsMethodDocsPointer[endpointPath] = {}
         }
 
-        urlsMethodDocs[endpointPath][s.method] = {
+        urlsMethodDocsPointer[endpointPath][s.method] = {
+          headersSchema: routeMetadataDocs.apiRouteSchema.headersSchema,
           pathSchema: routeMetadataDocs.apiRouteSchema.paramsSchema,
           querySchema: routeMetadataDocs.apiRouteSchema.querySchema,
           bodySchema: routeMetadataDocs.apiRouteSchema.bodySchema,
@@ -242,7 +264,7 @@ const resolveRouteHandlersAndExtractAPISchema = (
     }
   })
 
-  return urlsMethodDocs
+  return urlsMethodDocsPointer
 }
 
 type OpenAPIShape = DeepPartial<{

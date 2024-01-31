@@ -2,6 +2,7 @@ import { TObject, TSchema } from './tsSchema'
 import { isObject, mapEntries } from './utils'
 
 type GenerateOpenAPIPathArg = {
+  headersSchema: TObject | null | undefined
   querySchema: TObject | null | undefined
   pathSchema: TObject | null | undefined
   bodySchema: TObject | null | undefined
@@ -94,6 +95,13 @@ export const generateOpenAPIPath = (schemas: GenerateOpenAPIPathArg) => {
         required: v.required,
         schema: toOpenAPISchema(v),
       })),
+
+      ...Object.entries(schemas.headersSchema?.properties ?? {}).map(([k, v]) => ({
+        in: 'header',
+        name: k,
+        required: v.required,
+        schema: toOpenAPISchema(v),
+      })),
     ].filter(Boolean),
 
     ...(isObject(schemas.bodySchema)
@@ -130,42 +138,27 @@ export const generateOpenAPIPath = (schemas: GenerateOpenAPIPathArg) => {
 type Method = string // 'post' | 'get' | 'option' | ...,
 type EndpointPath = string
 
-export type UrlsMethodDocs = Record<
-  EndpointPath,
-  Record<
-    Method,
-    {
-      pathSchema: TObject | null | undefined
-      querySchema: TObject | null | undefined
-      bodySchema: TObject | null | undefined
-      returnsSchema: TSchema | null | undefined
-    }
-  >
->
+export type UrlsMethodDocs = Record<EndpointPath, Record<Method, GenerateOpenAPIPathArg>>
 
-const regex = /:(\w+)/g
+/**
+ *  make regex with javascript replaceAll that replace all variables in url like :id with {id}
+ *
+ * input:
+ * /userId/:userId/xxx
+ * returns:
+ * /userId/{userId}/xxx
+ */
+const colonUrlVariableReplaceWithBrackets = (url: string) => url.replaceAll(/:(\w+)/g, '{$1}')
 
 export const convertUrlsMethodsSchemaToOpenAPI = (obj: UrlsMethodDocs) => {
   return mapEntries(
     ([url, methods]) => [
-      /*
-      make regex with javascript replaceAll that replace all variables in url like :id with {id}
-
-      input:
-      /userId/:userId/xxx
-      to:
-      /userId/{userId}/xxx
-      */
-      url.replaceAll(regex, '{$1}'),
+      colonUrlVariableReplaceWithBrackets(url),
       mapEntries(
         ([method, schema]) => [
+          //
           method,
-          generateOpenAPIPath({
-            pathSchema: schema.pathSchema,
-            querySchema: schema.querySchema,
-            bodySchema: schema.bodySchema,
-            returnsSchema: schema.returnsSchema,
-          }),
+          generateOpenAPIPath(schema),
         ],
         methods
       ),
