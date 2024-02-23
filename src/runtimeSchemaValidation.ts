@@ -137,7 +137,6 @@ export const convertSchemaToYupValidationObject = (
       })
   } else if (schema?.type === 'any') {
     yupValidator = yupValidator.mixed()
-    //
   } else if (schema?.type === 'hashMap') {
     yupValidator = yup.mixed()
 
@@ -145,7 +144,8 @@ export const convertSchemaToYupValidationObject = (
     let objValueValidator = convertSchemaToYupValidationObject(schema.property, extra)
 
     // check if key is required in the nested object
-    objValueValidator = schema.required === true ? objValueValidator.required() : objValueValidator
+    objValueValidator =
+      schema.property.required === true ? objValueValidator.required() : objValueValidator
 
     yupValidator = yup.lazy(v => {
       if (schema.required === false && (v === null || v === undefined)) {
