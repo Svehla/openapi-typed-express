@@ -145,7 +145,7 @@ export const convertSchemaToYupValidationObject = (
 
     // check if key is required in the nested object
     objValueValidator =
-      schema.property.required === true ? objValueValidator.required() : objValueValidator
+      schema.property?.required === true ? objValueValidator.required() : objValueValidator
 
     yupValidator = yup.lazy(v => {
       if (schema.required === false && (v === null || v === undefined)) {
