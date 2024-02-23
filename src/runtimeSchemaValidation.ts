@@ -151,6 +151,9 @@ export const convertSchemaToYupValidationObject = (
       if (schema.required === false && (v === null || v === undefined)) {
         return yup.object({}).nullable()
       }
+      if (v === null || v === undefined) {
+        return yup.object({})
+      }
       return yup.object(mapEntries(([k]) => [k, objValueValidator], v))
     })
   } else if (schema?.type === 'enum') {
