@@ -147,7 +147,7 @@ export const convertSchemaToYupValidationObject = (
     const objValueValidator = convertSchemaToYupValidationObject(schema.property, extra)
 
     // lazy object has no required() method
-    if (schema.property?.required === true && yupValidator.required) {
+    if (schema.property.required && yupValidator.required) {
       yupValidator = yupValidator.required()
     }
 
@@ -265,11 +265,7 @@ export const convertSchemaToYupValidationObject = (
   }
 
   // value (or a key of an object) may be nullable
-  if (
-    schema.required === false &&
-    // nullable is not working for hashmap because it is lazy field and lazy fields has not nullable methods I guess
-    schema.type !== 'hashMap'
-  ) {
+  if (schema.required === false && yupValidator.nullable) {
     yupValidator = yupValidator.nullable()
   }
 

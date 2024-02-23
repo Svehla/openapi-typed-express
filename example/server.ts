@@ -1,11 +1,49 @@
 import express from 'express'
-import { apiDoc, initApiDocs, jsValueToSchema, T } from '../src'
+import { apiDoc, convertSchemaToYupValidationObject, initApiDocs, jsValueToSchema, T } from '../src'
 import { router } from './userRouter'
 import packageJSON from '../package.json'
 import swaggerUi from 'swagger-ui-express'
 import { queryParser } from 'express-query-parser'
 import { getMock_apiDocInstance } from '../src/typedExpressDocs'
 
+const main = async () => {
+  const validator = convertSchemaToYupValidationObject(
+    T.object({
+      shownList: T.list(
+        T.null_hashMap(T.hashMap(T.any))
+        /*
+        T.oneOf([
+          //
+          // T.string,
+          T.hashMap(T.null_any),
+        ] as const)
+        */
+      ),
+    })
+  )
+
+  const x = await validator.validate({
+    shownList: [
+      //
+      // 'x',
+      null,
+      undefined,
+      {
+        x: {},
+      },
+      {
+        a: 'a',
+        b: null,
+      },
+    ],
+  })
+
+  console.log(x)
+}
+
+main()
+
+/*
 const app = express()
 const port = 5000
 
@@ -332,3 +370,5 @@ OpenAPI   UI : http://localhost:${port}/swagger-ui
 ---------------------------------------
   `)
 })
+
+*/
