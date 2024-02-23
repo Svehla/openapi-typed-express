@@ -34,10 +34,14 @@ export const convertSchemaToYupValidationObject = (
     // we cannot use default yup boolean because its not working for transform() without automatic casting
     yupValidator = yupValidator.object(
       mapEntries(([k, v]) => {
-        let yupValue = convertSchemaToYupValidationObject(v, extra)
+        let yupValidator = convertSchemaToYupValidationObject(v, extra)
         // keys of object needs to be required if value is required
-        yupValue = v.required && yupValue.required ? yupValue.required() : yupValue
-        return [k, yupValue]
+        // lazy object has no required() method
+        if (v.required && yupValidator.required) {
+          yupValidator = yupValidator.required()
+        }
+
+        return [k, yupValidator]
       }, schema.properties)
     )
   } else if (schema?.type === 'boolean') {
@@ -140,12 +144,12 @@ export const convertSchemaToYupValidationObject = (
   } else if (schema?.type === 'hashMap') {
     yupValidator = yup.mixed()
 
-    // TODO: check if nullable/required is working properly for hashMap
-    let objValueValidator = convertSchemaToYupValidationObject(schema.property, extra)
+    const objValueValidator = convertSchemaToYupValidationObject(schema.property, extra)
 
-    // check if key is required in the nested object
-    objValueValidator =
-      schema.property?.required === true ? objValueValidator.required() : objValueValidator
+    // lazy object has no required() method
+    if (schema.property?.required === true && yupValidator.required) {
+      yupValidator = yupValidator.required()
+    }
 
     yupValidator = yup.lazy(v => {
       if (schema.required === false && (v === null || v === undefined)) {
