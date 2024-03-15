@@ -12,9 +12,10 @@ export const normalizeAbortEarlyYupErr = (obj?: any) => {
   const yErrObj = JSON.parse(JSON.stringify(obj)) as { inner: any[] }
   // console.log(yErrObj)
   const niceYErrObj = [
-    // @ ts-expect-error
-    // yErrObj.errors ? { path: yErrObj.path ?? '', errors: yErrObj.errors } : undefined,
-    ...yErrObj?.inner?.map(i => ({ path: i?.path, errors: i?.errors })),
+    // is this correct normalizing?
+    ...(yErrObj?.inner.length > 0
+      ? yErrObj.inner.map(i => ({ path: i?.path, errors: i?.errors }))
+      : [yErrObj]),
   ].filter(Boolean)
   return niceYErrObj
 }
@@ -229,7 +230,7 @@ export const convertSchemaToYupValidationObject = (
       })
       .test({
         name: 'one-of-schema',
-        test: async function (transformedValue: any, conf: any) {
+        test: function (transformedValue: any, conf: any) {
           try {
             // test that everything is valid... one of option, async validation
             if (transformedValue instanceof Error) throw transformedValue
@@ -250,11 +251,25 @@ export const convertSchemaToYupValidationObject = (
 
             const activeTSchema = schema.options[matchOptionIndex]
 
-            // run async validations...
-            await convertSchemaToYupValidationObject(activeTSchema, extra).validate(value, {
-              abortEarly: false,
-            })
-            return true
+            const { path, createError } = this
+
+            if (shouldRunAsyncValidation) {
+              return (async () => {
+                try {
+                  await convertSchemaToYupValidationObject(activeTSchema, extra).validate(value, {
+                    abortEarly: false,
+                  })
+                  return true
+                } catch (err: any) {
+                  return createError({
+                    path: path,
+                    message: (err as Error)?.message ?? '',
+                  })
+                }
+              })()
+            } else {
+              return true
+            }
           } catch (err: any) {
             return this.createError({ path: this.path, message: (err as Error)?.message ?? '' })
           }

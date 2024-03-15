@@ -306,7 +306,7 @@ describe('runtimeSchemaValidation', () => {
       )
     })
 
-    test.only('14', async () => {
+    test('14', async () => {
       await validateDataAgainstSchema(
         T.object({
           x1: T.nullable(T.hashMap(T.string)),
@@ -594,6 +594,59 @@ describe('experimental custom types', () => {
 
   describe('union matching based on parser', () => {
     //  async validations + custom type parsing + union nesting
+    test('0', async () => {
+      const tTest = T.object({
+        y: T.object({
+          x: T.oneOf([
+            T.object({
+              type: T.enum(['ADD_MESSAGE.USER.GEN_BY_BTN']),
+
+              x: T.addValidator(T.string, async val => {
+                await delay(2000)
+                if (val === 'x') {
+                  throw new Error('x error')
+                }
+              }),
+              btnType: T.oneOf([
+                T.oneOf([
+                  T.oneOf([
+                    //
+                    T.enum(['SHOW_MORE'] as const),
+                    T.enum(['SHOW_SIMILAR'] as const),
+                    T.enum(['COMPARISON'] as const),
+                  ] as const),
+                ] as const),
+              ] as const),
+            }),
+          ] as const),
+        }),
+      })
+
+      const validator = convertSchemaToYupValidationObject(tTest)
+
+      try {
+        await validator.validate({
+          x: {
+            y: {
+              btnType: 'COMPARISON',
+              x: 'x',
+              id: 'optimistic-ui',
+              sentDate: '2024-03-15T13:09:19.922Z',
+              type: 'ADD_MESSAGE.USER.GEN_BY_BTN',
+            },
+          },
+        })
+
+        expect('should not').toBe('happen!')
+      } catch (err) {
+        const niceErr = normalizeAbortEarlyYupErr(err)
+        expect(
+          // @ts-expect-error
+          niceErr[0]?.errors
+        ).toEqual(['y.x is a required field'])
+      }
+    })
+
     test('1', async () => {
       const x = T.object({
         x: T.list(
