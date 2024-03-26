@@ -194,3 +194,9 @@ to make fully work `tNonNullable` you have to setup `tsconfig.json` properly.
 if some field in the object is nullable `null_` key may not be required, but in TS types, only value is of type `| undefined`
 
 so the non existed keys are nullable as well, thanks to this, the schema is simplier for the writter, because there is less edge cases to think about
+
+## All defined schema attribute stripping
+
+if you define one of apiDoc objects like `query`, `body`, `params` or `headers` it'll strip all unknown object attributes so omit potential security data injections
+
+By default, T.any is used for each attribute

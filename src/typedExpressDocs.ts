@@ -20,7 +20,7 @@ export const __expressOpenAPIHack__ = Symbol('__expressOpenAPIHack__')
 
 type Config = {
   // those are incoming request headers (not the response one)
-  headers?: Record<string, TSchema>
+  headers?: TSchema
   params?: Record<string, TSchema>
   query?: Record<string, TSchema>
   body?: TSchema
@@ -56,7 +56,7 @@ export const getApiDocInstance =
     ) => void
   ) => {
     // --- this function is called only for initialization of handlers ---
-    const headersSchema = docs.headers ? T.object(docs.headers) : null
+    const headersSchema = docs.headers ? docs.headers : null
     const paramsSchema = docs.params ? T.object(docs.params) : null
     const querySchema = docs.query ? T.object(docs.query) : null
     const bodySchema = docs.body ? docs.body : null
@@ -94,10 +94,11 @@ export const getApiDocInstance =
           bodyValidationRes,
         ] = await Promise.allSettled([
           // strict is not working with transform for custom data types...
-          headersValidator?.validate(req.headers, { abortEarly: false }),
-          paramsValidator?.validate(req.params, { abortEarly: false }),
-          queryValidator?.validate(req.query, { abortEarly: false }),
-          bodyValidator?.validate(req.body, { abortEarly: false }),
+          // TODO: may it be optional?
+          headersValidator?.validate(req.headers, { abortEarly: false, stripUnknown: true }),
+          paramsValidator?.validate(req.params, { abortEarly: false, stripUnknown: true }),
+          queryValidator?.validate(req.query, { abortEarly: false, stripUnknown: true }),
+          bodyValidator?.validate(req.body, { abortEarly: false, stripUnknown: true }),
         ])
 
         if (

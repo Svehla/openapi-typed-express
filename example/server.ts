@@ -22,16 +22,23 @@ app.use(
 
 const delay = (ms: number) => new Promise(res => setTimeout(res, ms))
 
+const customMockErrApiDoc = getMock_apiDocInstance({
+  errorFormatter: e => ({
+    success: false,
+    sorry___someErrors: e.errors,
+  }),
+})
+
 // TODO: check if it works properly
 
 app.get(
   '/xx',
   apiDoc({
     // TODO: rename to reqHeaders
-    headers: {
+    headers: T.object({
       x: T._custom.cast_number,
       authorization: T.string,
-    },
+    }),
     returns: T.string,
   })((req, res) => {
     const headers = req.headers
@@ -106,16 +113,9 @@ app.get(
   })
 )
 
-const customErrApiDoc = getMock_apiDocInstance({
-  errorFormatter: e => ({
-    success: false,
-    sorry___someErrors: e.errors,
-  }),
-})
-
 app.get(
   '/',
-  customErrApiDoc({
+  customMockErrApiDoc({
     query: {
       s: T.null_string,
       b: T.null_boolean,
