@@ -25,7 +25,7 @@ const tAny = {
   required: true as const,
 }
 
-const tOneOf = <T extends readonly TSchema[] | TSchema[]>(options: T) => ({
+const tOneOf = <T extends readonly any[] | any[]>(options: T) => ({
   type: 'oneOf' as const,
   // one of should not have required!
   required: true as const,
@@ -33,13 +33,21 @@ const tOneOf = <T extends readonly TSchema[] | TSchema[]>(options: T) => ({
 })
 
 // TODO: array X list?
-const tEnum = <T extends readonly (string | number | boolean)[] | (string | number | boolean)[]>(
-  options: T
-) => ({
-  type: 'enum' as const,
-  required: true as const,
-  options: options as unknown as DeepWriteable<T>,
-})
+const tEnum = <T extends readonly any[] | any[]>(options: T) => {
+  // TODO: add runtime validations
+  if (options.some(i => typeof i !== 'string' && typeof i !== 'boolean' && typeof i !== 'number')) {
+    throw new Error(
+      `T.enum get invalid options ${JSON.stringify(
+        options
+      )}, only number, boolean and string is supported`
+    )
+  }
+  return {
+    type: 'enum' as const,
+    required: true as const,
+    options: options as unknown as DeepWriteable<T>,
+  }
+}
 
 const tObject = <T extends Record<string, TSchema>>(a: T) => ({
   type: 'object' as const,
@@ -70,10 +78,6 @@ export const tCustomType = <Name extends string, ParentTSchema extends TSchema, 
   // TODO: should encoder stay here?
   syncEncoder = ((v: any) => v as any) as (value: R) => InferSchemaType<ParentTSchema>
 ) => {
-  if (parentTSchema.type === 'customType') throw new Error('Parent type cannot be customType')
-
-  // if (parentTSchema.type === 'oneOf') throw new Error('Parent type cannot be oneOf')
-
   return {
     name: `custom_${name}` as const,
     type: 'customType' as const,
@@ -107,6 +111,7 @@ const tAddValidator = <T extends TSchema>(
 })
 
 // TODO: create a typed recursive deepNullable(...) wrapper
+// TODO: add types
 // TODO: add tests
 const deepNullable = (schema: TSchema): any => {
   if (schema.type === 'array') {
@@ -125,6 +130,7 @@ const deepNullable = (schema: TSchema): any => {
       ...tNullable(schema),
       parentTSchema: deepNullable(schema.parentTSchema),
     }
+    // ???
   }
   return tNullable(schema) as TSchema
 }
@@ -156,9 +162,11 @@ export const T = {
   custom_any: (validator: (a: any) => void) => tNonNullable(tAddValidator(tAny, validator)),
   custom_null_any: (validator: (a: any) => void) => tNonNullable(tAddValidator(tAny, validator)),
 
-  oneOf: <T extends readonly TSchema[] | TSchema[]>(options: T) => tNonNullable(tOneOf(options)),
+  oneOf: <T extends readonly Record<any, any>[] | Record<any, any>[]>(options: T) =>
+    tNonNullable(tOneOf(options)),
 
-  null_oneOf: <T extends readonly TSchema[] | TSchema[]>(options: T) => tNullable(tOneOf(options)),
+  null_oneOf: <T extends readonly Record<any, any>[] | Record<any, any>[]>(options: T) =>
+    tNullable(tOneOf(options)),
 
   enum: <T extends readonly (string | number | boolean)[] | (string | number | boolean)[]>(
     options: T
