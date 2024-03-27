@@ -25,7 +25,7 @@ const tAny = {
   required: true as const,
 }
 
-const tOneOf = <T extends readonly any[] | any[]>(options: T) => ({
+const tOneOf = <T>(options: T) => ({
   type: 'oneOf' as const,
   // one of should not have required!
   required: true as const,
@@ -49,28 +49,25 @@ const tEnum = <T extends readonly any[] | any[]>(options: T) => {
   }
 }
 
-const tObject = <T extends Record<string, TSchema>>(a: T) => ({
+const tObject = <T extends Record<string, any | (() => any)>>(a: T) => ({
   type: 'object' as const,
   required: true as const,
   properties: a,
 })
 
-const tHashMap = <T extends TSchema>(a: T) => ({
+const tHashMap = <T extends any | (() => any)>(a: T) => ({
   type: 'hashMap' as const,
   // this attribute is here to inform if object key where nested hash map is located is required
   required: true as const,
   property: a,
 })
 
-// TODO: array X list?
-const tList = <T extends TSchema>(items: T) => ({
+const tList = <T extends any | (() => any)>(items: T) => ({
   type: 'array' as const,
   required: true,
   items,
 })
 
-// TODO: add serializers for res.send()?
-// TODO: may customType inherit from other custom type?
 export const tCustomType = <Name extends string, ParentTSchema extends TSchema, R>(
   name: Name,
   parentTSchema: ParentTSchema,
@@ -162,11 +159,9 @@ export const T = {
   custom_any: (validator: (a: any) => void) => tNonNullable(tAddValidator(tAny, validator)),
   custom_null_any: (validator: (a: any) => void) => tNonNullable(tAddValidator(tAny, validator)),
 
-  oneOf: <T extends readonly Record<any, any>[] | Record<any, any>[]>(options: T) =>
-    tNonNullable(tOneOf(options)),
+  oneOf: <T>(options: T) => tNonNullable(tOneOf(options)),
 
-  null_oneOf: <T extends readonly Record<any, any>[] | Record<any, any>[]>(options: T) =>
-    tNullable(tOneOf(options)),
+  null_oneOf: <T>(options: T) => tNullable(tOneOf(options)),
 
   enum: <T extends readonly (string | number | boolean)[] | (string | number | boolean)[]>(
     options: T
@@ -179,11 +174,11 @@ export const T = {
   object: <T extends Record<string, TSchema>>(args: T) => tNonNullable(tObject(args)),
   null_object: <T extends Record<string, TSchema>>(args: T) => tNullable(tObject(args)),
 
-  list: <T extends TSchema>(items: T) => tNonNullable(tList(items)),
-  null_list: <T extends TSchema>(items: T) => tNullable(tList(items)),
+  list: <T>(items: T) => tNonNullable(tList(items)),
+  null_list: <T>(items: T) => tNullable(tList(items)),
 
-  hashMap: <T extends TSchema>(args: T) => tNonNullable(tHashMap(args)),
-  null_hashMap: <T extends TSchema>(args: T) => tNullable(tHashMap(args)),
+  hashMap: <T>(args: T) => tNonNullable(tHashMap(args)),
+  null_hashMap: <T>(args: T) => tNullable(tHashMap(args)),
   // build your own type function
   customType: tCustomType,
   nonNullable: tNonNullable,
@@ -191,3 +186,33 @@ export const T = {
   addValidator: tAddValidator,
   deepNullable,
 }
+
+// --- TEST data of circular dependency---
+const tUser = tObject({
+  type: T.enum(['user'] as const),
+  name: T.string,
+  isVerified: T.boolean,
+  blogPosts: T.null_list(() => tBlogPost),
+  blogPost: () => T.nullable(tBlogPost),
+  top5: T.null_hashMap(() => T.nullable(tBlogPost)),
+
+  random: T.null_oneOf([T.number, T.boolean] as const),
+  // random: T.null_oneOf(() => [tUser, tBlogPost] as const),
+})
+
+const tBlogPost = tObject({
+  type: T.enum(['blogPost'] as const),
+  name: T.string,
+  rating: T.number,
+  author: () => T.nullable(tUser),
+})
+
+const user = null as any as InferSchemaType<typeof tUser>
+
+const a = user.blogPosts?.[0].author?.blogPosts?.[0].author
+
+const b = user.blogPosts?.[0].author?.blogPosts
+
+const c = user.top5?.['xxx']?.author?.blogPost?.author?.blogPost
+
+const d = user.random

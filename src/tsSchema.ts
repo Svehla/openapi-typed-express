@@ -4,17 +4,16 @@ import { NiceMerge } from './generics'
 
 export type TList = {
   type: 'array'
-  items: TSchema
-
+  items: any | (() => any)
   required: boolean
-  // TODO: should validator return string with error, or throw new Erorr and i could catch it?
+  // TODO: should validator return string with error, or throw new Error and i could catch it?
   validator?: (v: any[]) => void
 }
 
 export type TObject = {
   type: 'object'
 
-  properties: Record<string, TSchema>
+  properties: Record<string, any | (() => any)>
   required: boolean
   validator?: (v: Record<any, any>) => void
 }
@@ -23,7 +22,7 @@ export type TObject = {
 // TODO: this is experimental implementation => TODO: write tests
 export type THashMap = {
   type: 'hashMap'
-  property: TSchema
+  property: any
 
   required: boolean
   validator?: (v: any[]) => void
@@ -83,14 +82,11 @@ export type TEnum = {
   validator?: (v: any) => void
 }
 
-type MaybePromise<T> = T | Promise<T>
-
 export type TOneOf = {
   type: 'oneOf'
   required: boolean
 
   options: any[]
-  validator?: (v: any) => MaybePromise<void>
 }
 
 // --- TODO: I should add buffer type?
@@ -125,13 +121,15 @@ type InferObjWithOptKeysObject<
   ReqKeys = GetFilterRequiredKeysUnion<Properties, true>,
   OptKeys = GetFilterRequiredKeysUnion<Properties, false>,
   // @ts-expect-error
-  ReqObjPart = { [K in ReqKeys]: InferSchemaType<Properties[K]> },
+  ReqObjPart = { [K in ReqKeys]: InferSchemaType<ReturnTypeIfFn<Properties[K]>> },
   // @ts-expect-error
-  OptObjPart = { [K in OptKeys]?: InferSchemaType<Properties[K]> },
+  OptObjPart = { [K in OptKeys]?: InferSchemaType<ReturnTypeIfFn<Properties[K]>> },
   // NiceMerge cannot be there because it do infinite recursion on larger projects
   // Out = NiceMerge<ReqObjPart, OptObjPart>
   Out = ReqObjPart & OptObjPart
 > = Out
+
+type ReturnTypeIfFn<T> = T extends (...args: any[]) => infer Ret ? Ret : T
 
 // TODO: write TS tests
 export type InferSchemaType<T extends TSchema | undefined> = T extends undefined
@@ -154,37 +152,37 @@ export type InferSchemaType<T extends TSchema | undefined> = T extends undefined
   T extends { type: 'object' }
   ? MakeTOptional<InferObjWithOptKeysObject<T['properties']>, T['required']>
   : T extends { type: 'array'; items: any }
-  ? MakeTOptional<InferSchemaType<T['items']>[], T['required']>
+  ? MakeTOptional<InferSchemaType<ReturnTypeIfFn<T['items']>>[], T['required']>
   : T extends { type: 'boolean' }
   ? MakeTOptional<boolean, T['required']>
   : T extends { type: 'string' }
   ? MakeTOptional<string, T['required']>
   : T extends { type: 'oneOf' }
   ? // TODO: TS is working for iterating over union? if yes, than cool af!
-    MakeTOptional<InferSchemaType<T['options'][number]>, T['required']>
+    MakeTOptional<InferSchemaType<ReturnTypeIfFn<T['options']>[number]>, T['required']>
   : T extends { type: 'enum' }
   ? MakeTOptional<T['options'][number], T['required']>
   : T extends { type: 'number' }
   ? MakeTOptional<number, T['required']>
   : T extends { type: 'hashMap' }
-  ? MakeTOptional<Record<string, InferSchemaType<T['property']>>, T['required']>
+  ? MakeTOptional<Record<string, InferSchemaType<ReturnTypeIfFn<T['property']>>>, T['required']>
   : T extends { type: 'customType' }
   ? MakeTOptional<ReturnType<T['syncDecoder']>, T['required']>
   : T extends { type: 'any' }
   ? any
   : never
 
-type X = InferSchemaType<{
-  type: 'object'
-  properties: {
-    b1: {
-      type: 'boolean'
-      required: true
-    }
-    b2: {
-      type: 'boolean'
-      required: false
-    }
-  }
-  required: true
-}>
+// type X = InferSchemaType<{
+//   type: 'object'
+//   properties: {
+//     b1: {
+//       type: 'boolean'
+//       required: true
+//     }
+//     b2: {
+//       type: 'boolean'
+//       required: false
+//     }
+//   }
+//   required: true
+// }>
