@@ -33,13 +33,21 @@ const tOneOf = <T>(options: T) => ({
 })
 
 // TODO: array X list?
-const tEnum = <T extends readonly (string | boolean | number)[] | (string | boolean | number)[]>(
-  options: T
-) => ({
-  type: 'enum' as const,
-  required: true as const,
-  options: options as unknown as DeepWriteable<T>,
-})
+const tEnum = <T extends readonly any[] | any[]>(options: T) => {
+  // TODO: add runtime validations
+  if (options.some(i => typeof i !== 'string' && typeof i !== 'boolean' && typeof i !== 'number')) {
+    throw new Error(
+      `T.enum get invalid options ${JSON.stringify(
+        options
+      )}, only number, boolean and string is supported`
+    )
+  }
+  return {
+    type: 'enum' as const,
+    required: true as const,
+    options: options as unknown as DeepWriteable<T>,
+  }
+}
 
 const tObject = <T extends Record<string, any | (() => any)>>(a: T) => ({
   type: 'object' as const,
@@ -67,10 +75,6 @@ export const tCustomType = <Name extends string, ParentTSchema extends TSchema, 
   // TODO: should encoder stay here?
   syncEncoder = ((v: any) => v as any) as (value: R) => InferSchemaType<ParentTSchema>
 ) => {
-  if (parentTSchema.type === 'customType') throw new Error('Parent type cannot be customType')
-
-  if (parentTSchema.type === 'oneOf') throw new Error('Parent type cannot be oneOf')
-
   return {
     name: `custom_${name}` as const,
     type: 'customType' as const,

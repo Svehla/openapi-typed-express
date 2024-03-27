@@ -10,7 +10,6 @@ import { TSchema } from './tsSchema'
 export const normalizeAbortEarlyYupErr = (obj?: any) => {
   if (!obj) return undefined
   const yErrObj = JSON.parse(JSON.stringify(obj)) as { inner: any[] }
-  // console.log(yErrObj)
   const niceYErrObj = [
     // is this correct normalizing?
     ...(yErrObj?.inner.length > 0
@@ -100,30 +99,22 @@ export const convertSchemaToYupValidationObject = (
     // this lib is not supporting yup casting, only transform for custom types are enable
     yupValidator = yupValidator
       .transform(function (value: any) {
-        if (schema.parentTSchema.type === 'customType')
-          throw new Error('Parent type cannot be customType')
-
-        if (schema.parentTSchema.type === 'oneOf') throw new Error('Parent type cannot be oneOf')
-
         if (schema.required === false && (value === null || value === undefined)) {
           return value
         }
 
         try {
-          const parentTypeValidator = convertSchemaToYupValidationObject(
-            schema.parentTSchema,
-            extra
-          )
-          parentTypeValidator.validateSync(value, { abortEarly: false })
+          const transformedItem = convertSchemaToYupValidationObject(schema.parentTSchema, {
+            ...extra,
+            runAsyncValidations: false,
+          }).validateSync(value, { abortEarly: false })
 
           // parser cannot return Promise! https://github.com/jquense/yup/issues/238
           // TODO: decode & encode | parser & serializer
           if (extra?.customTypesMode === 'encode') {
-            const parsedValue = schema.syncEncoder(value)
-            return parsedValue
+            return schema.syncEncoder(transformedItem)
           } else {
-            const parsedValue = schema.syncDecoder(value)
-            return parsedValue
+            return schema.syncDecoder(transformedItem)
           }
         } catch (err) {
           return err
@@ -178,25 +169,6 @@ export const convertSchemaToYupValidationObject = (
     })
     // .oneOf(schema.options)
   } else if (schema?.type === 'oneOf') {
-    /*
-    // this works well till we wanted to support oneOf with decoder transform of customType
-
-    yup.addMethod(yup.mixed, 'oneOfSchemas', function oneOfSchemas(schemas: any[], message) {
-      return this.test(
-        'one-of-schemas-exact',
-        message || 'Not all items in ${path} match one of the allowed schemas',
-        async item => {
-          const areValid = await Promise.all(schemas.map(schema => schema.isValid(item)))
-          return areValid.some(i => i === true)
-        }
-      )
-    })
-
-    yupValidator = yupValidator
-      .mixed()
-      .oneOfSchemas(schema.options.map(i => convertSchemaToYupValidationObject(i, extra)))
-    */
-
     // oneOf cannot match value based on async validator
     yupValidator = yupValidator
       .mixed()

@@ -26,11 +26,11 @@ describe('codegen.test', () => {
           'h': T.hashMap(T.string),
           'nh': T.null_hashMap(T.string),
 
-          'e': T.enum(['a', 'b', 'c']),
-          'en': T.null_enum(['a', 'b', 'c']),
+          'e': T.enum(['a', 'b', 'c'] as const),
+          'en': T.null_enum(['a', 'b', 'c'] as const),
 
-          'o': T.oneOf([T.string, T.boolean]),
-          'no': T.null_oneOf([T.string, T.boolean]),
+          'o': T.oneOf([T.string, T.boolean] as const),
+          'no': T.null_oneOf([T.string, T.boolean] as const),
 
           'l': T.list(T.string),
           'nl': T.null_list(T.string),
