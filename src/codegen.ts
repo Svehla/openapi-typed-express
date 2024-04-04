@@ -1,5 +1,6 @@
 import { TSchema } from './tsSchema'
 
+// TODO: add support for validators, encoders, decoders etc...
 export const codegenSchemaToJSCode = (schema: TSchema): string => {
   let str = ''
   switch (schema.type) {

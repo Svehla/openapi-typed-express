@@ -1,8 +1,6 @@
 import { __expressOpenAPIHack__, apiDoc, getApiDocInstance } from '../src/typedExpressDocs'
 import { T } from '../src'
 
-const tCustom = T._custom
-
 describe('typedExpressDocs', () => {
   describe('apiDoc', () => {
     describe('valid', () => {
@@ -19,7 +17,7 @@ describe('typedExpressDocs', () => {
         const lazyFn = apiDoc({
           body: T.object({
             message: T.string,
-            date: tCustom.cast_date,
+            date: T.cast.date,
           }),
         })(req => {
           expect(req.body.date.getTime()).toStrictEqual(new Date(123).getTime())
@@ -149,7 +147,7 @@ describe('typedExpressDocs', () => {
                     query: undefined,
                     body: [
                       {
-                        errors: ['enum must be one of a type, but the final value was: `\"b\"`.'],
+                        errors: ['enum must be one of a type, but the final value was: `"b"`.'],
                         path: 'enum',
                       },
                     ],

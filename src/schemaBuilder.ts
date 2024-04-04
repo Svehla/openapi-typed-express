@@ -101,7 +101,8 @@ const tNullable = <T extends { required: any }>(
   required: false as const,
 })
 
-// We cannot match tOneOf value by async validator
+// TODO: is this correct info?: ``We cannot match tOneOf value by async validator``
+// validator is working for decode custom types purposes only
 const tAddValidator = <T extends TSchema>(
   schema: T,
   validator: (val: InferSchemaType<T>) => void

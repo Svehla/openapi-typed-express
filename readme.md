@@ -53,7 +53,9 @@ app.get(
     const body = req.body
     const query = req.query
 
-    res.send({
+    // res.send is typed by typescript, but it do not transform values by tSchema, so
+    // you may use tSend instead
+    res.tSend({
       body,
       query,
     })
@@ -161,8 +163,10 @@ import { queryParser } from 'express-query-parser'
 
 app.use(
   queryParser({
+    parseNumber: false,
+    parseBoolean: false,
     parseNull: true,
-    parseBoolean: true,
+    parseUndefined: true,
   })
 )
 ```

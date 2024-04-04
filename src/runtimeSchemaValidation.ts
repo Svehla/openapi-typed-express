@@ -23,8 +23,7 @@ export const convertSchemaToYupValidationObject = (
   schema: TSchema,
   extra?: { customTypesMode?: 'decode' | 'encode'; runAsyncValidations?: boolean }
 ): yup.MixedSchema<any, any, any> => {
-  // let yv = null as any
-  // yup validator
+  const customTypesMode = extra?.customTypesMode ?? 'decode'
   let yupValidator = yup as any
 
   if (schema?.type === 'array') {
@@ -49,9 +48,10 @@ export const convertSchemaToYupValidationObject = (
     yupValidator = yup.mixed().test({
       name: 'strict-custom-boolean',
       message: d =>
-        `${d.path} must be a \`boolean\` type, but the final value was: \`${JSON.stringify(
-          d.value
-        )}\`.`,
+        [
+          `${d.path} must be a \`boolean\` type, `,
+          `but the final value was: \`${JSON.stringify(d.value)}\`.`,
+        ].join(''),
       test: value => {
         if (schema.required === false && (value === null || value === undefined)) return true
         if (typeof value === 'boolean') return true
@@ -66,9 +66,10 @@ export const convertSchemaToYupValidationObject = (
       .test({
         name: 'strict-custom-number',
         message: d =>
-          `${d.path} must be a \`number\` type, but the final value was: \`${JSON.stringify(
-            d.value
-          )}\`.`,
+          [
+            `${d.path} must be a \`number\` type, `,
+            `but the final value was: \`${JSON.stringify(d.value)}\`.`,
+          ].join(''),
         test: value => {
           if (schema.required === false && (value === null || value === undefined)) return true
           if (typeof value === 'number' && !isNaN(value)) return true
@@ -81,9 +82,10 @@ export const convertSchemaToYupValidationObject = (
     yupValidator = yup.mixed().test({
       name: 'strict-custom-string',
       message: d =>
-        `${d.path} must be a \`string\` type, but the final value was: \`${JSON.stringify(
-          d.value
-        )}\`.`,
+        [
+          `${d.path} must be a \`string\` type, `,
+          `but the final value was: \`${JSON.stringify(d.value)}\`.`,
+        ].join(''),
       test: value => {
         if (schema.required === false && (value === null || value === undefined)) return true
         if (typeof value === 'string') return true
@@ -104,17 +106,25 @@ export const convertSchemaToYupValidationObject = (
         }
 
         try {
-          const transformedItem = convertSchemaToYupValidationObject(schema.parentTSchema, {
-            ...extra,
-            runAsyncValidations: false,
-          }).validateSync(value, { abortEarly: false })
-
           // parser cannot return Promise! https://github.com/jquense/yup/issues/238
           // TODO: decode & encode | parser & serializer
-          if (extra?.customTypesMode === 'encode') {
-            return schema.syncEncoder(transformedItem)
-          } else {
+          if (customTypesMode === 'decode') {
+            const transformedItem = convertSchemaToYupValidationObject(schema.parentTSchema, {
+              ...extra,
+              runAsyncValidations: false,
+            }).validateSync(value, { abortEarly: false })
+
             return schema.syncDecoder(transformedItem)
+          } else if (customTypesMode === 'encode') {
+            const transformedItem = schema.syncEncoder(value)
+
+            // encoder has a few limitations
+            // 1. T.addValidator (sync/async)is working for decode purpose only
+            // 2. parent nested transformations are not supported (if T.custom inherit from another T.custom)
+
+            return transformedItem
+          } else {
+            throw new Error('invalid customTypesMode')
           }
         } catch (err) {
           return err
@@ -157,9 +167,11 @@ export const convertSchemaToYupValidationObject = (
     yupValidator = yupValidator.mixed().test({
       name: 'strict-custom-enum',
       message: (d: any) =>
-        `${d.path} must be one of ${schema.options.join(
-          ', '
-        )} type, but the final value was: \`${JSON.stringify(d.value)}\`.`,
+        [
+          `${d.path} must be one of `,
+          schema.options.join(', '),
+          ` type, but the final value was: \`${JSON.stringify(d.value)}\`.`,
+        ].join(''),
       test: (value: any) => {
         if (schema.required === false && (value === null || value === undefined)) return true
         if (schema.options.includes(value)) return true

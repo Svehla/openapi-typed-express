@@ -33,6 +33,8 @@
   "include": [
     // we have to change path when we build lib and when we test lib in the /example directory...
     // TODO: resolve it somehow
-    "src/**/*"
+    "src/**/*",
+    "tests/**/*",
+    "example/**/*",
   ]
 }

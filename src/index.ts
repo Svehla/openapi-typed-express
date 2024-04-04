@@ -1,7 +1,7 @@
 export { jsValueToSchema, tSchemaToJSValue } from './jsValueToSchema'
 export { InferSchemaType, TSchema } from './tsSchema'
 export { convertSchemaToYupValidationObject } from './runtimeSchemaValidation'
-import { tCustom } from './customTypes'
+import { tCast, tExtra } from './customTypes'
 import { T as rawT } from './schemaBuilder'
 export {
   apiDoc,
@@ -16,7 +16,9 @@ export { pickTObject, omitTObject } from './tUtils'
 
 const tSchema = {
   ...rawT,
-  _custom: tCustom,
+
+  cast: tCast,
+  extra: tExtra,
 }
 
 export const T = tSchema

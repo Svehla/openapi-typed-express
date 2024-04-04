@@ -51,7 +51,10 @@ export const getApiDocInstance =
         >,
         'headers'
       > & { headers: InferSchemaType<WrapToTObject<UseEmptyObjectAsDefault<C['headers']>>> },
-      res: Omit<Response, 'send'> & { send: (data: InferSchemaType<C['returns']>) => void },
+      res: Omit<Response, 'send'> & {
+        send: (data: InferSchemaType<C['returns']>) => void
+        tSend: (data: InferSchemaType<C['returns']>) => void
+      },
       next: NextFunction
     ) => void
   ) => {
@@ -60,13 +63,27 @@ export const getApiDocInstance =
     const paramsSchema = docs.params ? T.object(docs.params) : null
     const querySchema = docs.query ? T.object(docs.query) : null
     const bodySchema = docs.body ? docs.body : null
+    const returnsSchema = docs.returns ? docs.returns : null
 
     const headersValidator = headersSchema
       ? convertSchemaToYupValidationObject(headersSchema)
       : null
-    const paramsValidator = paramsSchema ? convertSchemaToYupValidationObject(paramsSchema) : null
-    const queryValidator = querySchema ? convertSchemaToYupValidationObject(querySchema) : null
-    const bodyValidator = bodySchema ? convertSchemaToYupValidationObject(bodySchema) : null
+
+    const paramsValidator = paramsSchema
+      ? convertSchemaToYupValidationObject(paramsSchema, { customTypesMode: 'decode' })
+      : null
+
+    const queryValidator = querySchema
+      ? convertSchemaToYupValidationObject(querySchema, { customTypesMode: 'decode' })
+      : null
+
+    const bodyValidator = bodySchema
+      ? convertSchemaToYupValidationObject(bodySchema, { customTypesMode: 'decode' })
+      : null
+
+    const returnsValidator = returnsSchema
+      ? convertSchemaToYupValidationObject(returnsSchema, { customTypesMode: 'encode' })
+      : null
 
     // `apiDocs()` have to return an function because express runtime checks
     // if handler is a function and if not it throw new Error
@@ -80,7 +97,7 @@ export const getApiDocInstance =
 
       const handleRouteWithRuntimeValidations = async (
         req: Request,
-        res: Response, // & { typedSend: (data: C['returns']) => void },
+        res: Response, // & { tSend: (data: C['returns']) => void },
         next: NextFunction
       ) => {
         // --- this function include runtime validations which are triggered each request ---
@@ -135,8 +152,26 @@ export const getApiDocInstance =
         if (queryValidator) req.query = queryValidationRes.value
         if (bodyValidator) req.body = bodyValidationRes.value
 
+        const tSend = async (data: any) => {
+          try {
+            const transformedData = await returnsValidator?.validate(data, {
+              abortEarly: false,
+              stripUnknown: true,
+            })
+            res.send(transformedData)
+          } catch (errObj) {
+            res.status(500).send({
+              type: 'invalid data came from app handler',
+              error: errorFormatter(normalizeAbortEarlyYupErr(errObj)),
+            })
+          }
+        }
+
+        // @ts-expect-error
+        res.tSend = tSend
         // TODO: apply encoder (serializer) for custom types like `Date -> string` (reverse decoder (parser))
         // @ts-ignore => if this ignore is missing, there is potential infinite ts recursion...
+
         return handle(req as any, res, next)
       }
 

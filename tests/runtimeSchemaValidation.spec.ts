@@ -1,4 +1,4 @@
-import { InferSchemaType, convertSchemaToYupValidationObject } from '../src'
+import { InferSchemaType, TSchema, convertSchemaToYupValidationObject } from '../src'
 import { T } from '../src'
 import { normalizeAbortEarlyYupErr } from '../src/runtimeSchemaValidation'
 
@@ -16,6 +16,26 @@ const validateDataAgainstSchema = async (schema: any, objToValidate: any, output
   }
 
   expect(objValidationRes).toMatchObject(output)
+}
+
+const transformDataViaSchema = async (
+  customTypesMode: 'decode' | 'encode',
+  schema: TSchema,
+  objToValidate: any,
+  expectedObj: any
+) => {
+  try {
+    const yupValidator = convertSchemaToYupValidationObject(schema, { customTypesMode })
+    const data = await yupValidator.validate(objToValidate, {
+      abortEarly: false,
+      stripUnknown: true,
+    })
+
+    expect(data).toMatchObject(expectedObj)
+  } catch (err) {
+    const errObj = normalizeAbortEarlyYupErr(err)
+    throw new Error(JSON.stringify(errObj, null, 2))
+  }
 }
 
 describe('runtimeSchemaValidation', () => {
@@ -335,26 +355,26 @@ describe('runtimeSchemaValidation', () => {
   describe('custom types', () => {
     describe('date', () => {
       test('0', async () => {
-        await validateDataAgainstSchema(T.list(T._custom.cast_date), [new Date().toISOString()], {
+        await validateDataAgainstSchema(T.list(T.cast.date), [new Date().toISOString()], {
           status: 'fulfilled',
         })
       })
 
       test('1', async () => {
-        await validateDataAgainstSchema(T._custom.cast_date, new Date().toISOString(), {
+        await validateDataAgainstSchema(T.cast.date, new Date().toISOString(), {
           status: 'fulfilled',
         })
       })
 
       test('2', async () => {
-        await validateDataAgainstSchema(T._custom.cast_null_date, new Date().toISOString(), {
+        await validateDataAgainstSchema(T.cast.null_date, new Date().toISOString(), {
           status: 'fulfilled',
         })
       })
 
       test('3', async () => {
         await validateDataAgainstSchema(
-          T._custom.cast_null_date,
+          T.cast.null_date,
           `!lorem ipsum!${new Date().toISOString()}`,
           {
             status: 'rejected',
@@ -364,7 +384,7 @@ describe('runtimeSchemaValidation', () => {
       })
 
       test('4', async () => {
-        await validateDataAgainstSchema(T._custom.cast_date, 123, {
+        await validateDataAgainstSchema(T.cast.date, 123, {
           status: 'rejected',
 
           reason: [
@@ -374,7 +394,7 @@ describe('runtimeSchemaValidation', () => {
       })
 
       test('5', async () => {
-        await validateDataAgainstSchema(T._custom.cast_date, new Date().getTime().toString(), {
+        await validateDataAgainstSchema(T.cast.date, new Date().getTime().toString(), {
           status: 'rejected',
 
           reason: [{ path: '', errors: ['invalid Date'] }],
@@ -382,25 +402,146 @@ describe('runtimeSchemaValidation', () => {
       })
 
       test('6', async () => {
-        await validateDataAgainstSchema(T.list(T._custom.minMaxNum(0, 1)), [3], {
+        await validateDataAgainstSchema(T.list(T.extra.minMaxNumber(0, 1)), [3], {
           status: 'rejected',
         })
+      })
+
+      test('7.decode', async () => {
+        const date = new Date()
+        await transformDataViaSchema(
+          'decode',
+          T.object({
+            nd: T.cast.null_date,
+            ud: T.cast.null_date,
+            d: T.cast.null_date,
+            nb: T.cast.null_boolean,
+            ub: T.cast.null_boolean,
+            b: T.cast.null_boolean,
+            nn: T.cast.null_number,
+            un: T.cast.null_number,
+            n: T.cast.null_number,
+
+            x: T.extra.toListIfNot(T.string),
+            xx: T.extra.toListIfNot(T.string),
+          }),
+          {
+            nd: null,
+            ud: undefined,
+            d: date.toISOString(),
+            nb: null,
+            ub: undefined,
+            b: 'true',
+            nn: null,
+            un: undefined,
+            n: '3',
+            x: 'hello',
+            xx: ['hello'],
+          },
+          {
+            nd: null,
+            d: date,
+            nb: null,
+            b: true,
+            nn: null,
+            n: 3,
+            x: ['hello'],
+            xx: ['hello'],
+          }
+        )
+      })
+
+      test('7.encode', async () => {
+        const date = new Date()
+        await transformDataViaSchema(
+          'encode',
+          T.object({
+            nd: T.cast.null_date,
+            ud: T.cast.null_date,
+            d: T.cast.null_date,
+            nb: T.cast.null_boolean,
+            ub: T.cast.null_boolean,
+            b: T.cast.null_boolean,
+            nn: T.cast.null_number,
+            un: T.cast.null_number,
+            n: T.cast.null_number,
+
+            x: T.extra.toListIfNot(T.string),
+            xx: T.extra.toListIfNot(T.string),
+          }),
+          {
+            nd: null,
+            d: date,
+            ud: undefined,
+            nb: null,
+            ub: undefined,
+            b: true,
+            un: undefined,
+            nn: null,
+            n: 3,
+            x: ['hello'],
+            xx: ['hello'],
+          },
+          {
+            nd: null,
+            d: date.toISOString(),
+            nb: null,
+            b: 'true',
+            nn: null,
+            n: '3',
+            x: ['hello'],
+            xx: ['hello'],
+          }
+        )
+      })
+
+      test('8', async () => {
+        await validateDataAgainstSchema(
+          T.object({ c: T.cast.date }),
+          { a: null },
+          { status: 'rejected' }
+        )
+      })
+
+      test('9', async () => {
+        await validateDataAgainstSchema(
+          T.object({ a: T.extra.ISOString }),
+          { a: new Date().toISOString() + 'x' },
+          { status: 'rejected' }
+        )
+      })
+
+      test('10', async () => {
+        await validateDataAgainstSchema(
+          T.object({
+            a: T.extra.ISOString,
+            b: T.extra.minMaxNumber(0, 10),
+            c: T.extra.minMaxString(1, 2),
+            d: T.extra.minMaxString(1, 2),
+          }),
+          {
+            a: new Date().toISOString(),
+            b: 1,
+            c: 'cc',
+          },
+          { status: 'rejected' }
+        )
       })
     })
 
     test('4', async () => {
-      await validateDataAgainstSchema(T._custom.minMaxNum(1, 5), 2, { status: 'fulfilled' })
+      await validateDataAgainstSchema(T.extra.minMaxNumber(1, 5), 2, { status: 'fulfilled' })
     })
 
     test('5', async () => {
-      await validateDataAgainstSchema(T._custom.minMaxNum(1, 5), 6, {
+      await validateDataAgainstSchema(T.extra.minMaxNumber(1, 5), 6, {
         status: 'rejected',
         reason: [{ path: '', errors: ['value needs to be > 5'] }],
       })
     })
 
     test('2', async () => {
-      await validateDataAgainstSchema(T._custom.cast_null_number, 'null', {
+      await validateDataAgainstSchema(T.cast.null_number, 'null', {
         status: 'rejected',
         reason: [{ path: '', errors: ['invalid number cast'] }],
       })
@@ -453,7 +594,7 @@ describe('runtime custom types parsing ', () => {
 
   describe('date', () => {
     test('1', async () => {
-      const value = await getSchemaCastedValue(T._custom.cast_null_date, null)
+      const value = await getSchemaCastedValue(T.cast.null_date, null)
       expect(value).toEqual({
         status: 'fulfilled',
         value: null,
@@ -463,7 +604,7 @@ describe('runtime custom types parsing ', () => {
 
   describe('number cast', () => {
     test('1', async () => {
-      const value = await getSchemaCastedValue(T._custom.cast_null_number, null)
+      const value = await getSchemaCastedValue(T.cast.null_number, null)
       expect(value).toEqual({
         status: 'fulfilled',
         value: null,
@@ -471,7 +612,7 @@ describe('runtime custom types parsing ', () => {
     })
 
     test('2', async () => {
-      const value = await getSchemaCastedValue(T._custom.cast_null_number, '005')
+      const value = await getSchemaCastedValue(T.cast.null_number, '005')
       expect(value).toEqual({
         status: 'fulfilled',
         value: 5,
@@ -526,7 +667,7 @@ describe('experimental custom types', () => {
       const decoderInVal = convertSchemaToYupValidationObject(x, { customTypesMode: 'decode' })
       const encoderOutVal = convertSchemaToYupValidationObject(x, { customTypesMode: 'encode' })
 
-      type _In = InferSchemaType<typeof x>
+      // type _In = InferSchemaType<typeof x>
       // it's not possible to get Type of decoder
       // type Out = InferSchemaType<typeof x>
 

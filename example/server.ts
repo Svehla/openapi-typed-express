@@ -13,9 +13,9 @@ app.use(express.urlencoded({ extended: true }))
 app.use(express.json())
 app.use(
   queryParser({
-    parseNumber: true,
+    parseNumber: false,
+    parseBoolean: false,
     parseNull: true,
-    parseBoolean: true,
     parseUndefined: true,
   })
 )
@@ -36,7 +36,7 @@ app.get(
   apiDoc({
     // TODO: rename to reqHeaders
     headers: T.object({
-      x: T._custom.cast_number,
+      x: T.cast.number,
       authorization: T.string,
     }),
     returns: T.string,
@@ -142,6 +142,26 @@ app.get(
   })
 )
 
+app.get(
+  '/cast',
+  apiDoc({
+    query: {
+      bool: T.cast.boolean,
+    },
+
+    returns: T.object({
+      bool: T.cast.boolean,
+    }),
+  })((req, res) => {
+    res.tSend({
+      // @ts-expect-error
+      x: 'xxx',
+
+      bool: req.query.bool, // + 'x',
+    })
+  })
+)
+
 const string3PlusChars = T.custom_string(a => {
   if (a.length < 3) {
     throw new Error('length needs to be >= 3')
@@ -150,20 +170,20 @@ const string3PlusChars = T.custom_string(a => {
 
 const input = {
   params: {
-    id: T._custom.cast_number,
+    id: T.cast.number,
   },
   query: {
-    a: T.list(T._custom.cast_date),
+    a: T.list(T.cast.date),
     b: string3PlusChars,
   },
   body: T.object({
     a: T.object({ a: T.object({ a: T.object({ a: T.string }) }) }),
     anything: T.null_any,
-    myDate1: T._custom.cast_null_date,
-    myDate2: T._custom.cast_date,
+    myDate1: T.cast.null_date,
+    myDate2: T.cast.date,
     bool: T.boolean,
-    age: T._custom.minMaxNum(0, 18),
-    myDate3: T._custom.cast_null_date,
+    age: T.extra.minMaxNumber(0, 18),
+    myDate3: T.cast.null_date,
     hashMap1: T.hashMap(T.string),
     hashMap2: T.hashMap(
       T.object({
