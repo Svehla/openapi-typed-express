@@ -154,10 +154,13 @@ export const getApiDocInstance =
 
         const tSend = async (data: any) => {
           try {
-            const transformedData = await returnsValidator?.validate(data, {
-              abortEarly: false,
-              stripUnknown: true,
-            })
+            const transformedData = returnsValidator
+              ? await returnsValidator.validate(data, {
+                  abortEarly: false,
+                  stripUnknown: true,
+                })
+              : data
+
             res.send(transformedData)
           } catch (errObj) {
             res.status(500).send({

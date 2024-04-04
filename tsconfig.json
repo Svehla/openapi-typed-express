@@ -34,7 +34,9 @@
     // we have to change path when we build lib and when we test lib in the /example directory...
     // TODO: resolve it somehow
     "src/**/*",
-    "tests/**/*",
-    "example/**/*",
+    // tests and example should not be included in dist, but we want to check the types while
+    // developing the library
+    // "tests/**/*",
+    // "example/**/*",
   ]
 }
