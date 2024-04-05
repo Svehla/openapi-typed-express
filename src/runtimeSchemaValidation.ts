@@ -27,22 +27,29 @@ export const convertSchemaToYupValidationObject = (
   let yupValidator = yup as any
 
   if (schema?.type === 'array') {
-    yupValidator = yupValidator.array().of(convertSchemaToYupValidationObject(schema.items, extra))
+    yupValidator = yupValidator
+      .array()
+      .default(undefined)
+      .of(convertSchemaToYupValidationObject(schema.items, extra))
     //
   } else if (schema?.type === 'object') {
     // we cannot use default yup boolean because its not working for transform() without automatic casting
-    yupValidator = yupValidator.object(
-      mapEntries(([k, v]) => {
-        let yupValidator = convertSchemaToYupValidationObject(v, extra)
-        // keys of object needs to be required if value is required
-        // lazy object has no required() method
-        if (v.required && yupValidator.required) {
-          yupValidator = yupValidator.required()
-        }
+    yupValidator = yupValidator
+      .object(
+        mapEntries(([k, v]) => {
+          let yupValidator = convertSchemaToYupValidationObject(v, extra)
+          // keys of object needs to be required if value is required
+          // lazy object has no required() method
+          if (v.required && yupValidator.required) {
+            yupValidator = yupValidator.required()
+          }
 
-        return [k, yupValidator]
-      }, schema.properties)
-    )
+          return [k, yupValidator]
+        }, schema.properties)
+      )
+      // default undefined is MUST HAVE KEY! without it, yup will automatically fill default value
+      // as {} and it broke nullable objects with non nullable fields!
+      .default(undefined)
   } else if (schema?.type === 'boolean') {
     // we cannot use default yup boolean because its not working for transform() without automatic casting
     yupValidator = yup.mixed().test({
@@ -155,12 +162,12 @@ export const convertSchemaToYupValidationObject = (
 
     yupValidator = yup.lazy(v => {
       if (schema.required === false && (v === null || v === undefined)) {
-        return yup.object({}).nullable()
+        return yup.object({}).default(undefined).nullable()
       }
       if (v === null || v === undefined) {
-        return yup.object({})
+        return yup.object({}).default(undefined)
       }
-      return yup.object(mapEntries(([k]) => [k, objValueValidator], v))
+      return yup.object(mapEntries(([k]) => [k, objValueValidator], v)).default(undefined)
     })
   } else if (schema?.type === 'enum') {
     // TODO: error message does not return which value was received for better err debug msgs
@@ -199,7 +206,8 @@ export const convertSchemaToYupValidationObject = (
 
         try {
           if (matchOptionIndex === -1) {
-            throw new Error('Not all items in ${path} match one of the allowed schemas')
+            // TODO: return of throw?
+            return new Error('Not all items in ${path} match one of the allowed schemas')
           }
 
           const transformedItem = convertSchemaToYupValidationObject(

@@ -359,10 +359,14 @@ describe('runtimeSchemaValidation', () => {
           a: T.null_object({ x: T.any }),
           b: T.null_object({ x: T.any }),
           c: T.null_object({ bool: T.boolean }),
+
+          d: T.null_hashMap(T.hashMap(T.boolean)),
+          e: T.object({ x: T.null_object({ x: T.object({ x: T.boolean }) }) }),
         }),
         {
           a: undefined,
           b: null,
+          e: {},
         },
         {
           status: 'fulfilled',
@@ -765,7 +769,7 @@ describe('experimental custom types', () => {
               x: T.addValidator(T.string, async val => {
                 await delay(2000)
                 if (val === 'x') {
-                  throw new Error('x error')
+                  throw new Error('custom-error: x error')
                 }
               }),
               btnType: T.oneOf([
@@ -787,13 +791,11 @@ describe('experimental custom types', () => {
 
       try {
         await validator.validate({
-          x: {
-            y: {
-              btnType: 'COMPARISON',
-              x: 'x',
-              id: 'optimistic-ui',
-              sentDate: '2024-03-15T13:09:19.922Z',
+          y: {
+            x: {
               type: 'ADD_MESSAGE.USER.GEN_BY_BTN',
+              x: 'x',
+              btnType: 'COMPARISON',
             },
           },
         })
@@ -804,7 +806,7 @@ describe('experimental custom types', () => {
         expect(
           // @ts-expect-error
           niceErr[0]?.errors
-        ).toEqual(['y.x is a required field'])
+        ).toEqual(['custom-error: x error'])
       }
     })
 

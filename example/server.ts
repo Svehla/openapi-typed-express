@@ -150,14 +150,14 @@ app.get(
     },
 
     returns: T.object({
-      bool: T.cast.boolean,
+      bool: T.boolean, //.cast.boolean,
     }),
   })((req, res) => {
     res.tSend({
-      // @ts-expect-error
+      // @ts-ignore
       x: 'xxx',
-
-      bool: req.query.bool, // + 'x',
+      // @ts-expect-error
+      bool: [3], // req.query.bool + 'x',
     })
   })
 )
