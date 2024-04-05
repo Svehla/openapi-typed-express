@@ -37,7 +37,17 @@ type WrapToTObject<T> = { type: 'object'; required: true; properties: T }
 //   : { type: 'object'; required: true; properties: T }
 
 export const getApiDocInstance =
-  ({ errorFormatter = (e => e) as (err: any) => any } = {}) =>
+  ({
+    errorFormatter = (e => e) as (errors: {
+      errors: {
+        headers?: any
+        params?: any
+        query?: any
+        body?: any
+        returns?: any
+      }
+    }) => any,
+  } = {}) =>
   <C extends Config>(docs: C) =>
   (
     handle: (
@@ -165,7 +175,7 @@ export const getApiDocInstance =
           } catch (errObj) {
             res.status(500).send({
               type: 'invalid data came from app handler',
-              error: errorFormatter(normalizeAbortEarlyYupErr(errObj)),
+              error: errorFormatter({ errors: { returns: normalizeAbortEarlyYupErr(errObj) } }),
             })
           }
         }

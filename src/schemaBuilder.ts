@@ -161,7 +161,7 @@ export const T = {
   any: tNonNullable(tAny),
   null_any: tNullable(tAny),
   custom_any: (validator: (a: any) => void) => tNonNullable(tAddValidator(tAny, validator)),
-  custom_null_any: (validator: (a: any) => void) => tNonNullable(tAddValidator(tAny, validator)),
+  custom_null_any: (validator: (a: any) => void) => tNullable(tAddValidator(tAny, validator)),
 
   oneOf: <T extends readonly Record<any, any>[] | Record<any, any>[]>(options: T) =>
     tNonNullable(tOneOf(options)),

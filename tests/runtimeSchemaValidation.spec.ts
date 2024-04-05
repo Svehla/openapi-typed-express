@@ -350,6 +350,26 @@ describe('runtimeSchemaValidation', () => {
         }
       )
     })
+
+    test('15', async () => {
+      // object of null object is not working...
+      // double nested objects cannot be transformed, but thanks to .strict(true)
+      await validateDataAgainstSchema(
+        T.object({
+          a: T.null_object({ x: T.any }),
+          b: T.null_object({ x: T.any }),
+          c: T.null_object({ bool: T.boolean }),
+        }),
+        {
+          a: undefined,
+          b: null,
+        },
+        {
+          status: 'fulfilled',
+          // reason: [],
+        }
+      )
+    })
   })
 
   describe('custom types', () => {
