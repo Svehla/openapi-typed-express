@@ -2,7 +2,7 @@ import { DeepPartial, deepMerge, mergePaths } from './utils'
 import { NextFunction, Request, Response } from 'express'
 import { T } from './schemaBuilder'
 import { UrlsMethodDocs, convertUrlsMethodsSchemaToOpenAPI } from './openAPIFromSchema'
-import { getTSchemaValidator, normalizeAbortEarlyYupErr } from './runtimeSchemaValidation'
+import { getTSchemaValidator, normalizeYupError } from './runtimeSchemaValidation'
 import { parseUrlFromExpressRegexp } from './expressRegExUrlParser'
 import { InferSchemaType, TSchema } from './tsSchema'
 import { tSchemaToJSValue } from './jsValueToSchema'
@@ -140,10 +140,10 @@ export const getApiDocInstance =
 
           const errObj = {
             errors: {
-              headers: normalizeAbortEarlyYupErr(headersErrors),
-              params: normalizeAbortEarlyYupErr(paramsErrors),
-              query: normalizeAbortEarlyYupErr(queryErrors),
-              body: normalizeAbortEarlyYupErr(bodyErrors),
+              headers: normalizeYupError(headersErrors),
+              params: normalizeYupError(paramsErrors),
+              query: normalizeYupError(queryErrors),
+              body: normalizeYupError(bodyErrors),
             },
           }
 
@@ -165,7 +165,7 @@ export const getApiDocInstance =
           } catch (errObj) {
             res.status(500).send({
               type: 'invalid data came from app handler',
-              error: errorFormatter({ errors: { returns: normalizeAbortEarlyYupErr(errObj) } }),
+              error: errorFormatter({ errors: { returns: normalizeYupError(errObj) } }),
             })
           }
         }

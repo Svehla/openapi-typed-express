@@ -7,7 +7,7 @@ import { TSchema } from './tsSchema'
  * thanks to this function we extract JSON which describe error with better
  * programming API
  */
-export const normalizeAbortEarlyYupErr = (obj?: any) => {
+export const normalizeYupError = (obj?: any) => {
   if (!obj) return undefined
   const yErrObj = JSON.parse(JSON.stringify(obj)) as { inner: any[] }
   const niceYErrObj = [

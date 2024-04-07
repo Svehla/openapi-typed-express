@@ -1,6 +1,6 @@
 import { InferSchemaType, TSchema } from '../src'
 import { T } from '../src'
-import { getTSchemaValidator, normalizeAbortEarlyYupErr } from '../src/runtimeSchemaValidation'
+import { getTSchemaValidator, normalizeYupError } from '../src/runtimeSchemaValidation'
 
 // TODO: this file tests encoders & decoders (for casting and converting)
 
@@ -12,7 +12,7 @@ const validateDataAgainstSchema = async (schema: any, objToValidate: any, output
   const [objValidationRes] = await Promise.allSettled([yupValidator.validate(objToValidate)])
 
   if (objValidationRes.status === 'rejected') {
-    objValidationRes.reason = normalizeAbortEarlyYupErr(objValidationRes.reason)
+    objValidationRes.reason = normalizeYupError(objValidationRes.reason)
   }
 
   expect(objValidationRes).toMatchObject(output)
@@ -22,7 +22,7 @@ const getSchemaCastedValue = async (schema: any, valueIn: any) => {
   const yupValidator = getTSchemaValidator(schema)
   const [out] = await Promise.allSettled([yupValidator.validate(valueIn)])
   if (out.status === 'rejected') {
-    out.reason = normalizeAbortEarlyYupErr(out.reason)
+    out.reason = normalizeYupError(out.reason)
   }
   return out
 }
@@ -43,7 +43,7 @@ const transformDataViaSchema = async (
       expect(data).toBe(expectedObj)
     }
   } catch (err) {
-    const errObj = normalizeAbortEarlyYupErr(err)
+    const errObj = normalizeYupError(err)
     throw new Error(JSON.stringify(errObj, null, 2))
   }
 }
@@ -429,7 +429,7 @@ describe('experimental custom types', () => {
 
         expect('should not').toBe('happen!')
       } catch (err) {
-        const niceErr = normalizeAbortEarlyYupErr(err)
+        const niceErr = normalizeYupError(err)
         expect(
           // @ts-expect-error
           niceErr[0]?.errors

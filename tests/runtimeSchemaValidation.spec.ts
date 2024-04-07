@@ -1,5 +1,5 @@
 import { T } from '../src'
-import { getTSchemaValidator, normalizeAbortEarlyYupErr } from '../src/runtimeSchemaValidation'
+import { getTSchemaValidator, normalizeYupError } from '../src/runtimeSchemaValidation'
 
 const delay = (ms: number) => new Promise(res => setTimeout(res, ms))
 
@@ -9,7 +9,7 @@ const validateDataAgainstSchema = async (schema: any, objToValidate: any, output
   const [objValidationRes] = await Promise.allSettled([yupValidator.validate(objToValidate)])
 
   if (objValidationRes.status === 'rejected') {
-    objValidationRes.reason = normalizeAbortEarlyYupErr(objValidationRes.reason)
+    objValidationRes.reason = normalizeYupError(objValidationRes.reason)
   }
 
   expect(objValidationRes).toMatchObject(output)
@@ -476,7 +476,7 @@ describe('runtimeSchemaValidation', () => {
 
           expect('should not').toBe('happen!')
         } catch (err) {
-          const niceErr = normalizeAbortEarlyYupErr(err)
+          const niceErr = normalizeYupError(err)
           expect(
             // @ts-expect-error
             niceErr[0]?.errors
