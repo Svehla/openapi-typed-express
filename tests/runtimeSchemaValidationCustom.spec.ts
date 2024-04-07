@@ -1,6 +1,6 @@
-import { InferSchemaType, TSchema, convertSchemaToYupValidationObject } from '../src'
+import { InferSchemaType, TSchema } from '../src'
 import { T } from '../src'
-import { normalizeAbortEarlyYupErr } from '../src/runtimeSchemaValidation'
+import { getTSchemaValidator, normalizeAbortEarlyYupErr } from '../src/runtimeSchemaValidation'
 
 // TODO: this file tests encoders & decoders (for casting and converting)
 
@@ -8,10 +8,8 @@ const delay = (ms: number) => new Promise(res => setTimeout(res, ms))
 
 // TODO: create function to test if parsed cast value is proper
 const validateDataAgainstSchema = async (schema: any, objToValidate: any, output: any) => {
-  const yupValidator = convertSchemaToYupValidationObject(schema)
-  const [objValidationRes] = await Promise.allSettled([
-    yupValidator.validate(objToValidate, { abortEarly: false }),
-  ])
+  const yupValidator = getTSchemaValidator(schema)
+  const [objValidationRes] = await Promise.allSettled([yupValidator.validate(objToValidate)])
 
   if (objValidationRes.status === 'rejected') {
     objValidationRes.reason = normalizeAbortEarlyYupErr(objValidationRes.reason)
@@ -21,8 +19,8 @@ const validateDataAgainstSchema = async (schema: any, objToValidate: any, output
 }
 
 const getSchemaCastedValue = async (schema: any, valueIn: any) => {
-  const yupValidator = convertSchemaToYupValidationObject(schema)
-  const [out] = await Promise.allSettled([yupValidator.cast(valueIn)])
+  const yupValidator = getTSchemaValidator(schema)
+  const [out] = await Promise.allSettled([yupValidator.validate(valueIn)])
   if (out.status === 'rejected') {
     out.reason = normalizeAbortEarlyYupErr(out.reason)
   }
@@ -36,11 +34,8 @@ const transformDataViaSchema = async (
   expectedObj: any
 ) => {
   try {
-    const yupValidator = convertSchemaToYupValidationObject(schema, { customTypesMode })
-    const data = await yupValidator.validate(objToValidate, {
-      abortEarly: false,
-      stripUnknown: true,
-    })
+    const yupValidator = getTSchemaValidator(schema, { customTypesMode })
+    const data = await yupValidator.validate(objToValidate)
 
     if (typeof data === 'object' && data !== null) {
       expect(data).toMatchObject(expectedObj)
@@ -288,15 +283,15 @@ describe('experimental custom types', () => {
           p => 'out: ' + p[p.length - 1]
         ),
       })
-      const decoderInVal = convertSchemaToYupValidationObject(x, { customTypesMode: 'decode' })
-      const encoderOutVal = convertSchemaToYupValidationObject(x, { customTypesMode: 'encode' })
+      const decoderInVal = getTSchemaValidator(x, { customTypesMode: 'decode' })
+      const encoderOutVal = getTSchemaValidator(x, { customTypesMode: 'encode' })
 
       type _In = InferSchemaType<typeof x>
       // TODO: it's not possible to get Type of decoder?
       // type Out = InferSchemaType<typeof x>
 
-      const o1 = decoderInVal.validateSync({ x: 'foo_bar' })
-      const o2 = encoderOutVal.validateSync({ x: 'foo_bar' })
+      const o1 = await decoderInVal.validate({ x: 'foo_bar' })
+      const o2 = await encoderOutVal.validate({ x: 'foo_bar' })
 
       expect(o1).toEqual({ x: 'in: f' })
       expect(o2).toEqual({ x: 'out: r' })
@@ -320,8 +315,8 @@ describe('experimental custom types', () => {
           T.number,
         ] as const),
       })
-      const decoderInVal = convertSchemaToYupValidationObject(x, { customTypesMode: 'decode' })
-      const encoderOutVal = convertSchemaToYupValidationObject(x, { customTypesMode: 'encode' })
+      const decoderInVal = getTSchemaValidator(x, { customTypesMode: 'decode' })
+      const encoderOutVal = getTSchemaValidator(x, { customTypesMode: 'encode' })
 
       // type _In = InferSchemaType<typeof x>
       // it's not possible to get Type of decoder
@@ -363,7 +358,7 @@ describe('experimental custom types', () => {
         ),
       })
 
-      const validator = convertSchemaToYupValidationObject(x)
+      const validator = getTSchemaValidator(x)
 
       const o1 = await validator.validate({
         x: [2, '3', '4'],
@@ -419,7 +414,7 @@ describe('experimental custom types', () => {
         }),
       })
 
-      const validator = convertSchemaToYupValidationObject(tTest)
+      const validator = getTSchemaValidator(tTest)
 
       try {
         await validator.validate({
@@ -464,7 +459,7 @@ describe('experimental custom types', () => {
         ),
       })
 
-      const validator = convertSchemaToYupValidationObject(x)
+      const validator = getTSchemaValidator(x)
 
       const o1 = await validator.validate({
         x: [{ castNum: '4' }, true, false, { castNum: '124' }],

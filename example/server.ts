@@ -1,5 +1,5 @@
 import express from 'express'
-import { apiDoc, convertSchemaToYupValidationObject, initApiDocs, jsValueToSchema, T } from '../src'
+import { apiDoc, initApiDocs, jsValueToSchema, T } from '../src'
 import { router } from './userRouter'
 import packageJSON from '../package.json'
 import swaggerUi from 'swagger-ui-express'

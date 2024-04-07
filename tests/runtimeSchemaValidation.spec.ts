@@ -1,15 +1,12 @@
-import { convertSchemaToYupValidationObject } from '../src'
 import { T } from '../src'
-import { normalizeAbortEarlyYupErr } from '../src/runtimeSchemaValidation'
+import { getTSchemaValidator, normalizeAbortEarlyYupErr } from '../src/runtimeSchemaValidation'
 
 const delay = (ms: number) => new Promise(res => setTimeout(res, ms))
 
 // TODO: create function to test if parsed cast value is proper
 const validateDataAgainstSchema = async (schema: any, objToValidate: any, output: any) => {
-  const yupValidator = convertSchemaToYupValidationObject(schema)
-  const [objValidationRes] = await Promise.allSettled([
-    yupValidator.validate(objToValidate, { abortEarly: false }),
-  ])
+  const yupValidator = getTSchemaValidator(schema)
+  const [objValidationRes] = await Promise.allSettled([yupValidator.validate(objToValidate)])
 
   if (objValidationRes.status === 'rejected') {
     objValidationRes.reason = normalizeAbortEarlyYupErr(objValidationRes.reason)
@@ -464,7 +461,7 @@ describe('runtimeSchemaValidation', () => {
           }),
         })
 
-        const validator = convertSchemaToYupValidationObject(tTest)
+        const validator = getTSchemaValidator(tTest)
 
         try {
           await validator.validate({

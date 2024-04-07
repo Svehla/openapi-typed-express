@@ -301,3 +301,15 @@ export const convertSchemaToYupValidationObject = (
 
   return yupValidator
 }
+
+export const getTSchemaValidator = (
+  tSchema: TSchema,
+  extra?: { customTypesMode?: 'decode' | 'encode'; runAsyncValidations?: boolean }
+) => {
+  const convertor = convertSchemaToYupValidationObject(tSchema, extra)
+
+  const validate = <T>(value: T, { stripUnknown = true } = {}) =>
+    convertor.validate(value, { abortEarly: false, stripUnknown })
+
+  return { validate }
+}

@@ -1,6 +1,6 @@
 export { jsValueToSchema, tSchemaToJSValue } from './jsValueToSchema'
 export { InferSchemaType, TSchema } from './tsSchema'
-export { convertSchemaToYupValidationObject } from './runtimeSchemaValidation'
+export { convertSchemaToYupValidationObject as _convertSchemaToYupValidationObject } from './runtimeSchemaValidation'
 import { tCast, tExtra } from './customTypes'
 import { T as rawT } from './schemaBuilder'
 export {

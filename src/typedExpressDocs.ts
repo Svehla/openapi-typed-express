@@ -2,10 +2,7 @@ import { DeepPartial, deepMerge, mergePaths } from './utils'
 import { NextFunction, Request, Response } from 'express'
 import { T } from './schemaBuilder'
 import { UrlsMethodDocs, convertUrlsMethodsSchemaToOpenAPI } from './openAPIFromSchema'
-import {
-  convertSchemaToYupValidationObject,
-  normalizeAbortEarlyYupErr,
-} from './runtimeSchemaValidation'
+import { getTSchemaValidator, normalizeAbortEarlyYupErr } from './runtimeSchemaValidation'
 import { parseUrlFromExpressRegexp } from './expressRegExUrlParser'
 import { InferSchemaType, TSchema } from './tsSchema'
 import { tSchemaToJSValue } from './jsValueToSchema'
@@ -75,24 +72,22 @@ export const getApiDocInstance =
     const bodySchema = docs.body ? docs.body : null
     const returnsSchema = docs.returns ? docs.returns : null
 
-    const headersValidator = headersSchema
-      ? convertSchemaToYupValidationObject(headersSchema)
-      : null
+    const headersValidator = headersSchema ? getTSchemaValidator(headersSchema) : null
 
     const paramsValidator = paramsSchema
-      ? convertSchemaToYupValidationObject(paramsSchema, { customTypesMode: 'decode' })
+      ? getTSchemaValidator(paramsSchema, { customTypesMode: 'decode' })
       : null
 
     const queryValidator = querySchema
-      ? convertSchemaToYupValidationObject(querySchema, { customTypesMode: 'decode' })
+      ? getTSchemaValidator(querySchema, { customTypesMode: 'decode' })
       : null
 
     const bodyValidator = bodySchema
-      ? convertSchemaToYupValidationObject(bodySchema, { customTypesMode: 'decode' })
+      ? getTSchemaValidator(bodySchema, { customTypesMode: 'decode' })
       : null
 
     const returnsValidator = returnsSchema
-      ? convertSchemaToYupValidationObject(returnsSchema, { customTypesMode: 'encode' })
+      ? getTSchemaValidator(returnsSchema, { customTypesMode: 'encode' })
       : null
 
     // `apiDocs()` have to return an function because express runtime checks
@@ -122,10 +117,10 @@ export const getApiDocInstance =
         ] = await Promise.allSettled([
           // strict is not working with transform for custom data types...
           // TODO: may it be optional?
-          headersValidator?.validate(req.headers, { abortEarly: false, stripUnknown: true }),
-          paramsValidator?.validate(req.params, { abortEarly: false, stripUnknown: true }),
-          queryValidator?.validate(req.query, { abortEarly: false, stripUnknown: true }),
-          bodyValidator?.validate(req.body, { abortEarly: false, stripUnknown: true }),
+          headersValidator?.validate(req.headers),
+          paramsValidator?.validate(req.params),
+          queryValidator?.validate(req.query),
+          bodyValidator?.validate(req.body),
         ])
 
         if (
@@ -164,12 +159,7 @@ export const getApiDocInstance =
 
         const tSend = async (data: any) => {
           try {
-            const transformedData = returnsValidator
-              ? await returnsValidator.validate(data, {
-                  abortEarly: false,
-                  stripUnknown: true,
-                })
-              : data
+            const transformedData = returnsValidator ? await returnsValidator.validate(data) : data
 
             res.send(transformedData)
           } catch (errObj) {
