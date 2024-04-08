@@ -107,6 +107,15 @@ describe('custom types', () => {
       await transformDataViaSchema('decode', T.cast.null_date, undefined, undefined)
       await transformDataViaSchema('encode', T.cast.null_date, undefined, undefined)
     })
+
+    test('7', async () => {
+      await transformDataViaSchema(
+        'decode',
+        T.object({ ids: T.extra.null_toListIfNot(T.cast.number) }),
+        { ids: '3' },
+        { ids: [3] }
+      )
+    })
   })
 
   describe('T.cast', () => {

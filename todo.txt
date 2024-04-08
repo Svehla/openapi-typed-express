@@ -1,4 +1,5 @@
 
-missing validations for
-- files
+TODO:
 - with custom error messages
+- add async validator into encoders 
+- add unit tests for res.tSend

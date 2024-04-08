@@ -35,10 +35,8 @@ describe('runtimeSchemaValidation', () => {
         { status: 'fulfilled' }
       )
     })
-  })
 
-  describe('async validation inside enums', () => {
-    test('1', async () => {
+    test('3', async () => {
       const tAsyncType = T.addValidator(T.string, async () => await delay(10))
 
       await validateDataAgainstSchema(
@@ -54,23 +52,123 @@ describe('runtimeSchemaValidation', () => {
   })
 
   describe('default types', () => {
-    test('-1', async () => {
+    test('0.0', async () => {
       await validateDataAgainstSchema(
-        T.object({
-          s: T.string,
-          b: T.boolean,
-          c: T.number,
-        }),
-        {
-          s: undefined,
-          b: undefined,
-          c: undefined,
-        },
+        T.object({ s: T.string }),
+        { s: undefined },
         { status: 'rejected' }
       )
     })
 
-    test('0', async () => {
+    test('0.1', async () => {
+      await validateDataAgainstSchema(
+        T.object({ b: T.boolean }),
+        { b: undefined },
+        { status: 'rejected' }
+      )
+    })
+
+    test('0.2', async () => {
+      await validateDataAgainstSchema(
+        T.object({ c: T.number }),
+        { c: undefined },
+        { status: 'rejected' }
+      )
+    })
+
+    test('0.3', async () => {
+      await validateDataAgainstSchema(T.object({ c: T.number }), {}, { status: 'rejected' })
+    })
+
+    test('0.4', async () => {
+      await validateDataAgainstSchema(T.object({ c: T.number }), null, { status: 'rejected' })
+    })
+
+    test('0.5', async () => {
+      await validateDataAgainstSchema(T.object({ c: T.number }), undefined, { status: 'rejected' })
+    })
+
+    test('0.6', async () => {
+      await validateDataAgainstSchema(T.object({ c: T.oneOf([T.string]) }), 0, {
+        status: 'rejected',
+      })
+    })
+
+    test('0.7', async () => {
+      await validateDataAgainstSchema(T.object({ c: T.oneOf([T.number]) }), undefined, {
+        status: 'rejected',
+      })
+    })
+
+    test('0.8', async () => {
+      await validateDataAgainstSchema(T.object({ c: T.oneOf([T.boolean]) }), null, {
+        status: 'rejected',
+      })
+    })
+
+    test('0.9', async () => {
+      await validateDataAgainstSchema(
+        T.object({ c: T.oneOf([T.number]) }),
+        {},
+        {
+          status: 'rejected',
+        }
+      )
+    })
+
+    test('0.11', async () => {
+      await validateDataAgainstSchema(T.object({ c: T.oneOf([T.number]) }), NaN, {
+        status: 'rejected',
+      })
+    })
+
+    test('0.12', async () => {
+      await validateDataAgainstSchema(T.hashMap(T.any), NaN, {
+        status: 'rejected',
+      })
+    })
+
+    test('0.13', async () => {
+      await validateDataAgainstSchema(T.hashMap(T.any), null, {
+        status: 'rejected',
+      })
+    })
+
+    test('0.14', async () => {
+      await validateDataAgainstSchema(T.hashMap(T.any), undefined, {
+        status: 'rejected',
+      })
+    })
+
+    test('0.15', async () => {
+      await validateDataAgainstSchema(
+        T.hashMap(T.any),
+        {},
+        {
+          status: 'fulfilled',
+        }
+      )
+    })
+
+    test('0.16', async () => {
+      await validateDataAgainstSchema(T.null_hashMap(T.any), NaN, {
+        status: 'rejected',
+      })
+    })
+
+    test('0.17', async () => {
+      await validateDataAgainstSchema(T.null_hashMap(T.any), null, {
+        status: 'fulfilled',
+      })
+    })
+
+    test('0.18', async () => {
+      await validateDataAgainstSchema(T.null_hashMap(T.any), undefined, {
+        status: 'fulfilled',
+      })
+    })
+
+    test('1', async () => {
       await validateDataAgainstSchema(
         T.object({
           s: T.null_string,
@@ -95,7 +193,7 @@ describe('runtimeSchemaValidation', () => {
       )
     })
 
-    test('1', async () => {
+    test('1.1', async () => {
       await validateDataAgainstSchema(
         T.object({
           a: T.string,

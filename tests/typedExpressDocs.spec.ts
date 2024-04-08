@@ -1,5 +1,12 @@
 import { __expressOpenAPIHack__, apiDoc, getApiDocInstance } from '../src/typedExpressDocs'
-import { T } from '../src'
+import { T, TSchema } from '../src'
+
+// const testApiDocHandle = async (
+//   reqSchema: TSchema,
+//   reqData: any,
+//   // expectedData: | expected Error
+// ) => {
+// }
 
 describe('typedExpressDocs', () => {
   describe('apiDoc', () => {
@@ -28,11 +35,12 @@ describe('typedExpressDocs', () => {
       })
     })
 
-    test('2 - query', () => {
+    test('2 - query', async () => {
       const reqData = {
         body: {},
         params: {},
         query: { message: 'hi' },
+        headers: { x: 'x', y: 'y' },
       }
 
       const lazyFn = apiDoc({
@@ -44,18 +52,20 @@ describe('typedExpressDocs', () => {
           query: req.query,
           params: {},
           body: {},
+          headers: { x: 'x', y: 'y' },
         }).toStrictEqual(reqData)
       })
 
       const metadata = lazyFn(__expressOpenAPIHack__)
-      metadata.handle(reqData as any, {} as any, () => null)
+      await metadata.handle(reqData as any, {} as any, () => null)
     })
 
-    test('3 - params', () => {
+    test('3 - params', async () => {
       const reqData = {
         params: { message: 'hi' },
         body: {},
         query: {},
+        headers: {},
       }
 
       const lazyFn = apiDoc({
@@ -68,11 +78,12 @@ describe('typedExpressDocs', () => {
           params: req.params,
           query: {},
           body: {},
+          headers: {},
         }).toStrictEqual(reqData)
       })
 
       const metadata = lazyFn(__expressOpenAPIHack__)
-      metadata.handle(reqData as any, {} as any, () => null)
+      await metadata.handle(reqData as any, {} as any, () => null)
     })
 
     test('4 - all params', () => {
@@ -88,9 +99,15 @@ describe('typedExpressDocs', () => {
         query: {
           z: '1234',
         },
+        headers: {
+          'Content-type': 'CUSTOM_XXX',
+        },
       }
 
       const lazyFn = apiDoc({
+        headers: T.object({
+          'Content-type': T.enum(['CUSTOM_XXX']),
+        }),
         params: {
           message: T.string,
         },
@@ -110,6 +127,9 @@ describe('typedExpressDocs', () => {
           params: req.params,
           query: req.query,
           body: req.body,
+          headers: {
+            'Content-type': 'CUSTOM_XXX',
+          },
         }).toStrictEqual(reqData)
       })
 
@@ -118,7 +138,7 @@ describe('typedExpressDocs', () => {
     })
 
     describe('custom instance error formatter', () => {
-      test('1 enum with custom errors', () => {
+      test('1 enum with custom errors', async () => {
         const customApiDoc = getApiDocInstance({
           errorFormatter: e => ({ ____customErrorsWrapper____: e.errors }),
         })
@@ -136,7 +156,7 @@ describe('typedExpressDocs', () => {
         })
         const metadata = lazyFn(__expressOpenAPIHack__)
 
-        metadata.handle(
+        await metadata.handle(
           reqData as any,
           {
             status: () => ({
@@ -162,7 +182,7 @@ describe('typedExpressDocs', () => {
     })
 
     describe('errors', () => {
-      test('1 - all params', () => {
+      test('1 - all params', async () => {
         const reqData = {
           params: { message: 'hi' },
           body: {
@@ -178,10 +198,15 @@ describe('typedExpressDocs', () => {
             z: '1234',
           },
         }
+
         const lazyFn = apiDoc({
           params: {
             message: T.boolean,
           },
+          headers: T.object({
+            'Content-type': T.enum(['CUSTOM_XXX'] as const),
+            x: T.string,
+          }),
           query: {
             z: T.null_string,
           },
@@ -197,10 +222,13 @@ describe('typedExpressDocs', () => {
         })(() => {
           expect('you shall not').toBe('pass')
         })
+
         const metadata = lazyFn(__expressOpenAPIHack__)
-        metadata.handle(
+
+        await metadata.handle(
           reqData as any,
           {
+            // typed express docs first call status(), then send() method
             status: () => ({
               send: (errorObj: any) => {
                 expect(errorObj).toMatchObject({
@@ -231,6 +259,14 @@ describe('typedExpressDocs', () => {
                       {
                         path: 'c.d',
                         errors: ['c.d must be a `boolean` type, but the final value was: `3`.'],
+                      },
+                    ],
+                    headers: [
+                      {
+                        path: '',
+                        errors: [
+                          'this must be a non-nullable, but the final value was: `undefined`.',
+                        ],
                       },
                     ],
                   },

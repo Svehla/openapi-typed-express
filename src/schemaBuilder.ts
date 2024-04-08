@@ -69,11 +69,16 @@ const tList = <T extends TSchema>(items: T) => ({
   items,
 })
 
-// TODO: add serializers for res.send()?
-// TODO: may customType inherit from other custom type?
+// TODO: should I add:
+// decoderTSchema
+// encoderTSchema
+// so we'll be able to run runtime validations for custom types with async validation and it'll fix this bug:
+// 1. T.addValidator (sync/async)is working for decode purpose only
 export const tCustomType = <Name extends string, ParentTSchema extends TSchema, R>(
   name: Name,
   parentTSchema: ParentTSchema,
+  // decoderTSchema: ParentTSchema
+  // encoderTSchema: ...
   syncDecoder: (value: InferSchemaType<ParentTSchema>) => R,
   // TODO: should encoder stay here?
   syncEncoder = ((v: any) => v as any) as (value: R) => InferSchemaType<ParentTSchema>
@@ -143,25 +148,15 @@ export const T = {
   number: tNonNullable(tNumber),
   // null means nullable => so the undefined is also nullable value
   null_number: tNullable(tNumber),
-  custom_number: (validator: (a: number) => void) =>
-    tNonNullable(tAddValidator(tNumber, validator)),
-  custom_null_number: (validator: (a: number) => void) =>
-    tNullable(tAddValidator(tNumber, validator)),
 
   boolean: tNonNullable(tBoolean),
   null_boolean: tNullable(tBoolean),
 
   string: tNonNullable(tString),
   null_string: tNullable(tString),
-  custom_string: (validator: (a: string) => void) =>
-    tNonNullable(tAddValidator(tString, validator)),
-  custom_null_string: (validator: (a: string) => void) =>
-    tNullable(tAddValidator(tString, validator)),
 
   any: tNonNullable(tAny),
   null_any: tNullable(tAny),
-  custom_any: (validator: (a: any) => void) => tNonNullable(tAddValidator(tAny, validator)),
-  custom_null_any: (validator: (a: any) => void) => tNullable(tAddValidator(tAny, validator)),
 
   oneOf: <T extends readonly Record<any, any>[] | Record<any, any>[]>(options: T) =>
     tNonNullable(tOneOf(options)),
@@ -185,7 +180,9 @@ export const T = {
 
   hashMap: <T extends TSchema>(args: T) => tNonNullable(tHashMap(args)),
   null_hashMap: <T extends TSchema>(args: T) => tNullable(tHashMap(args)),
+
   // build your own type function
+  // custom type works as encoder X decoder schema object with parent inheritance type
   customType: tCustomType,
   nonNullable: tNonNullable,
   nullable: tNullable,

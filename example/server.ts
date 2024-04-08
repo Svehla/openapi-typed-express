@@ -108,7 +108,7 @@ app.get(
     }),
     returns: T.string,
   })((req, res) => {
-    console.log('ahoj', req.body)
+    console.log('hello there', req.body)
     res.send('ok')
   })
 )
@@ -162,7 +162,7 @@ app.get(
   })
 )
 
-const string3PlusChars = T.custom_string(a => {
+const string3PlusChars = T.addValidator(T.string, a => {
   if (a.length < 3) {
     throw new Error('length needs to be >= 3')
   }

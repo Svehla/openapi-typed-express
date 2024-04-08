@@ -154,23 +154,6 @@ if you want to parser body, you have to setup body parser express middleware.
 app.use(express.json())
 ```
 
-### Express query parsing
-
-You can parse query thanks to `express-query-parser` library.
-
-```typescript
-import { queryParser } from 'express-query-parser'
-
-app.use(
-  queryParser({
-    parseNumber: false,
-    parseBoolean: false,
-    parseNull: true,
-    parseUndefined: true,
-  })
-)
-```
-
 ### Typescripts null checks
 
 to make fully work `tNonNullable` you have to setup `tsconfig.json` properly.
@@ -203,4 +186,55 @@ so the non existed keys are nullable as well, thanks to this, the schema is simp
 
 if you define one of apiDoc objects like `query`, `body`, `params` or `headers` it'll strip all unknown object attributes so omit potential security data injections
 
-By default, T.any is used for each attribute
+By default, `T.any` is used for each attribute
+
+### Express query parsing
+
+You can parse query thanks to `express-query-parser` library.
+
+```typescript
+import { queryParser } from 'express-query-parser'
+
+app.use(
+  queryParser({
+    parseNumber: false,
+    parseBoolean: false,
+    parseNull: true,
+    parseUndefined: true,
+  })
+)
+
+app.get(
+  '/',
+  apiDoc({
+    query: {
+      name: T.cast.number,
+      ids: T.extra.null_toListIfNot(T.cast.number),
+    },
+  })((req, res) => {
+    const body = req.body
+    const query = req.query
+
+    res.send({
+      body,
+      query,
+    })
+  })
+)
+```
+
+### Custom format of incoming data:
+
+### Validating output via res.tSend
+
+library automatically inject `tSend` function into `res.tSend`. This function take data and send 200 success response,
+but before its send, it validates if schema match `apiDoc({ returns: ... })` schema definition.
+If you send more data, than you defined (for example object with more attributes), data will be stripped. Thanks to that this function is much
+
+### Encoders / decoders
+
+### Data utils:
+
+```
+- T.deepNullable
+```

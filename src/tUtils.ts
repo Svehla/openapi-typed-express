@@ -1,4 +1,3 @@
-import { T } from '.'
 import { NiceMerge, NiceOmit, NicePick } from './generics'
 import { TObject } from './tsSchema'
 

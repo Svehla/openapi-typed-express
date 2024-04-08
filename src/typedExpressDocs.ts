@@ -184,7 +184,7 @@ export const getApiDocInstance =
           paramsSchema,
           querySchema,
           bodySchema,
-          returnsSchema: docs.returns,
+          returnsSchema,
         },
         handle: handleRouteWithRuntimeValidations,
       }

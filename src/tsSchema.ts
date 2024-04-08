@@ -134,6 +134,8 @@ type InferObjWithOptKeysObject<
 > = Out
 
 // TODO: write TS tests
+// TODO: add support for encoder | decoder fo custom Types like: InferSchemaType<SomeTSchema, 'decode' | 'encode'>
+
 export type InferSchemaType<T extends TSchema | undefined> = T extends undefined
   ? undefined
   : //  worst but faster implementation of object (missing optional keys { key?: ... })
@@ -169,7 +171,8 @@ export type InferSchemaType<T extends TSchema | undefined> = T extends undefined
   : T extends { type: 'hashMap' }
   ? MakeTOptional<Record<string, InferSchemaType<T['property']>>, T['required']>
   : T extends { type: 'customType' }
-  ? MakeTOptional<ReturnType<T['syncDecoder']>, T['required']>
+  ? // TODO: define if you want to run encoder | decoder and by this config inherit proper data type
+    MakeTOptional<ReturnType<T['syncDecoder']>, T['required']>
   : T extends { type: 'any' }
   ? any
   : never

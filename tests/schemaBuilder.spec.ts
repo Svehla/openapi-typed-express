@@ -97,6 +97,21 @@ describe('schemaBuilder', () => {
               o: T.oneOf([T.string, T.boolean]),
               l: T.list(T.string),
               c: T.customType('a', T.string, a => a),
+              nest: T.list(
+                T.list(
+                  T.object({
+                    s: T.string,
+                    n: T.number,
+                    b: T.boolean,
+                    a: T.any,
+                    h: T.hashMap(T.string),
+                    e: T.enum(['a', 'b', 'c']),
+                    o: T.oneOf([T.string, T.boolean]),
+                    l: T.list(T.string),
+                    c: T.customType('a', T.string, a => a),
+                  })
+                )
+              ),
             })
           )
         )
@@ -112,6 +127,21 @@ describe('schemaBuilder', () => {
             o: T.null_oneOf([T.null_string, T.null_boolean]),
             l: T.null_list(T.null_string),
             c: T.nullable(T.customType('a', T.null_string, a => a)),
+            nest: T.null_list(
+              T.null_list(
+                T.null_object({
+                  s: T.null_string,
+                  n: T.null_number,
+                  b: T.null_boolean,
+                  a: T.null_any,
+                  h: T.null_hashMap(T.null_string),
+                  e: T.null_enum(['a', 'b', 'c']),
+                  o: T.null_oneOf([T.null_string, T.null_boolean]),
+                  l: T.null_list(T.null_string),
+                  c: T.nullable(T.customType('a', T.null_string, a => a)),
+                })
+              )
+            ),
           })
         )
       )

@@ -60,7 +60,7 @@ export const tCast = {
 // ----- more exact format runtime validation without changing type ----
 // put min max into the part of base schema protocol?
 const tMinMaxNumber = (min: number, max: number) =>
-  T.custom_number(value => {
+  T.addValidator(T.number, value => {
     if (value === null || value === undefined) {
       throw new Error('invalid nullable number value')
     }
