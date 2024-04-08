@@ -69,24 +69,27 @@ const tList = <T extends TSchema>(items: T) => ({
   items,
 })
 
-// TODO: should I add:
-// decoderTSchema
-// encoderTSchema
-// so we'll be able to run runtime validations for custom types with async validation and it'll fix this bug:
-// 1. T.addValidator (sync/async)is working for decode purpose only
-export const tCustomType = <Name extends string, ParentTSchema extends TSchema, R>(
+export const tTransformType = <
+  Name extends string,
+  EncodedTSchema extends TSchema,
+  DecodedTSchema extends TSchema,
+  R,
+  // R extends DecodedTSchema,
+  EncType = InferSchemaType<EncodedTSchema>,
+  DecType = InferSchemaType<DecodedTSchema>
+  // RR = InferSchemaType<R>
+>(
   name: Name,
-  parentTSchema: ParentTSchema,
-  // decoderTSchema: ParentTSchema
-  // encoderTSchema: ...
-  syncDecoder: (value: InferSchemaType<ParentTSchema>) => R,
-  // TODO: should encoder stay here?
-  syncEncoder = ((v: any) => v as any) as (value: R) => InferSchemaType<ParentTSchema>
+  encodedTSchema: EncodedTSchema,
+  decodedTSchema: DecodedTSchema,
+  syncDecoder: (value: EncType) => R,
+  syncEncoder = ((v: any) => v as any) as (value: DecType) => EncType
 ) => {
   return {
-    name: `custom_${name}` as const,
-    type: 'customType' as const,
-    parentTSchema,
+    name: name,
+    type: 'transformType' as const,
+    encodedTSchema,
+    decodedTSchema,
     required: true as const,
     syncDecoder,
     syncEncoder,
@@ -107,14 +110,17 @@ const tNullable = <T extends { required: any }>(
 })
 
 // TODO: is this correct info?: ``We cannot match tOneOf value by async validator``
-// validator is working for decode custom types purposes only
+// validator is working for decode transform types purposes only
 const tAddValidator = <T extends TSchema>(
   schema: T,
   validator: (val: InferSchemaType<T>) => void
-) => ({
-  ...schema,
-  validator,
-})
+) => {
+  if (schema.type === 'transformType') throw new Error('cannot add validator for transformType')
+  return {
+    ...schema,
+    validator,
+  }
+}
 
 // TODO: create a typed recursive deepNullable(...) wrapper
 // TODO: add types
@@ -131,10 +137,11 @@ const deepNullable = (schema: TSchema): any => {
       ...tNullable(schema),
       properties: mapEntries(([k, v]) => [k, deepNullable(v)], schema.properties),
     }
-  } else if (schema.type === 'customType') {
+  } else if (schema.type === 'transformType') {
     return {
       ...tNullable(schema),
-      parentTSchema: deepNullable(schema.parentTSchema),
+      encodedTSchema: deepNullable(schema.encodedTSchema),
+      decodedTSchema: deepNullable(schema.decodedTSchema),
     }
     // ???
   }
@@ -181,9 +188,7 @@ export const T = {
   hashMap: <T extends TSchema>(args: T) => tNonNullable(tHashMap(args)),
   null_hashMap: <T extends TSchema>(args: T) => tNullable(tHashMap(args)),
 
-  // build your own type function
-  // custom type works as encoder X decoder schema object with parent inheritance type
-  customType: tCustomType,
+  transformType: tTransformType,
   nonNullable: tNonNullable,
   nullable: tNullable,
   addValidator: tAddValidator,

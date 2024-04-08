@@ -21,9 +21,9 @@ export const normalizeYupError = (obj?: any) => {
 
 export const convertSchemaToYupValidationObject = (
   schema: TSchema,
-  extra?: { customTypesMode?: 'decode' | 'encode'; runAsyncValidations?: boolean }
+  extra?: { transformTypeMode?: 'decode' | 'encode'; runAsyncValidations?: boolean }
 ): yup.MixedSchema<any, any, any> => {
-  const customTypesMode = extra?.customTypesMode ?? 'decode'
+  const transformTypeMode = extra?.transformTypeMode ?? 'decode'
   let yupValidator = yup as any
 
   if (schema?.type === 'array') {
@@ -115,13 +115,13 @@ export const convertSchemaToYupValidationObject = (
         return false
       },
     })
-    // cannot use strict mode because of custom type transform...
+    // cannot use strict mode because of transform type transform...
     // strict is not working and yup casting is broken...
     // .strict()
-  } else if (schema?.type === 'customType') {
+  } else if (schema?.type === 'transformType') {
     yupValidator = yup.mixed()
     // transform is not working with the { strict: true } | .strict()... fucking fuck!!!!
-    // this lib is not supporting yup casting, only transform for custom types are enable
+    // this lib is not supporting yup casting, only transform for transform types are enable
     yupValidator = yupValidator
       .transform(function (value: any) {
         if (schema.required === false && (value === null || value === undefined)) {
@@ -131,23 +131,23 @@ export const convertSchemaToYupValidationObject = (
         try {
           // parser cannot return Promise! https://github.com/jquense/yup/issues/238
           // TODO: decode & encode | parser & serializer
-          if (customTypesMode === 'decode') {
-            const transformedItem = convertSchemaToYupValidationObject(schema.parentTSchema, {
+          if (transformTypeMode === 'decode') {
+            const transformedItem = convertSchemaToYupValidationObject(schema.encodedTSchema, {
               ...extra,
               runAsyncValidations: false,
             }).validateSync(value, { abortEarly: false })
 
             return schema.syncDecoder(transformedItem)
-          } else if (customTypesMode === 'encode') {
-            const transformedItem = schema.syncEncoder(value)
+          } else if (transformTypeMode === 'encode') {
+            const transformedItem = convertSchemaToYupValidationObject(schema.decodedTSchema, {
+              ...extra,
+              runAsyncValidations: false,
+            }).validateSync(value, { abortEarly: false })
 
-            // encoder has a few limitations
-            // 1. T.addValidator (sync/async)is working for decode purpose only
-            // 2. parent nested transformations are not supported (if T.custom inherit from another T.custom)
-
-            return transformedItem
+            return schema.syncEncoder(transformedItem)
+            // return transformedItem
           } else {
-            throw new Error('invalid customTypesMode')
+            throw new Error('invalid transformTypeMode')
           }
         } catch (err) {
           return err
@@ -301,7 +301,7 @@ export const convertSchemaToYupValidationObject = (
       test: async function (value: any) {
         if (schema.required === false && (value === null || value === undefined)) return true
         try {
-          // if customType parse something as error, we want to recreate error
+          // if transformType parse something as error, we want to recreate error
           if (value instanceof Error) return false
           await schema.validator?.(
             // @ts-expect-error
@@ -320,7 +320,7 @@ export const convertSchemaToYupValidationObject = (
 
 export const getTSchemaValidator = (
   tSchema: TSchema,
-  extra?: { customTypesMode?: 'decode' | 'encode'; runAsyncValidations?: boolean }
+  extra?: { transformTypeMode?: 'decode' | 'encode'; runAsyncValidations?: boolean }
 ) => {
   const convertor = convertSchemaToYupValidationObject(tSchema, extra)
 

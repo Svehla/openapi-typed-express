@@ -75,19 +75,19 @@ export const getApiDocInstance =
     const headersValidator = headersSchema ? getTSchemaValidator(headersSchema) : null
 
     const paramsValidator = paramsSchema
-      ? getTSchemaValidator(paramsSchema, { customTypesMode: 'decode' })
+      ? getTSchemaValidator(paramsSchema, { transformTypeMode: 'decode' })
       : null
 
     const queryValidator = querySchema
-      ? getTSchemaValidator(querySchema, { customTypesMode: 'decode' })
+      ? getTSchemaValidator(querySchema, { transformTypeMode: 'decode' })
       : null
 
     const bodyValidator = bodySchema
-      ? getTSchemaValidator(bodySchema, { customTypesMode: 'decode' })
+      ? getTSchemaValidator(bodySchema, { transformTypeMode: 'decode' })
       : null
 
     const returnsValidator = returnsSchema
-      ? getTSchemaValidator(returnsSchema, { customTypesMode: 'encode' })
+      ? getTSchemaValidator(returnsSchema, { transformTypeMode: 'encode' })
       : null
 
     // `apiDocs()` have to return an function because express runtime checks
@@ -151,7 +151,7 @@ export const getApiDocInstance =
           return
         }
 
-        // ==== override casted (transformed) custom types into JS runtime objects ====
+        // ==== override casted (transformed) transformTypes into JS runtime objects ====
         if (headersValidator) req.headers = headersValidationRes.value
         if (paramsValidator) req.params = paramValidationRes.value
         if (queryValidator) req.query = queryValidationRes.value
@@ -172,9 +172,8 @@ export const getApiDocInstance =
 
         // @ts-expect-error
         res.tSend = tSend
-        // TODO: apply encoder (serializer) for custom types like `Date -> string` (reverse decoder (parser))
-        // @ts-ignore => if this ignore is missing, there is potential infinite ts recursion...
-
+        // TODO: apply encoder (serializer) for transform types like `Date -> string`
+        // @ts-ignore
         return handle(req as any, res, next)
       }
 

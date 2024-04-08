@@ -139,7 +139,7 @@ The library exposes many functions and objects which help you to create schema a
 
 Experimental (not fully working):
 
-- `T.customType(...)`
+- `T.transform(...)`
 
 if you want to see more examples on how to build schema structure by function compositions
 you can check the tests
@@ -186,11 +186,14 @@ so the non existed keys are nullable as well, thanks to this, the schema is simp
 
 if you define one of apiDoc objects like `query`, `body`, `params` or `headers` it'll strip all unknown object attributes so omit potential security data injections
 
-By default, `T.any` is used for each attribute
+By default, if you do not define some of the tSchema, nothing is validate or parsed for current object
 
 ### Express query parsing
 
 You can parse query thanks to `express-query-parser` library.
+
+We parser to keep parsing only undefined and null values and the rest may be done by transform types.
+Many transform types is predefined in the `T.cast.` object.
 
 ```typescript
 import { queryParser } from 'express-query-parser'
@@ -223,7 +226,7 @@ app.get(
 )
 ```
 
-### Custom format of incoming data:
+### Custom transformation of incoming data:
 
 ### Validating output via res.tSend
 
@@ -232,6 +235,14 @@ but before its send, it validates if schema match `apiDoc({ returns: ... })` sch
 If you send more data, than you defined (for example object with more attributes), data will be stripped. Thanks to that this function is much
 
 ### Encoders / decoders
+
+```
+User -> HTTP -> encoded -> decoded -> Express handler
+Express handler -> decoded -> encoded -> HTTP -> User
+```
+
+user is interacting with encoded types only
+express handler are interacting with decoded types only
 
 ### Data utils:
 

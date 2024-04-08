@@ -79,8 +79,8 @@ export const tSchemaToJSValue = <T extends TSchema>(schema: T): InferSchemaType<
       // @ts-expect-error
       return 1.1 // 1 should be parsed as a boolean xd
 
-    case 'customType':
-      return tSchemaToJSValue(schema.parentTSchema)
+    case 'transformType':
+      return tSchemaToJSValue(schema.encodedTSchema)
 
     default:
       throw new Error(`unsupported type: ${JSON.stringify(schema)}`)

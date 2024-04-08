@@ -109,7 +109,7 @@ Cyclic dependencies of data types, similar to
 
 **Better support of creating custom data type**
 
-In the current library there is no official way how to create a custom data type with custom validators and custom type inference and you have to use one of the pre-defined types `tBoolean` `tNumber` `tEnum` `tNonNullable` `tAny` `tObject` `tCustomType` `tString`.
+In the current library there is no official way how to create a custom data type with custom validators and custom type inference and you have to use one of the pre-defined types `tBoolean` `tNumber` `tEnum` `tNonNullable` `tAny` `tObject` `tTransform` `tString`.
 
 ## What do you think?
 

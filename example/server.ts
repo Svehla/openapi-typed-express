@@ -55,15 +55,17 @@ app.get(
       x: T.list(
         T.oneOf([
           T.object({
-            castNum: T.addValidator(
-              T.customType('x', T.string, x => {
+            castNum: T.transformType(
+              'x',
+              T.addValidator(T.string, async v => {
+                await delay(100)
+                if (v.toString().includes('3')) throw new Error('cannot include number 3')
+              }),
+              T.number,
+              x => {
                 const n = parseFloat(x)
                 if (n.toString() !== x.toString()) throw new Error('Non parsable number')
                 return n
-              }),
-              async v => {
-                await delay(100)
-                if (v.toString().includes('3')) throw new Error('cannot include number 3')
               }
             ),
           }),
@@ -83,26 +85,32 @@ app.get(
   apiDoc({
     body: T.object({
       obj: T.object({
-        a: T.addValidator(
-          T.customType('uniq_id_in_da_db_a', T.string, v => v),
-          async () => {
+        a: T.transformType(
+          'uniq_id_in_da_db_a',
+          T.addValidator(T.string, async () => {
             await delay(10)
             throw new Error('value is... invalid!!!!')
-          }
+          }),
+          T.any,
+          v => v
         ),
-        b: T.addValidator(
-          T.customType('uniq_id_in_da_db_b', T.string, v => v),
-          async () => {
+        b: T.transformType(
+          'uniq_id_in_da_db_b',
+          T.addValidator(T.string, async () => {
             await delay(1_000)
             throw new Error('value is ... ... ... invalid!!!!')
-          }
+          }),
+          T.string,
+          v => v
         ),
-        c: T.addValidator(
-          T.customType('uniq_id_in_da_db_c', T.string, v => v),
-          async () => {
+        c: T.transformType(
+          'uniq_id_in_da_db_c',
+          T.addValidator(T.string, async () => {
             await delay(1_000)
             throw new Error('value is ... ... ... invalid!!!!')
-          }
+          }),
+          T.string,
+          v => v
         ),
       }),
     }),
@@ -146,18 +154,22 @@ app.get(
   '/cast',
   apiDoc({
     query: {
-      bool: T.cast.boolean,
+      bool: T.cast.null_boolean,
+      date: T.cast.date,
     },
 
     returns: T.object({
-      bool: T.boolean, //.cast.boolean,
+      bool: T.null_boolean, //.cast.boolean,
     }),
   })((req, res) => {
+    console.log(req.query)
+
     res.tSend({
       // @ts-ignore
       x: 'xxx',
-      // @ts-expect-error
-      bool: [3], // req.query.bool + 'x',
+      // @ts-ignore
+      // bool: [3], // req.query.bool + 'x',
+      bool: req.query.bool,
     })
   })
 )

@@ -7,8 +7,13 @@ import { getTSchemaValidator, normalizeYupError } from '../src/runtimeSchemaVali
 const delay = (ms: number) => new Promise(res => setTimeout(res, ms))
 
 // TODO: create function to test if parsed cast value is proper
-const validateDataAgainstSchema = async (schema: any, objToValidate: any, output: any) => {
-  const yupValidator = getTSchemaValidator(schema)
+const validateDataAgainstSchema = async (
+  transformTypeMode: 'decode' | 'encode',
+  schema: any,
+  objToValidate: any,
+  output: any
+) => {
+  const yupValidator = getTSchemaValidator(schema, { transformTypeMode })
   const [objValidationRes] = await Promise.allSettled([yupValidator.validate(objToValidate)])
 
   if (objValidationRes.status === 'rejected') {
@@ -27,40 +32,25 @@ const getSchemaCastedValue = async (schema: any, valueIn: any) => {
   return out
 }
 
-const transformDataViaSchema = async (
-  customTypesMode: 'decode' | 'encode',
-  schema: TSchema,
-  objToValidate: any,
-  expectedObj: any
-) => {
-  try {
-    const yupValidator = getTSchemaValidator(schema, { customTypesMode })
-    const data = await yupValidator.validate(objToValidate)
-
-    if (typeof data === 'object' && data !== null) {
-      expect(data).toMatchObject(expectedObj)
-    } else {
-      expect(data).toBe(expectedObj)
-    }
-  } catch (err) {
-    const errObj = normalizeYupError(err)
-    throw new Error(JSON.stringify(errObj, null, 2))
-  }
-}
-
-describe('custom types', () => {
+describe('transform types', () => {
   describe('T.cast.(null_)?date', () => {
     test('0', async () => {
       const date = new Date()
-      await transformDataViaSchema('decode', T.list(T.cast.date), [date.toISOString()], [date])
+      await validateDataAgainstSchema('decode', T.list(T.cast.date), [date.toISOString()], {
+        status: 'fulfilled',
+        value: [date],
+      })
     })
 
     test('1', async () => {
       const date = new Date()
-      await transformDataViaSchema('decode', T.cast.date, date.toISOString(), date)
+      await validateDataAgainstSchema('decode', T.cast.date, date.toISOString(), {
+        status: 'fulfilled',
+        value: date,
+      })
     })
     test('2', async () => {
-      await validateDataAgainstSchema(T.cast.date, 123, {
+      await validateDataAgainstSchema('decode', T.cast.date, 123, {
         status: 'rejected',
 
         reason: [
@@ -70,7 +60,7 @@ describe('custom types', () => {
     })
 
     test('3', async () => {
-      await validateDataAgainstSchema(T.cast.date, new Date().getTime().toString(), {
+      await validateDataAgainstSchema('decode', T.cast.date, new Date().getTime().toString(), {
         status: 'rejected',
         reason: [{ path: '', errors: ['invalid Date'] }],
       })
@@ -78,6 +68,7 @@ describe('custom types', () => {
 
     test('4', async () => {
       await validateDataAgainstSchema(
+        'decode',
         T.object({ c: T.cast.date }),
         { a: null },
         { status: 'rejected' }
@@ -85,13 +76,14 @@ describe('custom types', () => {
     })
 
     test('5', async () => {
-      await validateDataAgainstSchema(T.cast.null_date, new Date().toISOString(), {
+      await validateDataAgainstSchema('decode', T.cast.null_date, new Date().toISOString(), {
         status: 'fulfilled',
       })
     })
 
     test('3', async () => {
       await validateDataAgainstSchema(
+        'decode',
         T.cast.null_date,
         `!lorem ipsum!${new Date().toISOString()}`,
         {
@@ -101,19 +93,60 @@ describe('custom types', () => {
       )
     })
 
-    test('6', async () => {
-      await transformDataViaSchema('decode', T.cast.null_date, null, null)
-      await transformDataViaSchema('encode', T.cast.null_date, null, null)
-      await transformDataViaSchema('decode', T.cast.null_date, undefined, undefined)
-      await transformDataViaSchema('encode', T.cast.null_date, undefined, undefined)
+    test('6.1', async () => {
+      await validateDataAgainstSchema('decode', T.cast.null_date, null, {
+        status: 'fulfilled',
+        value: null,
+      })
+    })
+
+    test('6.2', async () => {
+      await validateDataAgainstSchema('encode', T.cast.null_date, null, {
+        status: 'fulfilled',
+        value: null,
+      })
+    })
+
+    test('6.3', async () => {
+      await validateDataAgainstSchema('decode', T.cast.null_date, undefined, {
+        status: 'fulfilled',
+        value: undefined,
+      })
+    })
+
+    test('6.4', async () => {
+      await validateDataAgainstSchema('encode', T.cast.null_date, undefined, {
+        status: 'fulfilled',
+        value: undefined,
+      })
     })
 
     test('7', async () => {
-      await transformDataViaSchema(
+      await validateDataAgainstSchema(
         'decode',
         T.object({ ids: T.extra.null_toListIfNot(T.cast.number) }),
         { ids: '3' },
-        { ids: [3] }
+        { status: 'fulfilled', value: { ids: [3] } }
+      )
+    })
+  })
+
+  describe('cast-booleans', () => {
+    test('1', async () => {
+      await validateDataAgainstSchema(
+        'decode',
+        T.object({ ids: T.extra.null_toListIfNot(T.cast.null_boolean) }),
+        { ids: 'null' },
+        { status: 'rejected' }
+      )
+    })
+
+    test('2', async () => {
+      await validateDataAgainstSchema(
+        'decode',
+        T.object({ ids: T.extra.null_toListIfNot(T.cast.null_boolean) }),
+        { ids: 'undefined' },
+        { status: 'rejected' }
       )
     })
   })
@@ -121,7 +154,7 @@ describe('custom types', () => {
   describe('T.cast', () => {
     test('7.decode', async () => {
       const date = new Date()
-      await transformDataViaSchema(
+      await validateDataAgainstSchema(
         'decode',
         T.list(
           T.object({
@@ -178,29 +211,32 @@ describe('custom types', () => {
             },
           },
         ],
-        [
-          {
-            nest: {
-              nd: null,
-              d: date,
-              nb: null,
-              b: true,
-              nn: null,
-              n: 3,
-              x: ['hello'],
-              xx: ['hello'],
+        {
+          status: 'fulfilled',
+          value: [
+            {
+              nest: {
+                nd: null,
+                d: date,
+                nb: null,
+                b: true,
+                nn: null,
+                n: 3,
+                x: ['hello'],
+                xx: ['hello'],
 
-              nested: {},
-              nullNested: {},
+                nested: {},
+                nullNested: {},
+              },
             },
-          },
-        ]
+          ],
+        }
       )
     })
 
     test('7.encode', async () => {
       const date = new Date()
-      await transformDataViaSchema(
+      await validateDataAgainstSchema(
         'encode',
         T.object({
           nestArr: T.list(
@@ -238,18 +274,21 @@ describe('custom types', () => {
           ],
         },
         {
-          nestArr: [
-            {
-              nd: null,
-              d: date.toISOString(),
-              nb: null,
-              b: 'true',
-              nn: null,
-              n: '3',
-              x: ['hello'],
-              xx: ['hello'],
-            },
-          ],
+          status: 'fulfilled',
+          value: {
+            nestArr: [
+              {
+                nd: null,
+                d: date.toISOString(),
+                nb: null,
+                b: 'true',
+                nn: null,
+                n: '3',
+                x: ['hello'],
+                xx: ['hello'],
+              },
+            ],
+          },
         }
       )
     })
@@ -257,7 +296,7 @@ describe('custom types', () => {
 
   describe('T.cast.(null_)?number', () => {
     test('2', async () => {
-      await validateDataAgainstSchema(T.cast.null_number, 'null', {
+      await validateDataAgainstSchema('decode', T.cast.null_number, 'null', {
         status: 'rejected',
         reason: [{ path: '', errors: ['invalid number cast'] }],
       })
@@ -281,19 +320,20 @@ describe('custom types', () => {
   })
 })
 
-describe('experimental custom types', () => {
+describe('experimental transform types', () => {
   describe('encoder + decoder', () => {
     test('1', async () => {
       const x = T.object({
-        x: T.customType(
+        x: T.transformType(
           'x',
+          T.string,
           T.string,
           p => ('in: ' + p[0]) as `in: ${string}`,
           p => 'out: ' + p[p.length - 1]
         ),
       })
-      const decoderInVal = getTSchemaValidator(x, { customTypesMode: 'decode' })
-      const encoderOutVal = getTSchemaValidator(x, { customTypesMode: 'encode' })
+      const decoderInVal = getTSchemaValidator(x, { transformTypeMode: 'decode' })
+      const encoderOutVal = getTSchemaValidator(x, { transformTypeMode: 'encode' })
 
       type _In = InferSchemaType<typeof x>
       // TODO: it's not possible to get Type of decoder?
@@ -310,22 +350,20 @@ describe('experimental custom types', () => {
       const x = T.object({
         x: T.oneOf([
           T.boolean,
-          T.addValidator(
-            T.customType(
-              'x',
-              T.string,
-              p => ('in: ' + p[0]) as `in: ${string}`,
-              p => 'out: ' + p[p.length - 1]
-            ),
-            async () => {
+          T.transformType(
+            'x',
+            T.addValidator(T.string, async () => {
               await delay(100)
-            }
+            }),
+            T.string,
+            p => ('in: ' + p[0]) as `in: ${string}`,
+            p => 'out: ' + p[p.length - 1]
           ),
           T.number,
         ] as const),
       })
-      const decoderInVal = getTSchemaValidator(x, { customTypesMode: 'decode' })
-      const encoderOutVal = getTSchemaValidator(x, { customTypesMode: 'encode' })
+      const decoderInVal = getTSchemaValidator(x, { transformTypeMode: 'decode' })
+      const encoderOutVal = getTSchemaValidator(x, { transformTypeMode: 'encode' })
 
       // type _In = InferSchemaType<typeof x>
       // it's not possible to get Type of decoder
@@ -342,29 +380,32 @@ describe('experimental custom types', () => {
   describe('matching custom types based on sync decoders', () => {
     //  async validations + custom type parsing + union nesting
     test('1', async () => {
-      // TODO: may customType inherit from other custom type?
-      const tCastNumber = T.customType('x', T.string, x => {
-        const n = parseFloat(x)
-        if (n.toString() !== x.toString()) throw new Error('Non parsable number')
-        return n
-      })
+      const tCastNumber = T.transformType(
+        'x',
+        T.addValidator(T.string, async () => delay(100)),
+        T.number,
+        x => {
+          const n = parseFloat(x)
+          if (n.toString() !== x.toString()) throw new Error('Non parsable number')
+          return n
+        }
+      )
 
       // cannot infer from other custom type
-      const tParseOddSerializedNumbers = T.customType('x', T.string, x => {
-        const n = parseFloat(x)
-        if (n.toString() !== x.toString()) throw new Error('Non parsable number')
-        if (n % 2 === 0) return n.toString()
-        return n
-      })
+      const tParseOddSerializedNumbers = T.transformType(
+        'x',
+        T.addValidator(T.string, async () => delay(100)),
+        T.oneOf([T.number, T.string]),
+        x => {
+          const n = parseFloat(x)
+          if (n.toString() !== x.toString()) throw new Error('Non parsable number')
+          if (n % 2 === 0) return n.toString()
+          return n
+        }
+      )
 
       const x = T.object({
-        x: T.list(
-          T.oneOf([
-            T.addValidator(tParseOddSerializedNumbers, async () => delay(100)),
-            T.addValidator(tCastNumber, async () => delay(100)),
-            T.number,
-          ] as const)
-        ),
+        x: T.list(T.oneOf([tParseOddSerializedNumbers, tCastNumber, T.number] as const)),
       })
 
       const validator = getTSchemaValidator(x)
@@ -376,20 +417,15 @@ describe('experimental custom types', () => {
       expect(o1).toEqual({ x: [2, 3, '4'] })
     })
 
-    test('2 custom type cannot inherit from one of', async () => {
-      try {
-        const _tSomeCustom = T.customType('xxxx', T.oneOf([T.string] as const), v => v)
-      } catch (err) {
-        expect(1).toBe(1)
-      }
-    })
-    test('3 custom type cannot inherit from other custom type', async () => {
-      try {
-        const tSomeCustom = T.customType('xxxx', T.oneOf([T.string] as const), v => v)
-        const _ = T.customType('xxxx', tSomeCustom, v => v)
-      } catch (err) {
-        expect(1).toBe(1)
-      }
+    test('3 custom type can inherit from other custom type', async () => {
+      const tSomeCustom = T.transformType(
+        'xxxx',
+        T.oneOf([T.string] as const),
+        T.oneOf([T.string] as const),
+        v => v
+      )
+      const _ = T.transformType('xxxx', tSomeCustom, tSomeCustom, v => v)
+      expect(1).toBe(1)
     })
   })
 
@@ -451,15 +487,17 @@ describe('experimental custom types', () => {
         x: T.list(
           T.oneOf([
             T.object({
-              castNum: T.addValidator(
-                T.customType('x', T.string, x => {
+              castNum: T.transformType(
+                'x',
+                T.addValidator(T.string, async v => {
+                  await delay(100)
+                  if (v.toString().includes('3')) throw new Error('cannot include number 3')
+                }),
+                T.number,
+                x => {
                   const n = parseFloat(x)
                   if (n.toString() !== x.toString()) throw new Error('Non parsable number')
                   return n
-                }),
-                async v => {
-                  await delay(100)
-                  if (v.toString().includes('3')) throw new Error('cannot include number 3')
                 }
               ),
             }),
@@ -482,15 +520,17 @@ describe('experimental custom types', () => {
         x: T.list(
           T.oneOf([
             T.object({
-              castNum: T.addValidator(
-                T.customType('x', T.string, x => {
+              castNum: T.transformType(
+                'x',
+                T.addValidator(T.string, async v => {
+                  await delay(100)
+                  if (v.toString().includes('3')) throw new Error('cannot include number 3')
+                }),
+                T.number,
+                x => {
                   const n = parseFloat(x)
                   if (n.toString() !== x.toString()) throw new Error('Non parsable number')
                   return n
-                }),
-                async v => {
-                  await delay(100)
-                  if (v.toString().includes('3')) throw new Error('cannot include number 3')
                 }
               ),
             }),
@@ -502,6 +542,7 @@ describe('experimental custom types', () => {
       })
 
       await validateDataAgainstSchema(
+        'decode',
         x,
         {
           x: [{ castNum: 4 }, true, false, { castNum: 124 }],

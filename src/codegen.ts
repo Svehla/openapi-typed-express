@@ -45,11 +45,9 @@ export const codegenSchemaToJSCode = (schema: TSchema): string => {
       str = `T.number`
       break
 
-    case 'customType':
-      str = `T.customType(${schema.name}, ${
-        // fn to string xd
-        schema.validator?.toString()
-      }, ${schema.parentTSchema})`
+    case 'transformType':
+      // transform type serialization is not supported yet
+      str = `T.any`
       break
 
     default:

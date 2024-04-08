@@ -53,11 +53,12 @@ export type TNumber = {
   validator?: (v: number) => void
 }
 
-export type TCustomType = {
+export type TTransform = {
   name: string
-  type: 'customType'
+  type: 'transformType'
   // TODO: find proper name... what about Parent group type or something like that?
-  parentTSchema: TSchema
+  encodedTSchema: TSchema
+  decodedTSchema: TSchema
   // types are infer from this functions
   // runtime parsing is in this function
   // TODO: rename to syncDecoder
@@ -103,7 +104,7 @@ export type TSchema =
   | TBoolean
   | TAny
   | TEnum
-  | TCustomType
+  | TTransform
   | TOneOf
   | THashMap
 
@@ -134,7 +135,7 @@ type InferObjWithOptKeysObject<
 > = Out
 
 // TODO: write TS tests
-// TODO: add support for encoder | decoder fo custom Types like: InferSchemaType<SomeTSchema, 'decode' | 'encode'>
+// TODO: add support for encoder | decoder fo transform types like: InferSchemaType<SomeTSchema, 'decode' | 'encode'>
 
 export type InferSchemaType<T extends TSchema | undefined> = T extends undefined
   ? undefined
@@ -170,7 +171,7 @@ export type InferSchemaType<T extends TSchema | undefined> = T extends undefined
   ? MakeTOptional<number, T['required']>
   : T extends { type: 'hashMap' }
   ? MakeTOptional<Record<string, InferSchemaType<T['property']>>, T['required']>
-  : T extends { type: 'customType' }
+  : T extends { type: 'transformType' }
   ? // TODO: define if you want to run encoder | decoder and by this config inherit proper data type
     MakeTOptional<ReturnType<T['syncDecoder']>, T['required']>
   : T extends { type: 'any' }

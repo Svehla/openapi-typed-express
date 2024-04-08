@@ -64,8 +64,8 @@ const toOpenAPISchema = (schema: TSchema): any => {
     case 'any':
       return anyTypeOpenAPI
 
-    case 'customType':
-      return toOpenAPISchema(schema.parentTSchema)
+    case 'transformType':
+      return toOpenAPISchema(schema.encodedTSchema)
 
     default:
       return {

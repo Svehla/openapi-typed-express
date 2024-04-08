@@ -3,57 +3,81 @@ import { TSchema } from './tsSchema'
 
 // ----------------------------------------------------------
 // ----------------------- cast types -----------------------
-const tCast_date = T.customType(
+const tCast_date = T.transformType(
   'cast_date',
+  // T.null_string,
+  // T.null_any,
   T.string,
+  T.any,
   value => {
+    // ???
+    // if (value === null || value === undefined) return value
+    // if (value === 'null') return null
+    // if (value === '') return undefined
+    // if (value === 'undefined') return undefined
+
     const parsedValue = new Date(value)
     if (isNaN(parsedValue?.getTime())) {
       throw new Error('invalid Date')
     }
     return parsedValue
   },
-  value => value.toISOString()
+  value => value!.toISOString()
 )
 
 // TODO: how to solve basic types (boolean|string) casting?
-const tCast_number = T.customType(
+const tCast_nullNumber = T.transformType(
   'cast_number',
-  T.string,
+  T.string, // null_
+  T.number, // null_
   value => {
+    // ???
+    // if (value === null || value === undefined) return value
+    // if (value === 'null') return null
+    // if (value === '') return undefined
+    // if (value === 'undefined') return undefined
+
     const parsedValue = Number(value)
+
     if (isNaN(parsedValue)) {
       throw new Error('invalid number cast')
     }
     return parsedValue
   },
-  value => value.toString()
+  value => value!.toString()
 )
 
-export const tCast_bool = T.customType(
+export const tCast_nullBoolean = T.transformType(
   'parseBool',
-  T.enum(['true', 'false'] as const),
+  T.enum(['true', 'false' /*, 'null', 'undefined', ''*/] as const),
+  T.boolean,
   value => {
+    // ???
+    // if (value === null || value === undefined) return value
+    // if (value === 'null') return null
+    // if (value === '') return undefined
+    // if (value === 'undefined') return undefined
+
     if (value === 'true') {
       return true
     } else if (value === 'false') {
       return false
-    } else {
-      throw new Error('invalid value')
     }
+    throw new Error('invalid value')
   },
-  value => value.toString() as 'true' | 'false'
+  // @ ts-expect-error
+  value => value.toString() as 'true' | 'false' // | 'null' | 'undefined'
 )
 
 export const tCast = {
   date: T.nonNullable(tCast_date),
   null_date: T.nullable(tCast_date),
 
-  number: T.nonNullable(tCast_number),
-  null_number: T.nullable(tCast_number),
+  number: T.nonNullable(tCast_nullNumber),
+  null_number: T.nullable(tCast_nullNumber),
 
-  boolean: tCast_bool,
-  null_boolean: T.nullable(tCast_bool),
+  boolean: T.nonNullable(tCast_nullBoolean),
+  null_boolean: T.nullable(tCast_nullBoolean),
 }
 
 // ----- ---------------------------------------------------------- ----
@@ -93,13 +117,14 @@ export const tISOString = T.addValidator(T.string, str => {
 })
 
 export const tToListIfNot = <T extends TSchema>(tSchema: T) =>
-  T.customType(
+  T.transformType(
     'tListOrNot',
     T.oneOf([
       //
       tSchema,
       T.list(tSchema),
     ] as const),
+    T.list(tSchema),
     val => (Array.isArray(val) ? val : [val]),
     val => val
   )
