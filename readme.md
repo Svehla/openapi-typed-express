@@ -244,6 +244,9 @@ Express handler -> decoded -> encoded -> HTTP -> User
 user is interacting with encoded types only
 express handler are interacting with decoded types only
 
+if data type is nullable, null & undefined values are ignored and will never go to the encoder / decoder function
+if null is not defined, then encoder & decoder may be called with null | undefined value
+
 ### Data utils:
 
 ```

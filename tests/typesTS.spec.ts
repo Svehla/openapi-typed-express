@@ -141,11 +141,27 @@ describe('testing data types', () => {
   it('transform types', () => {
     const schema = T.object({
       t1: T.transformType(
-        'x',
+        't1',
         T.list(T.boolean),
         T.boolean,
         x => (x ? true : false),
         x => [x, x]
+      ),
+
+      t2: T.transformType('t2', T.string, T.number, parseFloat, x => x.toString()),
+
+      t3: T.transformType(
+        't3',
+        T.null_string,
+        T.null_boolean,
+        v => {
+          if (v === undefined || v === null) return v
+          return parseFloat(v)
+        },
+        v => {
+          if (v === undefined || v === null) return v
+          return v.toString()
+        }
       ),
     })
 
@@ -157,9 +173,13 @@ describe('testing data types', () => {
     null as any as T0 satisfies {
       decoded: {
         t1: boolean
+        t2: number
+        t3: null | undefined | number
       }
       encoded: {
         t1: boolean[]
+        t2: string
+        t3: null | undefined | string
       }
     }
   })

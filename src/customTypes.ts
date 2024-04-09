@@ -15,17 +15,14 @@ import { TSchema } from './tsSchema'
 
 // ----------------------------------------------------------
 // ----------------------- cast types -----------------------
+// string: 'null' and string 'undefined' parsing is not supported by custom types right now...
 const tCast_date = T.transformType(
   'cast_date',
-  // T.null_string,
-  // T.null_any,
   T.string,
   T.any,
   value => {
-    // ???
-    // if (value === null || value === undefined) return value
-    // if (value === 'null') return null
     // if (value === '') return undefined
+    // if (value === 'null') return null
     // if (value === 'undefined') return undefined
 
     const parsedValue = new Date(value)
@@ -38,15 +35,13 @@ const tCast_date = T.transformType(
 )
 
 // TODO: how to solve basic types (boolean|string) casting?
-const tCast_nullNumber = T.transformType(
+const tCast_number = T.transformType(
   'cast_number',
-  T.string, // null_
-  T.number, // null_
+  T.string,
+  T.number,
   value => {
-    // ???
-    // if (value === null || value === undefined) return value
-    // if (value === 'null') return null
     // if (value === '') return undefined
+    // if (value === 'null') return null
     // if (value === 'undefined') return undefined
 
     const parsedValue = Number(value)
@@ -59,15 +54,13 @@ const tCast_nullNumber = T.transformType(
   value => value!.toString()
 )
 
-export const tCast_nullBoolean = T.transformType(
+export const tCast_boolean = T.transformType(
   'parseBool',
   T.enum(['true', 'false' /*, 'null', 'undefined', ''*/] as const),
   T.boolean,
   value => {
-    // ???
-    // if (value === null || value === undefined) return value
-    // if (value === 'null') return null
     // if (value === '') return undefined
+    // if (value === 'null') return null
     // if (value === 'undefined') return undefined
 
     if (value === 'true') {
@@ -78,18 +71,20 @@ export const tCast_nullBoolean = T.transformType(
     throw new Error('invalid value')
   },
   // @ ts-expect-error
-  value => value.toString() as 'true' | 'false' // | 'null' | 'undefined'
+  value => value!.toString() as 'true' | 'false' // | 'null' | 'undefined'
 )
+
+// TODO: tCast nullable/undefined string to fully support parsing query params...
 
 export const tCast = {
   date: T.nonNullable(tCast_date),
-  null_date: T.nullable(tCast_date),
+  null_date: T.nullable(T.nullableTransform(tCast_date)),
 
-  number: T.nonNullable(tCast_nullNumber),
-  null_number: T.nullable(tCast_nullNumber),
+  number: T.nonNullable(tCast_number),
+  null_number: T.nullable(T.nullableTransform(tCast_number)),
 
-  boolean: T.nonNullable(tCast_nullBoolean),
-  null_boolean: T.nullable(tCast_nullBoolean),
+  boolean: T.nonNullable(tCast_boolean),
+  null_boolean: T.nullable(T.nullableTransform(tCast_boolean)),
 }
 
 // ----- ---------------------------------------------------------- ----

@@ -132,9 +132,9 @@ describe('schemaBuilder', () => {
             a: T.null_any,
             h: T.null_hashMap(T.null_string),
             e: T.null_enum(['a', 'b', 'c']),
-            o: T.null_oneOf([T.null_string, T.null_boolean]),
+            o: T.null_oneOf([T.null_string, T.null_boolean] as const),
             l: T.null_list(T.null_string),
-            c: T.nullable(T.transformType('a', T.null_string, T.null_string, a => a)),
+            c: T.nullableTransform(T.nullable(T.transformType('a', T.string, T.string, a => a))),
             nest: T.null_list(
               T.null_list(
                 T.null_object({
@@ -144,9 +144,11 @@ describe('schemaBuilder', () => {
                   a: T.null_any,
                   h: T.null_hashMap(T.null_string),
                   e: T.null_enum(['a', 'b', 'c']),
-                  o: T.null_oneOf([T.null_string, T.null_boolean]),
+                  o: T.null_oneOf([T.null_string, T.null_boolean] as const),
                   l: T.null_list(T.null_string),
-                  c: T.nullable(T.transformType('a', T.null_string, T.null_string, a => a)),
+                  c: T.nullableTransform(
+                    T.nullable(T.transformType('a', T.string, T.string, a => a))
+                  ),
                 })
               )
             ),

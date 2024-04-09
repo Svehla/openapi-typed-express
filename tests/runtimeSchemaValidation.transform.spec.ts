@@ -4,17 +4,7 @@ import { getTSchemaValidator, normalizeYupError } from '../src/runtimeSchemaVali
 import { delay, validateDataAgainstSchema } from './shared'
 
 // TODO: this file tests encoders & decoders (for casting and converting)
-
-const getSchemaCastedValue = async (schema: any, valueIn: any) => {
-  const [out] = await Promise.allSettled([
-    //
-    getTSchemaValidator(schema).validate(valueIn),
-  ])
-  if (out.status === 'rejected') {
-    out.reason = normalizeYupError(out.reason)
-  }
-  return out
-}
+// TODO: may be async validations on the transform type?
 
 describe('transform types', () => {
   describe('T.cast.(null_)?date', () => {
@@ -279,24 +269,27 @@ describe('transform types', () => {
   })
 
   describe('T.cast.(null_)?number', () => {
-    test('2', async () => {
+    test('1', async () => {
       await validateDataAgainstSchema('decode', T.cast.null_number, 'null', {
         status: 'rejected',
-        reason: [{ path: '', errors: ['invalid number cast'] }],
+        reason: [
+          {
+            errors: ['invalid number cast'],
+            path: '',
+          },
+        ],
       })
     })
 
-    test('3', async () => {
-      const value = await getSchemaCastedValue(T.cast.null_number, null)
-      expect(value).toEqual({
+    test('2', async () => {
+      await validateDataAgainstSchema('decode', T.cast.null_number, null, {
         status: 'fulfilled',
         value: null,
       })
     })
 
-    test('5', async () => {
-      const value = await getSchemaCastedValue(T.cast.null_number, '005')
-      expect(value).toEqual({
+    test('3', async () => {
+      await validateDataAgainstSchema('decode', T.cast.null_number, '005', {
         status: 'fulfilled',
         value: 5,
       })
@@ -414,6 +407,101 @@ describe('experimental transform types', () => {
         T.transformType('xxxx', tSomeCustom, tSomeCustom, v => `${v} world`),
         'hello world',
         { status: 'fulfilled' }
+      )
+    })
+  })
+
+  describe('query params parsing', () => {
+    test('0', async () => {
+      await validateDataAgainstSchema(
+        'decode',
+        T.object({
+          age: T.cast.number,
+          name: T.string,
+          ids: T.extra.toListIfNot(T.cast.number),
+        }),
+        {
+          age: '10',
+          name: 'name1',
+          ids: '1',
+        },
+        { status: 'fulfilled' }
+      )
+    })
+
+    test('1', async () => {
+      await validateDataAgainstSchema(
+        'decode',
+        T.object({
+          age: T.cast.number,
+          name: T.string,
+          ids: T.extra.toListIfNot(T.cast.number),
+        }),
+        {},
+        { status: 'rejected' }
+      )
+    })
+
+    test('2', async () => {
+      await validateDataAgainstSchema(
+        'decode',
+        T.object({
+          age: T.cast.null_number,
+          name: T.null_string,
+          ids: T.extra.null_toListIfNot(T.cast.number),
+        }),
+        {},
+        {
+          status: 'fulfilled',
+          value: {},
+        }
+      )
+    })
+
+    test('3', async () => {
+      await validateDataAgainstSchema(
+        'decode',
+        T.object({
+          age: T.cast.null_number,
+          name: T.null_string,
+          ids: T.extra.null_toListIfNot(T.cast.number),
+        }),
+        {
+          age: null,
+          name: undefined,
+          ids: ['1', '3'],
+        },
+        {
+          status: 'fulfilled',
+          value: {
+            age: null,
+            ids: [1, 3],
+          },
+        }
+      )
+    })
+
+    test('4', async () => {
+      await validateDataAgainstSchema(
+        'decode',
+        T.object({
+          age: T.cast.null_number,
+          name: T.cast.boolean,
+          ids: T.extra.null_toListIfNot(T.cast.number),
+        }),
+        {
+          age: null,
+          name: 'true',
+          ids: ['1', '3'],
+        },
+        {
+          status: 'fulfilled',
+          value: {
+            age: null,
+            name: true,
+            ids: [1, 3],
+          },
+        }
       )
     })
   })

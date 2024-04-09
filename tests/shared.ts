@@ -12,14 +12,14 @@ export const validateDataAgainstSchema = async (
 
   if (objValidationRes.status === 'rejected') {
     objValidationRes.reason = normalizeYupError(objValidationRes.reason)
-    // if output should be OK, but it was not, this add extra debug info into test error
     if (
       output.status === 'fulfilled' &&
       objValidationRes.status === 'rejected' &&
-      !objValidationRes.reason
+      // @ts-expect-error
+      output.reason === undefined
     ) {
       // @ts-expect-error
-      output.reason = 'UNKNOWN REASON'
+      output.reason = '<<<ERROR REASON WILL BE FILLED>>>'
     }
   }
 

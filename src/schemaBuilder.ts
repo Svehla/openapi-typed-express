@@ -69,11 +69,6 @@ const tList = <T extends TSchema>(items: T) => ({
   items,
 })
 
-/*
-
-
-*/
-
 export const tTransformType = <
   Name extends string,
   EncodedTSchema extends TSchema,
@@ -89,7 +84,7 @@ export const tTransformType = <
   DecType = InferSchemaType<DecodedTSchema>
   */
 >(
-  name: Name,
+  name: Name, // TODO: is this field
   encodedTSchema: EncodedTSchema,
   decodedTSchema: DecodedTSchema,
 
@@ -114,24 +109,61 @@ export const tTransformType = <
     type: 'transformType' as const,
     encodedTSchema,
     decodedTSchema,
-    required: true as const,
+    // THIS `required` IS NOT USED!!! its there just to make all types working
+    required: true as const, // transform type do not define it its nullable
     syncDecoder,
     syncEncoder,
   }
 }
+
+// TODO: how could it works with tTransform type?
 const tNonNullable = <T extends { required: any }>(
   a: T
-): NiceMerge<Omit<T, 'required'>, { required: true }> => ({
-  ...a,
-  required: true as const,
-})
+): NiceMerge<Omit<T, 'required'>, { required: true }> => {
+  return {
+    ...a,
+    required: true as const,
+  }
+}
 
+// TODO: how could it works with tTransform type?
 const tNullable = <T extends { required: any }>(
   a: T
-): NiceMerge<Omit<T, 'required'>, { required: false }> => ({
-  ...a,
-  required: false as const,
-})
+): NiceMerge<Omit<T, 'required'>, { required: false }> => {
+  return {
+    ...a,
+    required: false as const,
+  }
+}
+
+// TODO: how could it works with tTransform type?
+const tNullableTransform = <
+  T extends {
+    encodedTSchema: { required: boolean }
+    decodedTSchema: { required: boolean }
+  }
+>(
+  a: T
+): NiceMerge<
+  Omit<T, 'encodedTSchema' | 'decodedTSchema'>,
+  {
+    encodedTSchema: NiceMerge<Omit<T['encodedTSchema'], 'required'>, { required: false }>
+    decodedTSchema: NiceMerge<Omit<T['decodedTSchema'], 'required'>, { required: false }>
+  }
+> => {
+  // @ts-ignore
+  return {
+    ...a,
+    encodedTSchema: {
+      ...a.encodedTSchema,
+      required: false as const,
+    },
+    decodedTSchema: {
+      ...a.decodedTSchema,
+      required: false as const,
+    },
+  }
+}
 
 // TODO: is this correct info?: ``We cannot match tOneOf value by async validator``
 // validator is working for decode transform types purposes only
@@ -150,8 +182,6 @@ const tAddValidator = <T extends TSchema>(
 }
 
 // TODO: create a typed recursive deepNullable(...) wrapper
-// TODO: add types
-// TODO: add tests
 const deepNullable = (schema: TSchema): any => {
   if (schema.type === 'array') {
     return { ...tNullable(schema), items: deepNullable(schema.items) }
@@ -176,11 +206,7 @@ const deepNullable = (schema: TSchema): any => {
 }
 
 export const T = {
-  // is null_ proper prefix for informing user that its null"able", not JS null field?
-  // my TS infer handler handle it as undefined, not null... typed-express-docs is not supporting null / undef
-  // so I guess it doesn't matter and null"able" is nice JS readable API
   number: tNonNullable(tNumber),
-  // null means nullable => so the undefined is also nullable value
   null_number: tNullable(tNumber),
 
   boolean: tNonNullable(tBoolean),
@@ -216,8 +242,14 @@ export const T = {
   null_hashMap: <T extends TSchema>(args: T) => tNullable(tHashMap(args)),
 
   transformType: tTransformType,
-  nonNullable: tNonNullable,
-  nullable: tNullable,
+  // TODO: do proper implementation for null_transformType
+  // null_transformType: <T extends Parameters<typeof tTransformType>>(...args: T) =>
+  //   tNullable(tTransformType(...args)),
+
   addValidator: tAddValidator,
   deepNullable,
+
+  nonNullable: tNonNullable,
+  nullable: tNullable,
+  nullableTransform: tNullableTransform,
 }
