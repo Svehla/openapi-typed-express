@@ -1,31 +1,15 @@
-import { InferSchemaType, TSchema } from '../src'
+import { InferSchemaType } from '../src'
 import { T } from '../src'
 import { getTSchemaValidator, normalizeYupError } from '../src/runtimeSchemaValidation'
+import { delay, validateDataAgainstSchema } from './shared'
 
 // TODO: this file tests encoders & decoders (for casting and converting)
 
-const delay = (ms: number) => new Promise(res => setTimeout(res, ms))
-
-// TODO: create function to test if parsed cast value is proper
-const validateDataAgainstSchema = async (
-  transformTypeMode: 'decode' | 'encode',
-  schema: any,
-  objToValidate: any,
-  output: any
-) => {
-  const yupValidator = getTSchemaValidator(schema, { transformTypeMode })
-  const [objValidationRes] = await Promise.allSettled([yupValidator.validate(objToValidate)])
-
-  if (objValidationRes.status === 'rejected') {
-    objValidationRes.reason = normalizeYupError(objValidationRes.reason)
-  }
-
-  expect(objValidationRes).toMatchObject(output)
-}
-
 const getSchemaCastedValue = async (schema: any, valueIn: any) => {
-  const yupValidator = getTSchemaValidator(schema)
-  const [out] = await Promise.allSettled([yupValidator.validate(valueIn)])
+  const [out] = await Promise.allSettled([
+    //
+    getTSchemaValidator(schema).validate(valueIn),
+  ])
   if (out.status === 'rejected') {
     out.reason = normalizeYupError(out.reason)
   }
@@ -424,8 +408,13 @@ describe('experimental transform types', () => {
         T.oneOf([T.string] as const),
         v => v
       )
-      const _ = T.transformType('xxxx', tSomeCustom, tSomeCustom, v => v)
-      expect(1).toBe(1)
+
+      await validateDataAgainstSchema(
+        'decode',
+        T.transformType('xxxx', tSomeCustom, tSomeCustom, v => `${v} world`),
+        'hello world',
+        { status: 'fulfilled' }
+      )
     })
   })
 

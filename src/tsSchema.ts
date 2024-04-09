@@ -123,12 +123,13 @@ type GetFilterRequiredKeysUnion<
 
 type InferObjWithOptKeysObject<
   Properties extends TObject['properties'],
+  TT extends 'encode' | 'decode',
   ReqKeys = GetFilterRequiredKeysUnion<Properties, true>,
   OptKeys = GetFilterRequiredKeysUnion<Properties, false>,
   // @ts-expect-error
-  ReqObjPart = { [K in ReqKeys]: InferSchemaType<Properties[K]> },
+  ReqObjPart = { [K in ReqKeys]: InferSchemaTypeEncDec<Properties[K], TT> },
   // @ts-expect-error
-  OptObjPart = { [K in OptKeys]?: InferSchemaType<Properties[K]> },
+  OptObjPart = { [K in OptKeys]?: InferSchemaTypeEncDec<Properties[K], TT> },
   // NiceMerge cannot be there because it do infinite recursion on larger projects
   // Out = NiceMerge<ReqObjPart, OptObjPart>
   Out = ReqObjPart & OptObjPart
@@ -137,58 +138,49 @@ type InferObjWithOptKeysObject<
 // TODO: write TS tests
 // TODO: add support for encoder | decoder fo transform types like: InferSchemaType<SomeTSchema, 'decode' | 'encode'>
 
-export type InferSchemaType<T extends TSchema | undefined> = T extends undefined
+export type InferSchemaTypeEncDec<
+  T extends TSchema | undefined,
+  TT extends 'encode' | 'decode'
+> = T extends undefined
   ? undefined
   : //  worst but faster implementation of object (missing optional keys { key?: ... })
-  // T extends {
-  //     type: 'object'
-  //     properties: infer U
-  //   }
-  // ? MakeTOptional<
-  //     {
-  //       [K in keyof U]: InferSchemaType<
+  // T extends { type: 'object'; properties: infer U}
+  // ? MakeTOptional<{[K in keyof U]: InferSchemaType<
   //         // @ts-expect-error
   //         U[K]
-  //       >
-  //     },
-  //     T['required']
-  //   >
+  //       >},T['required']>
   // :
   T extends { type: 'object' }
-  ? MakeTOptional<InferObjWithOptKeysObject<T['properties']>, T['required']>
+  ? MakeTOptional<InferObjWithOptKeysObject<T['properties'], TT>, T['required']>
   : T extends { type: 'array'; items: any }
-  ? MakeTOptional<InferSchemaType<T['items']>[], T['required']>
+  ? MakeTOptional<InferSchemaTypeEncDec<T['items'], TT>[], T['required']>
   : T extends { type: 'boolean' }
   ? MakeTOptional<boolean, T['required']>
   : T extends { type: 'string' }
   ? MakeTOptional<string, T['required']>
   : T extends { type: 'oneOf' }
   ? // TODO: TS is working for iterating over union? if yes, than cool af!
-    MakeTOptional<InferSchemaType<T['options'][number]>, T['required']>
+    MakeTOptional<InferSchemaTypeEncDec<T['options'][number], TT>, T['required']>
   : T extends { type: 'enum' }
   ? MakeTOptional<T['options'][number], T['required']>
   : T extends { type: 'number' }
   ? MakeTOptional<number, T['required']>
   : T extends { type: 'hashMap' }
-  ? MakeTOptional<Record<string, InferSchemaType<T['property']>>, T['required']>
+  ? MakeTOptional<Record<string, InferSchemaTypeEncDec<T['property'], TT>>, T['required']>
   : T extends { type: 'transformType' }
   ? // TODO: define if you want to run encoder | decoder and by this config inherit proper data type
-    MakeTOptional<ReturnType<T['syncDecoder']>, T['required']>
+    TT extends 'decode'
+    ? MakeTOptional<ReturnType<T['syncDecoder']>, T['required']>
+    : TT extends 'encode'
+    ? MakeTOptional<ReturnType<T['syncEncoder']>, T['required']>
+    : never
   : T extends { type: 'any' }
   ? any
   : never
 
-type X = InferSchemaType<{
-  type: 'object'
-  properties: {
-    b1: {
-      type: 'boolean'
-      required: true
-    }
-    b2: {
-      type: 'boolean'
-      required: false
-    }
-  }
-  required: true
-}>
+export type InferSchemaType<T extends TSchema | undefined> = InferSchemaTypeEncDec<T, 'decode'>
+
+export type InferEncodedSchemaType<T extends TSchema | undefined> = InferSchemaTypeEncDec<
+  T,
+  'encode'
+>

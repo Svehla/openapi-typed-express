@@ -69,21 +69,45 @@ const tList = <T extends TSchema>(items: T) => ({
   items,
 })
 
+/*
+
+
+*/
+
 export const tTransformType = <
   Name extends string,
   EncodedTSchema extends TSchema,
   DecodedTSchema extends TSchema,
   R,
-  // R extends DecodedTSchema,
+  RR
+  /*
+  // option 1 
+  ParentEncType = InferSchemaTypeEncDec<EncodedTSchema, 'encode'>,
+  ParentDecType = InferSchemaTypeEncDec<DecodedTSchema, 'decode'>
+  // option 2 
   EncType = InferSchemaType<EncodedTSchema>,
   DecType = InferSchemaType<DecodedTSchema>
-  // RR = InferSchemaType<R>
+  */
 >(
   name: Name,
   encodedTSchema: EncodedTSchema,
   decodedTSchema: DecodedTSchema,
+
+  /*
+  // option 1
+  syncDecoder: <A extends ParentEncType, R extends ParentDecType>(value: A) => R,
+  syncEncoder = ((v: any) => v as any) as <A extends ParentDecType, R extends ParentEncType>(
+    value: A
+  ) => R
+
+  // option 2
   syncDecoder: (value: EncType) => R,
   syncEncoder = ((v: any) => v as any) as (value: DecType) => EncType
+  */
+
+  // option 3
+  syncDecoder: (value: any) => R,
+  syncEncoder = ((v: any) => v as any) as (value: R) => RR
 ) => {
   return {
     name: name,
@@ -113,7 +137,10 @@ const tNullable = <T extends { required: any }>(
 // validator is working for decode transform types purposes only
 const tAddValidator = <T extends TSchema>(
   schema: T,
-  validator: (val: InferSchemaType<T>) => void
+  validator: (
+    // InferSchemaType is good enough because it does not support transform types...
+    val: InferSchemaType<T>
+  ) => void
 ) => {
   if (schema.type === 'transformType') throw new Error('cannot add validator for transformType')
   return {

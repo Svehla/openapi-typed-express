@@ -137,14 +137,32 @@ export const convertSchemaToYupValidationObject = (
               runAsyncValidations: false,
             }).validateSync(value, { abortEarly: false })
 
-            return schema.syncDecoder(transformedItem)
+            const newValue = schema.syncDecoder(transformedItem)
+
+            // this validate, if decoder (parser) returns proper data type
+            convertSchemaToYupValidationObject(schema.decodedTSchema, {
+              ...extra,
+              transformTypeMode: 'encode',
+              runAsyncValidations: false,
+            }).validateSync(newValue, { abortEarly: false })
+
+            return newValue
           } else if (transformTypeMode === 'encode') {
             const transformedItem = convertSchemaToYupValidationObject(schema.decodedTSchema, {
               ...extra,
               runAsyncValidations: false,
             }).validateSync(value, { abortEarly: false })
 
-            return schema.syncEncoder(transformedItem)
+            const newValue = schema.syncEncoder(transformedItem)
+
+            // this validate, if encoder (serializer) returns proper data type
+            convertSchemaToYupValidationObject(schema.encodedTSchema, {
+              ...extra,
+              transformTypeMode: 'decode',
+              runAsyncValidations: false,
+            }).validateSync(newValue, { abortEarly: false })
+
+            return newValue
             // return transformedItem
           } else {
             throw new Error('invalid transformTypeMode')
@@ -318,14 +336,21 @@ export const convertSchemaToYupValidationObject = (
   return yupValidator
 }
 
-export const getTSchemaValidator = (
-  tSchema: TSchema,
-  extra?: { transformTypeMode?: 'decode' | 'encode'; runAsyncValidations?: boolean }
+// This is abstraction over yup, to stay abstracted away from validations
+// this do validation + transformation, should I change the name somehow?
+// validateAndTransform
+// getTSchemaSanitization // sanitization do transformation + add validations...
+export const getTSchemaValidator = <TSch extends TSchema, TT extends 'decode' | 'encode'>(
+  tSchema: TSch,
+  extra?: { transformTypeMode?: TT; runAsyncValidations?: boolean }
 ) => {
   const convertor = convertSchemaToYupValidationObject(tSchema, extra)
 
-  const validate = <T>(value: T, { stripUnknown = true } = {}) =>
-    convertor.validate(value, { abortEarly: false, stripUnknown })
+  const validate = async (value: any, { stripUnknown = true } = {}) => {
+    const transformedValue = await convertor.validate(value, { abortEarly: false, stripUnknown })
+    // TODO: should I add encode/decode type inferring?
+    return transformedValue // as any as InferSchemaTypeEncDec<TSch, TT> // possible infinite deep recursion..
+  }
 
   return { validate }
 }

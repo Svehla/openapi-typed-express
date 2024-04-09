@@ -249,3 +249,9 @@ express handler are interacting with decoded types only
 ```
 - T.deepNullable
 ```
+
+### Vocabularies
+
+decoder = parser
+encoder = serializer
+transform = encoder + decoder

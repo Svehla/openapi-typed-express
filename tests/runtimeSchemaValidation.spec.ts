@@ -1,24 +1,11 @@
 import { T } from '../src'
 import { getTSchemaValidator, normalizeYupError } from '../src/runtimeSchemaValidation'
-
-const delay = (ms: number) => new Promise(res => setTimeout(res, ms))
-
-// TODO: create function to test if parsed cast value is proper
-const validateDataAgainstSchema = async (schema: any, objToValidate: any, output: any) => {
-  const yupValidator = getTSchemaValidator(schema)
-  const [objValidationRes] = await Promise.allSettled([yupValidator.validate(objToValidate)])
-
-  if (objValidationRes.status === 'rejected') {
-    objValidationRes.reason = normalizeYupError(objValidationRes.reason)
-  }
-
-  expect(objValidationRes).toMatchObject(output)
-}
+import { delay, validateSimpleDataAgainstSchema } from './shared'
 
 describe('runtimeSchemaValidation', () => {
   describe('async types validations', () => {
     test('1', async () => {
-      await validateDataAgainstSchema(
+      await validateSimpleDataAgainstSchema(
         T.addValidator(T.string, async () => {
           await delay(10)
           throw new Error('value is invalid!!!!')
@@ -29,7 +16,7 @@ describe('runtimeSchemaValidation', () => {
     })
 
     test('2', async () => {
-      await validateDataAgainstSchema(
+      await validateSimpleDataAgainstSchema(
         T.addValidator(T.string, async () => await delay(10)),
         'x',
         { status: 'fulfilled' }
@@ -39,7 +26,7 @@ describe('runtimeSchemaValidation', () => {
     test('3', async () => {
       const tAsyncType = T.addValidator(T.string, async () => await delay(10))
 
-      await validateDataAgainstSchema(
+      await validateSimpleDataAgainstSchema(
         T.oneOf([
           T.object({
             x: tAsyncType,
@@ -53,7 +40,7 @@ describe('runtimeSchemaValidation', () => {
 
   describe('default types', () => {
     test('0.0', async () => {
-      await validateDataAgainstSchema(
+      await validateSimpleDataAgainstSchema(
         T.object({ s: T.string }),
         { s: undefined },
         { status: 'rejected' }
@@ -61,7 +48,7 @@ describe('runtimeSchemaValidation', () => {
     })
 
     test('0.1', async () => {
-      await validateDataAgainstSchema(
+      await validateSimpleDataAgainstSchema(
         T.object({ b: T.boolean }),
         { b: undefined },
         { status: 'rejected' }
@@ -69,7 +56,7 @@ describe('runtimeSchemaValidation', () => {
     })
 
     test('0.2', async () => {
-      await validateDataAgainstSchema(
+      await validateSimpleDataAgainstSchema(
         T.object({ c: T.number }),
         { c: undefined },
         { status: 'rejected' }
@@ -77,37 +64,39 @@ describe('runtimeSchemaValidation', () => {
     })
 
     test('0.3', async () => {
-      await validateDataAgainstSchema(T.object({ c: T.number }), {}, { status: 'rejected' })
+      await validateSimpleDataAgainstSchema(T.object({ c: T.number }), {}, { status: 'rejected' })
     })
 
     test('0.4', async () => {
-      await validateDataAgainstSchema(T.object({ c: T.number }), null, { status: 'rejected' })
+      await validateSimpleDataAgainstSchema(T.object({ c: T.number }), null, { status: 'rejected' })
     })
 
     test('0.5', async () => {
-      await validateDataAgainstSchema(T.object({ c: T.number }), undefined, { status: 'rejected' })
+      await validateSimpleDataAgainstSchema(T.object({ c: T.number }), undefined, {
+        status: 'rejected',
+      })
     })
 
     test('0.6', async () => {
-      await validateDataAgainstSchema(T.object({ c: T.oneOf([T.string]) }), 0, {
+      await validateSimpleDataAgainstSchema(T.object({ c: T.oneOf([T.string]) }), 0, {
         status: 'rejected',
       })
     })
 
     test('0.7', async () => {
-      await validateDataAgainstSchema(T.object({ c: T.oneOf([T.number]) }), undefined, {
+      await validateSimpleDataAgainstSchema(T.object({ c: T.oneOf([T.number]) }), undefined, {
         status: 'rejected',
       })
     })
 
     test('0.8', async () => {
-      await validateDataAgainstSchema(T.object({ c: T.oneOf([T.boolean]) }), null, {
+      await validateSimpleDataAgainstSchema(T.object({ c: T.oneOf([T.boolean]) }), null, {
         status: 'rejected',
       })
     })
 
     test('0.9', async () => {
-      await validateDataAgainstSchema(
+      await validateSimpleDataAgainstSchema(
         T.object({ c: T.oneOf([T.number]) }),
         {},
         {
@@ -117,31 +106,31 @@ describe('runtimeSchemaValidation', () => {
     })
 
     test('0.11', async () => {
-      await validateDataAgainstSchema(T.object({ c: T.oneOf([T.number]) }), NaN, {
+      await validateSimpleDataAgainstSchema(T.object({ c: T.oneOf([T.number]) }), NaN, {
         status: 'rejected',
       })
     })
 
     test('0.12', async () => {
-      await validateDataAgainstSchema(T.hashMap(T.any), NaN, {
+      await validateSimpleDataAgainstSchema(T.hashMap(T.any), NaN, {
         status: 'rejected',
       })
     })
 
     test('0.13', async () => {
-      await validateDataAgainstSchema(T.hashMap(T.any), null, {
+      await validateSimpleDataAgainstSchema(T.hashMap(T.any), null, {
         status: 'rejected',
       })
     })
 
     test('0.14', async () => {
-      await validateDataAgainstSchema(T.hashMap(T.any), undefined, {
+      await validateSimpleDataAgainstSchema(T.hashMap(T.any), undefined, {
         status: 'rejected',
       })
     })
 
     test('0.15', async () => {
-      await validateDataAgainstSchema(
+      await validateSimpleDataAgainstSchema(
         T.hashMap(T.any),
         {},
         {
@@ -151,25 +140,25 @@ describe('runtimeSchemaValidation', () => {
     })
 
     test('0.16', async () => {
-      await validateDataAgainstSchema(T.null_hashMap(T.any), NaN, {
+      await validateSimpleDataAgainstSchema(T.null_hashMap(T.any), NaN, {
         status: 'rejected',
       })
     })
 
     test('0.17', async () => {
-      await validateDataAgainstSchema(T.null_hashMap(T.any), null, {
+      await validateSimpleDataAgainstSchema(T.null_hashMap(T.any), null, {
         status: 'fulfilled',
       })
     })
 
     test('0.18', async () => {
-      await validateDataAgainstSchema(T.null_hashMap(T.any), undefined, {
+      await validateSimpleDataAgainstSchema(T.null_hashMap(T.any), undefined, {
         status: 'fulfilled',
       })
     })
 
     test('1', async () => {
-      await validateDataAgainstSchema(
+      await validateSimpleDataAgainstSchema(
         T.object({
           s: T.null_string,
           b: T.null_boolean,
@@ -194,7 +183,7 @@ describe('runtimeSchemaValidation', () => {
     })
 
     test('1.1', async () => {
-      await validateDataAgainstSchema(
+      await validateSimpleDataAgainstSchema(
         T.object({
           a: T.string,
         }),
@@ -204,22 +193,22 @@ describe('runtimeSchemaValidation', () => {
     })
 
     test('2', async () => {
-      await validateDataAgainstSchema(T.string, 'hello', { status: 'fulfilled' })
+      await validateSimpleDataAgainstSchema(T.string, 'hello', { status: 'fulfilled' })
     })
 
     test('3', async () => {
-      await validateDataAgainstSchema(T.boolean, true, { status: 'fulfilled' })
+      await validateSimpleDataAgainstSchema(T.boolean, true, { status: 'fulfilled' })
     })
 
     test('4', async () => {
-      await validateDataAgainstSchema(T.number, 3, { status: 'fulfilled' })
+      await validateSimpleDataAgainstSchema(T.number, 3, { status: 'fulfilled' })
     })
 
     test('5', async () => {
-      await validateDataAgainstSchema(T.null_string, null, { status: 'fulfilled' })
+      await validateSimpleDataAgainstSchema(T.null_string, null, { status: 'fulfilled' })
     })
     test('51', async () => {
-      await validateDataAgainstSchema(T.number, '3', {
+      await validateSimpleDataAgainstSchema(T.number, '3', {
         reason: [
           { path: '', errors: ['this must be a `number` type, but the final value was: `"3"`.'] },
         ],
@@ -227,7 +216,7 @@ describe('runtimeSchemaValidation', () => {
       })
     })
     test('52', async () => {
-      await validateDataAgainstSchema(T.boolean, 'true', {
+      await validateSimpleDataAgainstSchema(T.boolean, 'true', {
         reason: [
           {
             path: '',
@@ -240,18 +229,18 @@ describe('runtimeSchemaValidation', () => {
 
     // test('6', async () => {
     //   // mmmm undefined is not nullable in yup... but types enable to put undefined
-    //   await validateDataAgainstSchema(T.null_string, undefined, { status: 'fulfilled' })
+    //   await validateSimpleDataAgainstSchema(T.null_string, undefined, { status: 'fulfilled' })
     // })
 
     test('7', async () => {
-      await validateDataAgainstSchema(T.string, null, {
+      await validateSimpleDataAgainstSchema(T.string, null, {
         status: 'rejected',
         reason: [{ path: '', errors: ['this cannot be null'] }],
       })
     })
 
     test('7.1', async () => {
-      await validateDataAgainstSchema(
+      await validateSimpleDataAgainstSchema(
         T.object({ x: T.list(T.string) }),
         { x: [true] },
         {
@@ -267,7 +256,7 @@ describe('runtimeSchemaValidation', () => {
     })
 
     test('7.2', async () => {
-      await validateDataAgainstSchema(
+      await validateSimpleDataAgainstSchema(
         T.object({ x: T.list(T.boolean) }),
         { x: ['true'] },
         {
@@ -283,7 +272,7 @@ describe('runtimeSchemaValidation', () => {
     })
 
     test('7.2', async () => {
-      await validateDataAgainstSchema(
+      await validateSimpleDataAgainstSchema(
         T.object({ x: T.list(T.string) }),
         { x: [3] },
         {
@@ -299,13 +288,13 @@ describe('runtimeSchemaValidation', () => {
     })
 
     test('8', async () => {
-      await validateDataAgainstSchema(T.null_number, undefined, {
+      await validateSimpleDataAgainstSchema(T.null_number, undefined, {
         status: 'fulfilled',
       })
     })
 
     test('9', async () => {
-      await validateDataAgainstSchema(T.null_boolean, 'true', {
+      await validateSimpleDataAgainstSchema(T.null_boolean, 'true', {
         status: 'rejected',
         reason: [
           {
@@ -317,7 +306,7 @@ describe('runtimeSchemaValidation', () => {
     })
 
     test('10', async () => {
-      await validateDataAgainstSchema(
+      await validateSimpleDataAgainstSchema(
         T.object({
           bool: T.boolean,
           num: T.number,
@@ -340,7 +329,7 @@ describe('runtimeSchemaValidation', () => {
     })
 
     test('11', async () => {
-      await validateDataAgainstSchema(
+      await validateSimpleDataAgainstSchema(
         T.object({
           bool: T.boolean,
           num: T.number,
@@ -364,7 +353,7 @@ describe('runtimeSchemaValidation', () => {
     })
 
     test('12', async () => {
-      await validateDataAgainstSchema(
+      await validateSimpleDataAgainstSchema(
         T.hashMap(
           T.null_object({
             bool: T.boolean,
@@ -383,7 +372,7 @@ describe('runtimeSchemaValidation', () => {
     })
 
     test('13', async () => {
-      await validateDataAgainstSchema(
+      await validateSimpleDataAgainstSchema(
         T.hashMap(T.string),
         {
           dynKey1: 'a',
@@ -402,7 +391,7 @@ describe('runtimeSchemaValidation', () => {
     })
 
     test('14', async () => {
-      await validateDataAgainstSchema(
+      await validateSimpleDataAgainstSchema(
         T.object({
           x1: T.nullable(T.hashMap(T.string)),
           y1: T.null_hashMap(T.string),
@@ -429,7 +418,7 @@ describe('runtimeSchemaValidation', () => {
     test('15', async () => {
       // object of null object is not working...
       // double nested objects cannot be transformed, but thanks to .strict(true)
-      await validateDataAgainstSchema(
+      await validateSimpleDataAgainstSchema(
         T.object({
           a: T.null_object({ x: T.any }),
           b: T.null_object({ x: T.any }),
@@ -453,13 +442,13 @@ describe('runtimeSchemaValidation', () => {
     describe('custom types', () => {
       describe('date', () => {
         test('6', async () => {
-          await validateDataAgainstSchema(T.list(T.extra.minMaxNumber(0, 1)), [3], {
+          await validateSimpleDataAgainstSchema(T.list(T.extra.minMaxNumber(0, 1)), [3], {
             status: 'rejected',
           })
         })
 
         test('9', async () => {
-          await validateDataAgainstSchema(
+          await validateSimpleDataAgainstSchema(
             T.object({ a: T.extra.ISOString }),
             { a: new Date().toISOString() + 'x' },
             { status: 'rejected' }
@@ -467,7 +456,7 @@ describe('runtimeSchemaValidation', () => {
         })
 
         test('10', async () => {
-          await validateDataAgainstSchema(
+          await validateSimpleDataAgainstSchema(
             T.object({
               a: T.extra.ISOString,
               b: T.extra.minMaxNumber(0, 10),
@@ -485,11 +474,13 @@ describe('runtimeSchemaValidation', () => {
       })
 
       test('4', async () => {
-        await validateDataAgainstSchema(T.extra.minMaxNumber(1, 5), 2, { status: 'fulfilled' })
+        await validateSimpleDataAgainstSchema(T.extra.minMaxNumber(1, 5), 2, {
+          status: 'fulfilled',
+        })
       })
 
       test('5', async () => {
-        await validateDataAgainstSchema(T.extra.minMaxNumber(1, 5), 6, {
+        await validateSimpleDataAgainstSchema(T.extra.minMaxNumber(1, 5), 6, {
           status: 'rejected',
           reason: [{ path: '', errors: ['value needs to be > 5'] }],
         })
@@ -504,21 +495,21 @@ describe('runtimeSchemaValidation', () => {
       const tObjDate = T.null_object({ date: T.nullable(tISODate) })
 
       test('1', async () => {
-        await validateDataAgainstSchema(tObjDate, null, {
+        await validateSimpleDataAgainstSchema(tObjDate, null, {
           status: 'fulfilled',
           value: null,
         })
       })
 
       test('2', async () => {
-        await validateDataAgainstSchema(tObjDate, undefined, {
+        await validateSimpleDataAgainstSchema(tObjDate, undefined, {
           status: 'fulfilled',
           value: {}, // wtf???
         })
       })
 
       test('3', async () => {
-        await validateDataAgainstSchema(
+        await validateSimpleDataAgainstSchema(
           tObjDate,
           { date: null },
           {

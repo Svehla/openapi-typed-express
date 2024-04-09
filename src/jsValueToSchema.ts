@@ -61,6 +61,7 @@ export const tSchemaToJSValue = <T extends TSchema>(schema: T): InferSchemaType<
       return [tSchemaToJSValue(schema.items), tSchemaToJSValue(schema.items)]
 
     case 'oneOf':
+      // @ts-ignore possible infinite recursion...
       return tSchemaToJSValue(schema.options?.[0])
 
     case 'any':

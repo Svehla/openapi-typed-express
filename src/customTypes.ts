@@ -3,6 +3,18 @@ import { TSchema } from './tsSchema'
 
 // ----------------------------------------------------------
 // ----------------------- cast types -----------------------
+
+// TODO: may it be usable for string parsing?
+// const tCast_nullableString = T.transformType('nullable', T.null_string, T.null_string, value => {
+//   if (value === null || value === undefined) return value
+//   if (value === 'null') return null
+//   if (value === '') return undefined
+//   if (value === 'undefined') return undefined
+//   return value
+// })
+
+// ----------------------------------------------------------
+// ----------------------- cast types -----------------------
 const tCast_date = T.transformType(
   'cast_date',
   // T.null_string,
