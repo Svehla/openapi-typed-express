@@ -221,6 +221,9 @@ describe('testing TS compile time data types', () => {
         headers: Record<string, string>
       }
 
+      // @ts-expect-error this testing that you cannot send true to the returns schema
+      res.send(true)
+
       res.tSend({
         s: 'true',
         ns: null,

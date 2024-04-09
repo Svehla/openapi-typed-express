@@ -1,5 +1,6 @@
 
 TODO:
+- Create readme docs for the whole project
 - with custom error messages
 - add async validator into encoders 
 - add unit tests for res.tSend

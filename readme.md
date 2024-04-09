@@ -129,17 +129,23 @@ app.get(
 
 The library exposes many functions and objects which help you to create schema as you want.
 
-- `T.boolean(...)`
-- `T.number(...)`
-- `T.enum(...)`
-- `T.nonNullable(...)`
-- `T.any(...)`
-- `T.object(...)`
 - `T.string(...)`
-
-Experimental (not fully working):
-
-- `T.transform(...)`
+- `T.null_string(...)`
+- `T.boolean(...)`
+- `T.null_boolean(...)`
+- `T.number(...)`
+- `T.null_number(...)`
+- `T.enum(...)`
+- `T.null_enum(...)`
+- `T.oneOf(...)`
+- `T.null_oneOf(...)`
+- `T.any(...)`
+- `T.null_any(...)`
+- `T.object(...)`
+- `T.null_object(...)`
+- `T.list(...)`
+- `T.null_list(...)`
+- `T.nonNullable(...)`
 
 if you want to see more examples on how to build schema structure by function compositions
 you can check the tests
@@ -202,6 +208,7 @@ app.use(
   queryParser({
     parseNumber: false,
     parseBoolean: false,
+    // turn on only null & undefined values, to use T.cast. utils
     parseNull: true,
     parseUndefined: true,
   })
@@ -226,26 +233,30 @@ app.get(
 )
 ```
 
-### Custom transformation of incoming data:
+if you want to parse string `'null'` by yourself, you need to create a custom T.transform data type which will handle this edge case
 
 ### Validating output via res.tSend
 
-library automatically inject `tSend` function into `res.tSend`. This function take data and send 200 success response,
-but before its send, it validates if schema match `apiDoc({ returns: ... })` schema definition.
-If you send more data, than you defined (for example object with more attributes), data will be stripped. Thanks to that this function is much
+The library automatically injects the `tSend` function into `res.tSend`. This function takes data and sends a 200 success status response.
+However, before sending, it verifies if the schema matches the `apiDoc({ returns: ... })` schema definition and sanitizes the data.
+Therefore, if you send more data than what is defined (for example, an object with additional attributes),
+the surplus data will be stripped. This mechanism enhances the function's reliability.
 
-### Encoders / decoders
+After defining `T.transform` types, encoders are applied, and the data is transformed accordingly.
 
-```
-User -> HTTP -> encoded -> decoded -> Express handler
-Express handler -> decoded -> encoded -> HTTP -> User
-```
+### Custom transformation of incoming data (Encoders / decoders)
 
-user is interacting with encoded types only
-express handler are interacting with decoded types only
+Data Transformation Flow:
+User -> HTTP -> Encoded -> Decoded -> Express Handler
+Express Handler -> Decoded -> Encoded -> HTTP -> User
 
-if data type is nullable, null & undefined values are ignored and will never go to the encoder / decoder function
-if null is not defined, then encoder & decoder may be called with null | undefined value
+- Users interact exclusively with encoded types.
+- Express handlers interact solely with decoded types.
+
+Null Handling:
+
+- If a data type is nullable, `null` and `undefined` values are automatically handled, and the encoder/decoder functions will not be invoked.
+- If `null` is not explicitly defined, encoder and decoder functions may still be called with `null` or `undefined` values. In such cases, handling must be implemented manually within the parser/serializer functions.
 
 ### Data utils:
 

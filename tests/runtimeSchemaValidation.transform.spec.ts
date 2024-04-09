@@ -130,80 +130,98 @@ describe('transform types', () => {
       const date = new Date()
       await validateDataAgainstSchema(
         'decode',
-        T.list(
+        T.oneOf([
           T.object({
-            nest: T.object({
-              nd: T.cast.null_date,
-              ud: T.cast.null_date,
-              d: T.cast.null_date,
-              nb: T.cast.null_boolean,
-              ub: T.cast.null_boolean,
-              b: T.cast.null_boolean,
-              nn: T.cast.null_number,
-              un: T.cast.null_number,
-              n: T.cast.null_number,
+            type: T.enum(['magic1'] as const),
+          }),
+          T.object({
+            type: T.enum(['magic2'] as const),
+            list: T.list(
+              T.object({
+                nest: T.object({
+                  nd: T.cast.null_date,
+                  ud: T.cast.null_date,
+                  d: T.cast.null_date,
+                  nb: T.cast.null_boolean,
+                  ub: T.cast.null_boolean,
+                  b: T.cast.null_boolean,
+                  nn: T.cast.null_number,
+                  un: T.cast.null_number,
+                  n: T.cast.null_number,
 
-              x: T.extra.toListIfNot(T.string),
-              xx: T.extra.toListIfNot(T.string),
+                  x: T.extra.toListIfNot(T.string),
+                  xx: T.extra.toListIfNot(T.string),
 
-              nested: T.object({
-                undef: T.null_object({ x: T.cast.boolean }),
-                null: T.null_object({ x: T.cast.boolean }),
-                empty: T.null_object({ x: T.cast.boolean }),
-              }),
+                  nested: T.object({
+                    undef: T.null_object({ x: T.cast.boolean }),
+                    null: T.null_object({ x: T.cast.boolean }),
+                    empty: T.null_object({ x: T.cast.boolean }),
+                  }),
 
-              nullNested: T.null_object({
-                undef: T.null_object({ x: T.cast.boolean }),
-                null: T.null_object({ x: T.cast.boolean }),
-                empty: T.null_object({ x: T.cast.boolean }),
-              }),
+                  nullNested: T.null_object({
+                    undef: T.null_object({ x: T.cast.boolean }),
+                    null: T.null_object({ x: T.cast.boolean }),
+                    empty: T.null_object({ x: T.cast.boolean }),
+                  }),
 
-              emptyNested: T.null_object({
-                undef: T.null_object({ x: T.cast.boolean }),
-                null: T.null_object({ x: T.cast.boolean }),
-                empty: T.null_object({ x: T.cast.boolean }),
-              }),
-            }),
-          })
-        ),
-        [
-          {
-            nest: {
-              nd: null,
-              ud: undefined,
-              d: date.toISOString(),
-              nb: null,
-              ub: undefined,
-              b: 'true',
-              nn: null,
-              un: undefined,
-              n: '3',
-              x: 'hello',
-              xx: ['hello'],
-              nested: {},
-              nullNested: {},
-            },
-          },
-        ],
+                  emptyNested: T.null_object({
+                    undef: T.null_object({ x: T.cast.boolean }),
+                    null: T.null_object({ x: T.cast.boolean }),
+                    empty: T.null_object({ x: T.cast.boolean }),
+                  }),
+                }),
+              })
+            ),
+          }),
+          T.object({
+            type: T.enum(['magic3'] as const),
+          }),
+        ] as const),
+
         {
-          status: 'fulfilled',
-          value: [
+          type: 'magic2',
+          list: [
             {
               nest: {
                 nd: null,
-                d: date,
+                ud: undefined,
+                d: date.toISOString(),
                 nb: null,
-                b: true,
+                ub: undefined,
+                b: 'true',
                 nn: null,
-                n: 3,
-                x: ['hello'],
+                un: undefined,
+                n: '3',
+                x: 'hello',
                 xx: ['hello'],
-
                 nested: {},
                 nullNested: {},
               },
             },
           ],
+        },
+        {
+          status: 'fulfilled',
+          value: {
+            type: 'magic2',
+            list: [
+              {
+                nest: {
+                  nd: null,
+                  d: date,
+                  nb: null,
+                  b: true,
+                  nn: null,
+                  n: 3,
+                  x: ['hello'],
+                  xx: ['hello'],
+
+                  nested: {},
+                  nullNested: {},
+                },
+              },
+            ],
+          },
         }
       )
     })
