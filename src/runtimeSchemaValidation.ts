@@ -241,7 +241,13 @@ export const convertSchemaToYupValidationObject = (
         try {
           if (matchOptionIndex === -1) {
             // TODO: return of throw?
-            return new Error('Not all items in ${path} match one of the allowed schemas')
+            return new Error(
+              [
+                '${path} does not match any of allowed schemas',
+                'current value is: ',
+                JSON.stringify(value),
+              ].join(' ')
+            )
           }
 
           const transformedItem = convertSchemaToYupValidationObject(

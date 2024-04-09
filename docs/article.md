@@ -42,16 +42,16 @@ app.get(
   apiDoc({
     query: {
       name: T.string
-      header: T.list(T.enum(['a', 'b', 'c']))),
+      header: T.list(T.enum(['a', 'b', 'c'] as const))),
     },
     body: {
-      header: T.list(T.enum(['a', 'b', 'c']))),
+      header: T.list(T.enum(['a', 'b', 'c'] as const))),
       message: T.null_list,
       footer: T.string,
     },
     returns: T.null_object({
       data: T.null_object({
-        nestedData: T.enum(['a', 'b', 'c']),
+        nestedData: T.enum(['a', 'b', 'c'] as const),
       }),
     }),
   })((req, res) => {

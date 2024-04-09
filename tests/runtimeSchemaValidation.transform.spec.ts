@@ -648,11 +648,15 @@ describe('experimental transform types', () => {
           status: 'rejected',
           reason: [
             {
-              errors: ['Not all items in x[0] match one of the allowed schemas'],
+              errors: [
+                'x[0] does not match any of allowed schemas current value is:  {"castNum":4}',
+              ],
               path: 'x[0]',
             },
             {
-              errors: ['Not all items in x[3] match one of the allowed schemas'],
+              errors: [
+                'x[3] does not match any of allowed schemas current value is:  {"castNum":124}',
+              ],
               path: 'x[3]',
             },
           ],
