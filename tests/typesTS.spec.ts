@@ -1,7 +1,8 @@
-import { InferSchemaType, T } from '../src'
+import { satisfies } from 'semver'
+import { InferSchemaType, T, apiDoc } from '../src'
 import { InferEncodedSchemaType, InferSchemaTypeEncDec } from '../src/tsSchema'
 
-describe('testing data types', () => {
+describe('testing TS compile time data types', () => {
   it('basic data types', () => {
     const schema = T.object({
       b: T.boolean,
@@ -182,5 +183,51 @@ describe('testing data types', () => {
         t3: null | undefined | string
       }
     }
+  })
+
+  it('e2e express use case', () => {
+    apiDoc({
+      query: {
+        s: T.string,
+        nn: T.cast.null_number,
+      },
+      headers: T.hashMap(T.string),
+      body: T.object({
+        nl: T.null_list(T.string),
+        x: T.enum(['a', 'b', 'c'] as const),
+      }),
+      returns: T.object({
+        s: T.string,
+        ns: T.null_string,
+        n: T.number,
+        nn: T.null_number,
+        b: T.boolean,
+        nb: T.null_boolean,
+      }),
+    })((req, res) => {
+      const input = { query: req.query, body: req.body, headers: req.headers }
+
+      type T0 = typeof input
+
+      null as any as T0 satisfies {
+        query: {
+          s: string
+          nn?: null | undefined | number
+        }
+        body: {
+          nl?: null | undefined | string[]
+          x: 'a' | 'b' | 'c'
+        }
+        headers: Record<string, string>
+      }
+
+      res.tSend({
+        s: 'true',
+        ns: null,
+        n: 0,
+        nn: undefined,
+        b: true,
+      })
+    })
   })
 })
