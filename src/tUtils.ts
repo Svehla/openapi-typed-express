@@ -1,29 +1,9 @@
+import { T } from '.'
 import { NiceMerge, NiceOmit, NicePick } from './generics'
 import { TObject } from './tsSchema'
+import { mapEntries } from './utils'
 
-// not sure how when and what is the final solution for those problems and if them should be here or in the lib codebase
-// nicer, smaller, but more abstract solution for omitting...
-/*
-const omitAttrs = <
-  U extends Record<any, any>,
-  KeysToOmit extends (keyof U)[],
-  Out = Omit<U, KeysToOmit[number]>,
-  NiceOut = { [K in keyof Out]: Out[K] }
->(
-  obj: U,
-  ...attrsName: KeysToOmit
-): NiceOut => {
-  const objCopy = { ...obj }
-  attrsName.forEach(key => {
-    delete objCopy[key]
-  })
-  return objCopy
-}
-*/
-
-// TODO: add typed unit tests
-
-export const omitTObject = <
+export const tObject_omit = <
   TObj extends TObject,
   PropsToOmit extends (keyof TObj['properties'])[],
   NewProperties = NiceOmit<TObj['properties'], PropsToOmit[number]>,
@@ -42,7 +22,7 @@ export const omitTObject = <
   return out
 }
 
-export const pickTObject = <
+export const tObject_pick = <
   TObj extends TObject,
   PropsToPick extends (keyof TObj['properties'])[],
   NewProperties = NicePick<TObj['properties'], PropsToPick[number]>,
@@ -61,7 +41,29 @@ export const pickTObject = <
   return out
 }
 
+export const tObject_partial = <TObj extends TObject>(obj: TObj) => {
+  const newTSchemaObj = {
+    ...obj,
+    properties: mapEntries(([k, v]) => [k, T.nullable(v)], obj.properties),
+  }
+
+  return newTSchemaObj as any as NiceMerge<
+    Omit<TObj, 'properties'>,
+    {
+      properties: {
+        [K in keyof TObj['properties']]: NiceMerge<
+          Omit<TObj['properties'][K], 'required'>,
+          { required: false }
+        >
+      }
+    }
+  >
+}
+
 export const tUtils = {
-  pickTObject,
-  omitTObject,
+  tObject: {
+    pick: tObject_pick,
+    omit: tObject_omit,
+    partial: tObject_partial,
+  },
 }

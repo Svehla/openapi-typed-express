@@ -1,4 +1,5 @@
-import { T, tUtils } from '../src'
+import { InferSchemaType, T, tUtils } from '../src'
+import { validateDataAgainstSchema } from './shared'
 
 describe('tUtils', () => {
   const obj = T.object({
@@ -9,17 +10,104 @@ describe('tUtils', () => {
   })
 
   describe('pickTObject', () => {
-    test('1', () => {
-      const newObj = tUtils.pickTObject(obj, 's', 'b').properties
-      expect(Object.keys(newObj)).toEqual(['s', 'b'])
+    test('1', async () => {
+      const newTSch = tUtils.tObject.pick(obj, 's', 'b')
+
+      await validateDataAgainstSchema(
+        'decode',
+        newTSch,
+        { s: 'str', b: true },
+        { status: 'fulfilled' }
+      )
+
+      type T0 = InferSchemaType<typeof newTSch>
+
+      null as any as T0 satisfies {
+        s: string
+        b: boolean
+      }
     })
   })
 
   describe('omitTObject', () => {
-    test('1', () => {
-      const newObj = tUtils.omitTObject(obj, 'sn', 's', 'b').properties
+    test('1', async () => {
+      const newTSch = tUtils.tObject.omit(obj, 'sn', 's', 'b')
 
-      expect(Object.keys(newObj)).toEqual(['n'])
+      await validateDataAgainstSchema('decode', newTSch, { n: 0 }, { status: 'fulfilled' })
+
+      type T0 = InferSchemaType<typeof newTSch>
+
+      null as any as T0 satisfies {
+        n: number
+      }
+    })
+  })
+
+  describe('partialTObject', () => {
+    test('1', async () => {
+      const newTSch = tUtils.tObject.partial(obj)
+
+      await validateDataAgainstSchema('decode', newTSch, {}, { status: 'fulfilled', value: {} })
+
+      type T0 = InferSchemaType<typeof newTSch>
+
+      null as any as T0 satisfies {
+        sn?: null | string | string
+        s?: null | string | string
+        b?: null | string | boolean
+        n?: null | string | number
+      }
+    })
+
+    test('2', async () => {
+      const newTSch = tUtils.tObject.partial(obj)
+
+      await validateDataAgainstSchema(
+        'decode',
+        newTSch,
+        { sn: null, s: undefined, b: null },
+        {
+          status: 'fulfilled',
+        }
+      )
+
+      type T0 = InferSchemaType<typeof newTSch>
+
+      null as any as T0 satisfies {
+        sn?: null | string | string
+        s?: null | string | string
+        b?: null | string | boolean
+        n?: null | string | number
+      }
+    })
+
+    test('3', async () => {
+      const newTSch = tUtils.tObject.partial(obj)
+
+      await validateDataAgainstSchema(
+        'decode',
+        newTSch,
+        { s: 3 },
+        {
+          status: 'rejected',
+          reason: [
+            {
+              errors: ['s must be a `string` type, but the final value was: `3`.'],
+              path: 's',
+            },
+          ],
+        }
+      )
+
+      // @ts-ignore
+      type T0 = InferSchemaType<typeof newTSch>
+
+      null as any as T0 satisfies {
+        sn?: null | string | string
+        s?: null | string | string
+        b?: null | string | boolean
+        n?: null | string | number
+      }
     })
   })
 })
