@@ -1,21 +1,34 @@
 import * as yup from 'yup'
-import { mapEntries } from './utils'
+import { mapEntries, notNullable, syncAllSettled } from './utils'
 import { TSchema } from './tsSchema'
 
 /**
  * yup errors are stringified into stack trace
  * thanks to this function we extract JSON which describe error with better
  * programming API
+ *
+ * TODO: write tests
  */
 export const normalizeYupError = (obj?: any) => {
   if (!obj) return undefined
-  const yErrObj = JSON.parse(JSON.stringify(obj)) as { inner: any[] }
-  const niceYErrObj = [
-    // is this correct normalizing?
-    ...(yErrObj?.inner.length > 0
-      ? yErrObj.inner.map(i => ({ path: i?.path, errors: i?.errors }))
-      : [yErrObj]),
-  ].filter(Boolean)
+
+  const yErrObj = JSON.parse(JSON.stringify(obj)) as {
+    inner?: { path?: string; errors: any }[]
+    errors?: string[]
+  }
+
+  const errorsList =
+    (yErrObj.inner?.length ?? 0) > 0
+      ? yErrObj.inner?.map(i => ({ path: i?.path, errors: i?.errors }))
+      : yErrObj.errors?.map(i => ({ path: '', errors: i }))
+
+  const niceYErrObj =
+    // is this correct normalizing? do i remove some necessary information?
+    (errorsList?.length ?? 0) > 0
+      ? //
+        errorsList
+      : [{ errors: [yErrObj as any as string], path: '' }]
+
   return niceYErrObj
 }
 
@@ -232,22 +245,48 @@ export const convertSchemaToYupValidationObject = (
         // cannot run async function inside .transform
         const extraNoAsyncValidation = { ...extra, runAsyncValidations: false }
 
-        const areValidOptions = schema.options.map(o =>
-          convertSchemaToYupValidationObject(o, extraNoAsyncValidation).isValidSync(value)
+        const areValidOptions = syncAllSettled(
+          schema.options.map(o => {
+            return () =>
+              convertSchemaToYupValidationObject(o, extraNoAsyncValidation).validateSync(value, {
+                abortEarly: false,
+              })
+          })
         )
 
-        const matchOptionIndex = areValidOptions.findIndex(i => i === true)
+        const matchOptionIndex = areValidOptions.findIndex(i => i.status === 'fulfilled')
 
         try {
           if (matchOptionIndex === -1) {
-            // TODO: return of throw?
-            return new Error(
-              [
-                '${path} does not match any of allowed schemas',
-                'current value is: ',
-                JSON.stringify(value),
-              ].join(' ')
-            )
+            const allOptionSchemaErrors = areValidOptions
+              .map(i => normalizeYupError(i.reason))
+              .filter(notNullable)
+
+            // const analyzedErrors = schemasErrors.map(i =>
+            //   i.map(ii => {
+            //     const path = ii.path
+            //     const errors = ii.errors
+            //     const pathNesting = path ? path.split('.').length + 1 : 0
+            //     // biggest pathNesting with the
+            //     return {
+            //       path,
+            //       errors,
+            //       pathNesting,
+            //       errorsCount: errors.length,
+            //     }
+            //   })
+            // )
+
+            const errMsg = {
+              message: 'data does not match any of allowed schemas',
+              currentValue: value,
+              allOptionSchemaErrors,
+            }
+
+            const err = new Error('invalid one of')
+            // @ts-expect-error
+            err._data = errMsg
+            return err
           }
 
           const transformedItem = convertSchemaToYupValidationObject(
@@ -265,7 +304,13 @@ export const convertSchemaToYupValidationObject = (
         test: function (transformedValue: any, conf: any) {
           try {
             // test that everything is valid... one of option, async validation
-            if (transformedValue instanceof Error) throw transformedValue
+            if (transformedValue instanceof Error) {
+              return this.createError({
+                path: this.path,
+                // @ts-expect-error
+                message: (transformedValue as Error)._data ?? transformedValue.message ?? '',
+              })
+            }
             const value = conf.originalValue
 
             if (schema.required === false && (value === null || value === undefined)) {
@@ -283,6 +328,7 @@ export const convertSchemaToYupValidationObject = (
 
             const activeTSchema = schema.options[matchOptionIndex]
 
+            // de-reference this to be sure that its properly put into the async arrow fn
             const { path, createError } = this
 
             if (shouldRunAsyncValidation) {

@@ -60,7 +60,14 @@ export const tObject_partial = <TObj extends TObject>(obj: TObj) => {
   >
 }
 
+export const tUnionObject = <T extends string, U>(type: T, attrs: U) =>
+  T.object({
+    type: T.enum([type] as [T]),
+    ...attrs,
+  })
+
 export const tUtils = {
+  unionObject: tUnionObject,
   tObject: {
     pick: tObject_pick,
     omit: tObject_omit,

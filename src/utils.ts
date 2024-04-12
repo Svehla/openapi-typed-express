@@ -27,18 +27,16 @@ export const mergePaths = (path1: string, path2: string) => {
 //  * this function works nice for batching synchronous errors into metadata object
 //  * TODO: add tests
 //  */
-// export const syncAllSettled = <T>(
-//   syncFns: (() => T)[]
-// ): ({ status: 'fulfilled'; data: T } | { status: 'rejected'; reason: any })[] => {
-//   return syncFns.map(syncFn => {
-//     try {
-//       const data = syncFn()
-//       return { status: 'fulfilled' as const, data }
-//     } catch (err) {
-//       return { status: 'rejected' as const, reason: err }
-//     }
-//   })
-// }
+export const syncAllSettled = <T>(syncFns: (() => T)[]) => {
+  return syncFns.map(syncFn => {
+    try {
+      const data = syncFn()
+      return { status: 'fulfilled' as const, data } as const
+    } catch (err) {
+      return { status: 'rejected' as const, reason: err } as const
+    }
+  })
+}
 
 // we can optional generic use for apis where we have to integrate inconsistent responses
 // inspiration: https://stackoverflow.com/a/51365037
@@ -71,3 +69,6 @@ const coalesceByKey =
 // TODO: write more tests and check if the implementation is good enough
 export const deepMerge = (target: any, ...sources: any[]) =>
   sources.reduce((acc, source) => Object.keys(source).reduce(coalesceByKey(source), acc), target)
+
+export const notNullable = <T>(x: T | null | undefined | false): x is T =>
+  x !== undefined && x !== null && x !== false

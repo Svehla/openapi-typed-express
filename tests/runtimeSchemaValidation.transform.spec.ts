@@ -649,13 +649,55 @@ describe('experimental transform types', () => {
           reason: [
             {
               errors: [
-                'x[0] does not match any of allowed schemas current value is:  {"castNum":4}',
+                {
+                  allOptionSchemaErrors: [
+                    [
+                      {
+                        errors: ['this must be a `string` type, but the final value was: `4`.'],
+                        path: 'castNum',
+                      },
+                    ],
+                    [
+                      {
+                        errors: [
+                          'this must be a `boolean` type, but the final value was: `{"castNum":4}`.',
+                        ],
+                        path: '',
+                      },
+                    ],
+                  ],
+                  currentValue: {
+                    castNum: 4,
+                  },
+                  message: 'data does not match any of allowed schemas',
+                },
               ],
               path: 'x[0]',
             },
             {
               errors: [
-                'x[3] does not match any of allowed schemas current value is:  {"castNum":124}',
+                {
+                  allOptionSchemaErrors: [
+                    [
+                      {
+                        errors: ['this must be a `string` type, but the final value was: `124`.'],
+                        path: 'castNum',
+                      },
+                    ],
+                    [
+                      {
+                        errors: [
+                          'this must be a `boolean` type, but the final value was: `{"castNum":124}`.',
+                        ],
+                        path: '',
+                      },
+                    ],
+                  ],
+                  currentValue: {
+                    castNum: 124,
+                  },
+                  message: 'data does not match any of allowed schemas',
+                },
               ],
               path: 'x[3]',
             },
