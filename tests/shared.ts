@@ -5,9 +5,13 @@ export const validateDataAgainstSchema = async (
   transformTypeMode: 'decode' | 'encode',
   schema: any,
   objToValidate: any,
-  output: { status: 'rejected'; reason?: any } | { status: 'fulfilled'; value?: any }
+  output: { status: 'rejected'; reason?: any } | { status: 'fulfilled'; value?: any },
+  { runAsyncValidations = true } = {}
 ) => {
-  const yupValidator = getTSchemaValidator(schema, { transformTypeMode })
+  const yupValidator = getTSchemaValidator(schema, {
+    transformTypeMode,
+    runAsyncValidations,
+  })
   const [objValidationRes] = await Promise.allSettled([yupValidator.validate(objToValidate)])
 
   if (objValidationRes.status === 'rejected') {
@@ -29,9 +33,10 @@ export const validateDataAgainstSchema = async (
 export const validateSimpleDataAgainstSchema = async (
   schema: any,
   objToValidate: any,
-  output: { status: 'rejected'; reason?: any } | { status: 'fulfilled'; value?: any }
+  output: { status: 'rejected'; reason?: any } | { status: 'fulfilled'; value?: any },
+  { runAsyncValidations = true } = {}
 ) => {
-  await validateDataAgainstSchema('decode', schema, objToValidate, output)
+  await validateDataAgainstSchema('decode', schema, objToValidate, output, { runAsyncValidations })
 }
 
 export const delay = (ms: number) => new Promise(res => setTimeout(res, ms))

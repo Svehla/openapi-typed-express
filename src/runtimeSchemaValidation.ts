@@ -37,6 +37,7 @@ export const convertSchemaToYupValidationObject = (
   extra?: { transformTypeMode?: 'decode' | 'encode'; runAsyncValidations?: boolean }
 ): yup.MixedSchema<any, any, any> => {
   const transformTypeMode = extra?.transformTypeMode ?? 'decode'
+  const runAsyncValidations = extra?.runAsyncValidations ?? true
   let yupValidator = yup as any
 
   if (schema?.type === 'array') {
@@ -310,44 +311,52 @@ export const convertSchemaToYupValidationObject = (
       .test({
         name: 'one-of-schema',
         test: function (transformedValue: any, conf: any) {
-          try {
-            // test that everything is valid... one of option, async validation
-            if (transformedValue instanceof Error) {
-              return this.createError({
-                path: this.path,
-                // @ts-expect-error
-                message: (transformedValue as Error)._data ?? transformedValue.message ?? '',
-              })
-            }
-            const value = conf.originalValue
+          // test that everything is valid... one of option, async validation
+          if (transformedValue instanceof Error) {
+            return this.createError({
+              path: this.path,
+              // @ts-expect-error
+              message: (transformedValue as Error)._data ?? transformedValue.message ?? '',
+            })
+          }
 
-            if (schema.required === false && (value === null || value === undefined)) {
-              return true
-            }
-            // this is duplicated code with .transform( method, but i dunno how to handle yup context info share
-            // ----
+          const value = conf.originalValue
+          if (schema.required === false && (value === null || value === undefined)) {
+            return true
+          }
 
-            const extraNoAsyncValidation = { ...extra, runAsyncValidations: false }
+          // CPU HEAVY BUG PROBLEM
+          // combination of oneOf + async validation  make super slow
+          // yup does not support transform + async validation and thanks to that
+          // this is bullshit implementation which works, but is very CPU un-optimized
+          // easy validation may take 10000x more time...
+          // there are 3 options
+          // - reimplement yup by custom implementation
+          // - remove async validations
+          // - remove custom types
+          // - disable runtime validations...
+          if (runAsyncValidations === false) {
+            return true
+          } else {
+            try {
+              // ---- bad un-optimized code ----
+              // ---- I HATE YUP!!!! ----
 
-            // TODO: extremely slow CPU code!!!
-            const areValidOptions = schema.options.map(o =>
-              convertSchemaToYupValidationObject(o, extraNoAsyncValidation).isValidSync(value)
-            )
+              // TODO: extremely slow CPU code!!!
+              const areValidOptions = schema.options.map(o =>
+                convertSchemaToYupValidationObject(o, {
+                  ...extra,
+                  runAsyncValidations: false,
+                }).isValidSync(value)
+              )
 
-            const matchOptionIndex = areValidOptions.findIndex(i => i === true)
+              const matchOptionIndex = areValidOptions.findIndex(i => i === true)
 
-            const activeTSchema = schema.options[matchOptionIndex]
+              const activeTSchema = schema.options[matchOptionIndex]
 
-            // ----
-            /*
-            const matchOptionIndex = conf.schema.maybeMatchedItem.index
-            const activeTSchema = schema.options[matchOptionIndex]
-            */
+              // de-reference this to be sure that its properly put into the async arrow fn
+              const { path, createError } = this
 
-            // de-reference this to be sure that its properly put into the async arrow fn
-            const { path, createError } = this
-
-            if (shouldRunAsyncValidation) {
               return (async () => {
                 try {
                   await convertSchemaToYupValidationObject(activeTSchema, extra).validate(value, {
@@ -361,11 +370,10 @@ export const convertSchemaToYupValidationObject = (
                   })
                 }
               })()
-            } else {
-              return true
+            } catch (err: any) {
+              return this.createError({ path: this.path, message: (err as Error)?.message ?? '' })
             }
-          } catch (err: any) {
-            return this.createError({ path: this.path, message: (err as Error)?.message ?? '' })
+            // ---- --------------------- ----
           }
         },
       })
@@ -383,10 +391,7 @@ export const convertSchemaToYupValidationObject = (
     yupValidator = yupValidator.nullable()
   }
 
-  // user may define runtime validators to specify value to be more strict
-  const shouldRunAsyncValidation = extra?.runAsyncValidations ?? true
-
-  if (shouldRunAsyncValidation && schema.validator) {
+  if (runAsyncValidations && schema.validator) {
     yupValidator = yupValidator.test({
       name: 'async-validation',
       test: async function (value: any) {
@@ -394,7 +399,10 @@ export const convertSchemaToYupValidationObject = (
         try {
           // if transformType parse something as error, we want to recreate error
           if (value instanceof Error) return false
-          await schema.validator?.(value)
+          await schema.validator?.(
+            // @ts-ignore
+            value
+          )
         } catch (err) {
           return this.createError({ path: this.path, message: (err as Error)?.message ?? '' })
         }
