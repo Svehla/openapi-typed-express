@@ -330,11 +330,12 @@ export const convertSchemaToYupValidationObject = (
           // yup does not support transform + async validation and thanks to that
           // this is bullshit implementation which works, but is very CPU un-optimized
           // easy validation may take 10000x more time...
-          // there are 3 options
-          // - reimplement yup by custom implementation
+          // there are a few options how to fix it:
+          // - remove yup and write a custom implementation
           // - remove async validations
           // - remove custom types
-          // - disable runtime validations...
+          // - disable runtime validations
+          // source: https://github.com/jquense/yup/issues/238
           if (runAsyncValidations === false) {
             return true
           } else {

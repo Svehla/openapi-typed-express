@@ -4,13 +4,11 @@ const tTType = <T extends string, U>(type: T, attrs?: U | undefined) =>
   T.object({
     type: T.enum([type] as [T]),
     required: T.boolean,
-    validator: T.null_any, // cannot validate functions...
+    validator: T.null_any,
     ...(attrs ?? {}),
   })
 
-// TODO: add lazy
 const lazyTSchOfTSch = T.lazy(() => tSchemaOfTSchema)
-// const lazyTSchOfTSch = T.any // T.lazy(() => tSchemaOfTSchema)
 
 export const tSchemaOfTSchema = T.oneOf([
   tTType('number'),

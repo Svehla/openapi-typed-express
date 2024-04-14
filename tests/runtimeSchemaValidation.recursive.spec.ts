@@ -68,7 +68,7 @@ describe('recursive schema', () => {
     )
   })
 
-  test('THIS IS SLOW ONE OF TYPE SHIT 2 tSchema of tSchema', async () => {
+  test.only('slow comparison of tSchema of tSchema...', async () => {
     console.time('ttt')
 
     await validateSimpleDataAgainstSchema(
