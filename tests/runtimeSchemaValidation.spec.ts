@@ -1,44 +1,26 @@
 import { T } from '../src'
-import { getTSchemaValidator, normalizeYupError } from '../src/runtimeSchemaValidation'
 import { delay, validateSimpleDataAgainstSchema } from './shared'
 
 describe('runtimeSchemaValidation', () => {
-  describe('async types validations', () => {
-    test('1', async () => {
-      await validateSimpleDataAgainstSchema(
-        T.addValidator(T.string, async () => {
-          await delay(10)
-          throw new Error('value is invalid!!!!')
-        }),
-        'x',
-        { status: 'rejected' }
-      )
-    })
-
-    test('2', async () => {
-      await validateSimpleDataAgainstSchema(
-        T.addValidator(T.string, async () => await delay(10)),
-        'x',
-        { status: 'fulfilled' }
-      )
-    })
-
-    test('3', async () => {
-      const tAsyncType = T.addValidator(T.string, async () => await delay(10))
-
-      await validateSimpleDataAgainstSchema(
-        T.oneOf([
-          T.object({
-            x: tAsyncType,
-          }),
-        ] as const),
-        { x: 'x' },
-        { status: 'fulfilled' }
-      )
-    })
-  })
-
   describe('default types', () => {
+    test('000', async () => {
+      await validateSimpleDataAgainstSchema(
+        //
+        T.oneOf([T.string, T.boolean] as const),
+        false,
+        { status: 'fulfilled', value: false }
+      )
+    })
+
+    test('001', async () => {
+      await validateSimpleDataAgainstSchema(
+        //
+        T.oneOf([T.string, T.null_boolean] as const),
+        undefined,
+        { status: 'fulfilled', value: undefined }
+      )
+    })
+
     test('0.0', async () => {
       await validateSimpleDataAgainstSchema(
         T.object({ s: T.string }),
@@ -363,8 +345,24 @@ describe('runtimeSchemaValidation', () => {
         {
           dynKey1: { bool: true, num: 3 },
           dynKey2: null,
-          dynKey3: { bool: false, num: -1 },
+          dynKey3: undefined,
+          dynKey4: { bool: false, num: -1 },
         },
+        {
+          status: 'fulfilled',
+        }
+      )
+    })
+
+    test('12.1', async () => {
+      await validateSimpleDataAgainstSchema(
+        T.null_hashMap(
+          T.null_object({
+            bool: T.boolean,
+            num: T.number,
+          })
+        ),
+        undefined,
         {
           status: 'fulfilled',
         }
@@ -439,139 +437,142 @@ describe('runtimeSchemaValidation', () => {
       )
     })
 
-    describe('custom types', () => {
-      describe('date', () => {
-        test('6', async () => {
-          await validateSimpleDataAgainstSchema(T.list(T.extra.minMaxNumber(0, 1)), [3], {
-            status: 'rejected',
-          })
-        })
+    test('16', async () => {
+      // object of null object is not working...
+      // double nested objects cannot be transformed, but thanks to .strict(true)
+      await validateSimpleDataAgainstSchema(
+        T.object({
+          a: T.null_hashMap(T.string),
+          b: T.null_hashMap(T.string),
+          c: T.null_hashMap(T.string),
+          d: T.null_hashMap(T.string),
+        }),
+        {
+          a: {},
+          b: null,
+          c: undefined,
+        },
 
-        test('9', async () => {
-          await validateSimpleDataAgainstSchema(
-            T.object({ a: T.extra.ISOString }),
-            { a: new Date().toISOString() + 'x' },
-            { status: 'rejected' }
-          )
-        })
-
-        test('10', async () => {
-          await validateSimpleDataAgainstSchema(
-            T.object({
-              a: T.extra.ISOString,
-              b: T.extra.minMaxNumber(0, 10),
-              c: T.extra.minMaxString(1, 2),
-              d: T.extra.minMaxString(1, 2),
-            }),
-            {
-              a: new Date().toISOString(),
-              b: 1,
-              c: 'cc',
-            },
-            { status: 'rejected' }
-          )
-        })
-      })
-
-      test('4', async () => {
-        await validateSimpleDataAgainstSchema(T.extra.minMaxNumber(1, 5), 2, {
+        {
           status: 'fulfilled',
-        })
-      })
-
-      test('5', async () => {
-        await validateSimpleDataAgainstSchema(T.extra.minMaxNumber(1, 5), 6, {
-          status: 'rejected',
-          reason: [{ path: '', errors: ['value needs to be > 5'] }],
-        })
-      })
+        }
+      )
     })
+  })
 
-    describe('nullable keys with custom validator', () => {
-      const tISODate = T.addValidator(T.string, _str => {
-        throw new Error('this should never be called')
-      })
-
-      const tObjDate = T.null_object({ date: T.nullable(tISODate) })
-
-      test('1', async () => {
-        await validateSimpleDataAgainstSchema(tObjDate, null, {
-          status: 'fulfilled',
-          value: null,
+  describe('custom types', () => {
+    describe('date', () => {
+      test('6', async () => {
+        await validateSimpleDataAgainstSchema(T.list(T.extra.minMaxNumber(0, 1)), [3], {
+          status: 'rejected',
         })
       })
 
-      test('2', async () => {
-        await validateSimpleDataAgainstSchema(tObjDate, undefined, {
-          status: 'fulfilled',
-          value: {}, // wtf???
-        })
-      })
-
-      test('3', async () => {
+      test('9', async () => {
         await validateSimpleDataAgainstSchema(
-          tObjDate,
-          { date: null },
+          T.object({ a: T.extra.ISOString }),
+          { a: new Date().toISOString() + 'x' },
+          { status: 'rejected' }
+        )
+      })
+
+      test('10', async () => {
+        await validateSimpleDataAgainstSchema(
+          T.object({
+            a: T.extra.ISOString,
+            b: T.extra.minMaxNumber(0, 10),
+            c: T.extra.minMaxString(1, 2),
+            d: T.extra.minMaxString(1, 2),
+          }),
           {
-            status: 'fulfilled',
-            value: { date: null },
-          }
+            a: new Date().toISOString(),
+            b: 1,
+            c: 'cc',
+          },
+          { status: 'rejected' }
         )
       })
     })
 
-    describe('union matching based on parser', () => {
-      //  async validations + custom type parsing + union nesting
-      test('0', async () => {
-        const tTest = T.object({
-          y: T.object({
-            x: T.oneOf([
-              T.object({
-                type: T.enum(['ADD_MESSAGE.USER.GEN_BY_BTN']),
-
-                x: T.addValidator(T.string, async val => {
-                  await delay(2000)
-                  if (val === 'x') {
-                    throw new Error('custom-error: x error')
-                  }
-                }),
-                btnType: T.oneOf([
-                  T.oneOf([
-                    T.oneOf([
-                      //
-                      T.enum(['SHOW_MORE'] as const),
-                      T.enum(['SHOW_SIMILAR'] as const),
-                      T.enum(['COMPARISON'] as const),
-                    ] as const),
-                  ] as const),
-                ] as const),
-              }),
-            ] as const),
-          }),
-        })
-
-        const validator = getTSchemaValidator(tTest)
-
-        try {
-          await validator.validate({
-            y: {
-              x: {
-                type: 'ADD_MESSAGE.USER.GEN_BY_BTN',
-                x: 'x',
-                btnType: 'COMPARISON',
-              },
-            },
-          })
-
-          expect('should not').toBe('happen!')
-        } catch (err) {
-          const niceErr = normalizeYupError(err)
-          expect(
-            // @ts-expect-error
-            niceErr[0]?.errors
-          ).toEqual(['custom-error: x error'])
-        }
+    test('4', async () => {
+      await validateSimpleDataAgainstSchema(T.extra.minMaxNumber(1, 5), 2, {
+        status: 'fulfilled',
       })
+    })
+
+    test('5', async () => {
+      await validateSimpleDataAgainstSchema(T.extra.minMaxNumber(1, 5), 6, {
+        status: 'rejected',
+        reason: [{ path: '', errors: ['value needs to be > 5'] }],
+      })
+    })
+  })
+
+  describe('nullable keys with validator function', () => {
+    const tISODate = T.addValidator(T.string, _str => {
+      throw new Error('this should never be called')
+    })
+
+    const tObjDate = T.null_object({ date: T.nullable(tISODate) })
+
+    test('1', async () => {
+      await validateSimpleDataAgainstSchema(tObjDate, null, {
+        status: 'fulfilled',
+        value: null,
+      })
+    })
+
+    test('2', async () => {
+      await validateSimpleDataAgainstSchema(tObjDate, undefined, {
+        status: 'fulfilled',
+        value: {}, // wtf???
+      })
+    })
+
+    test('3', async () => {
+      await validateSimpleDataAgainstSchema(
+        tObjDate,
+        { date: null },
+        {
+          status: 'fulfilled',
+          value: { date: null },
+        }
+      )
+    })
+  })
+
+  describe('async types validations', () => {
+    test('1', async () => {
+      await validateSimpleDataAgainstSchema(
+        T.addValidator(T.string, async () => {
+          await delay(10)
+          throw new Error('value is invalid!!!!')
+        }),
+        'x',
+        { status: 'rejected' }
+      )
+    })
+
+    test('2', async () => {
+      await validateSimpleDataAgainstSchema(
+        T.addValidator(T.string, async () => await delay(10)),
+        'x',
+        { status: 'fulfilled' }
+      )
+    })
+
+    test('3', async () => {
+      const tAsyncType = T.addValidator(T.string, async () => await delay(10))
+
+      await validateSimpleDataAgainstSchema(
+        T.oneOf([
+          T.object({
+            x: tAsyncType,
+          }),
+        ] as const),
+        { x: 'x' },
+        { status: 'fulfilled' }
+      )
     })
   })
 })

@@ -94,9 +94,19 @@ export type TOneOf = {
   validator?: (v: any) => MaybePromise<void>
 }
 
+// TLazy support recursive runtime validation
+export type TLazy = {
+  type: 'lazy'
+  required: boolean
+
+  validator?: (v: any) => MaybePromise<void>
+  getSchema: () => any // TSchema -> TS types are not supported, the final code will be too complex
+}
+
 // --- TODO: I should add buffer type?
 
 export type TSchema =
+  | TLazy
   | TList
   | TObject
   | TString
@@ -167,6 +177,8 @@ export type InferSchemaTypeEncDec<
   ? MakeTOptional<number, T['required']>
   : T extends { type: 'hashMap' }
   ? MakeTOptional<Record<string, InferSchemaTypeEncDec<T['property'], TT>>, T['required']>
+  : T extends { type: 'lazy' }
+  ? any // Recursive data types are not supported, its too complex, POC is here: https://github.com/Svehla/openapi-typed-express/pull/6
   : T extends { type: 'transformType' }
   ? // TODO: define if you want to run encoder | decoder and by this config inherit proper data type
     TT extends 'decode'

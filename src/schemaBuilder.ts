@@ -62,11 +62,16 @@ const tHashMap = <T extends TSchema>(a: T) => ({
   property: a,
 })
 
-// TODO: array X list?
 const tList = <T extends TSchema>(items: T) => ({
   type: 'array' as const,
   required: true,
   items,
+})
+
+const tLazy = (tSchema: () => any) => ({
+  type: 'lazy' as const,
+  required: true,
+  getSchema: tSchema,
 })
 
 export const tTransformType = <
@@ -252,4 +257,6 @@ export const T = {
   nonNullable: tNonNullable,
   nullable: tNullable,
   nullableTransform: tNullableTransform,
+
+  lazy: tLazy,
 }

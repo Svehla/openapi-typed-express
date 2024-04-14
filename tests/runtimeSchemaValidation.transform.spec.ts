@@ -1,7 +1,7 @@
 import { InferSchemaType } from '../src'
 import { T } from '../src'
 import { getTSchemaValidator, normalizeYupError } from '../src/runtimeSchemaValidation'
-import { delay, validateDataAgainstSchema } from './shared'
+import { delay, validateDataAgainstSchema, validateSimpleDataAgainstSchema } from './shared'
 
 // TODO: this file tests encoders & decoders (for casting and converting)
 // TODO: may be async validations on the transform type?
@@ -527,37 +527,35 @@ describe('experimental transform types', () => {
   describe('union matching based on parser', () => {
     //  async validations + custom type parsing + union nesting
     test('0', async () => {
-      const tTest = T.object({
-        y: T.object({
-          x: T.oneOf([
-            T.object({
-              type: T.enum(['ADD_MESSAGE.USER.GEN_BY_BTN']),
+      await validateSimpleDataAgainstSchema(
+        T.object({
+          y: T.object({
+            x: T.oneOf([
+              T.object({
+                type: T.enum(['ADD_MESSAGE.USER.GEN_BY_BTN']),
 
-              x: T.addValidator(T.string, async val => {
-                await delay(2000)
-                if (val === 'x') {
-                  throw new Error('custom-error: x error')
-                }
-              }),
-              btnType: T.oneOf([
-                T.oneOf([
+                x: T.addValidator(T.string, async val => {
+                  await delay(2000)
+                  if (val === 'x') {
+                    throw new Error('custom-error: x error')
+                  }
+                }),
+                btnType: T.oneOf([
                   T.oneOf([
-                    //
-                    T.enum(['SHOW_MORE'] as const),
-                    T.enum(['SHOW_SIMILAR'] as const),
-                    T.enum(['COMPARISON'] as const),
+                    T.oneOf([
+                      //
+                      T.enum(['SHOW_MORE'] as const),
+                      T.enum(['SHOW_SIMILAR'] as const),
+                      T.enum(['COMPARISON'] as const),
+                    ] as const),
                   ] as const),
                 ] as const),
-              ] as const),
-            }),
-          ] as const),
+              }),
+            ] as const),
+          }),
         }),
-      })
 
-      const validator = getTSchemaValidator(tTest)
-
-      try {
-        await validator.validate({
+        {
           y: {
             x: {
               type: 'ADD_MESSAGE.USER.GEN_BY_BTN',
@@ -565,141 +563,149 @@ describe('experimental transform types', () => {
               btnType: 'COMPARISON',
             },
           },
-        })
+        },
 
-        expect('should not').toBe('happen!')
-      } catch (err) {
-        const niceErr = normalizeYupError(err)
-        expect(
-          // @ts-expect-error
-          niceErr[0]?.errors
-        ).toEqual(['custom-error: x error'])
-      }
+        { status: 'rejected', reason: [{ errors: ['custom-error: x error'] }] }
+      )
     })
 
     test('1', async () => {
-      const x = T.object({
-        x: T.list(
-          T.oneOf([
-            T.object({
-              castNum: T.transformType(
-                'x',
-                T.addValidator(T.string, async v => {
-                  await delay(100)
-                  if (v.toString().includes('3')) throw new Error('cannot include number 3')
-                }),
-                T.number,
-                x => {
-                  const n = parseFloat(x)
-                  if (n.toString() !== x.toString()) throw new Error('Non parsable number')
-                  return n
-                }
-              ),
-            }),
-            T.boolean,
-          ] as const)
-        ),
-      })
+      await validateSimpleDataAgainstSchema(
+        T.object({
+          x: T.list(
+            T.oneOf([
+              T.object({
+                castNum: T.transformType(
+                  'x',
+                  T.addValidator(T.string, async v => {
+                    await delay(100)
+                    if (v.toString().includes('3')) throw new Error('cannot include number 3')
+                  }),
+                  T.number,
+                  x => {
+                    const n = parseFloat(x)
+                    if (n.toString() !== x.toString()) throw new Error('Non parsable number')
+                    return n
+                  }
+                ),
+              }),
+              T.boolean,
+            ] as const)
+          ),
+        }),
 
-      const validator = getTSchemaValidator(x)
+        { x: [{ castNum: '4' }, true, false, { castNum: '124' }] },
 
-      const o1 = await validator.validate({
-        x: [{ castNum: '4' }, true, false, { castNum: '124' }],
-      })
-
-      expect(o1).toEqual({ x: [{ castNum: 4 }, true, false, { castNum: 124 }] })
+        { status: 'fulfilled', value: { x: [{ castNum: 4 }, true, false, { castNum: 124 }] } }
+      )
     })
 
     test('2', async () => {
-      const x = T.object({
-        x: T.list(
-          T.oneOf([
-            T.object({
-              castNum: T.transformType(
-                'x',
-                T.addValidator(T.string, async v => {
-                  await delay(100)
-                  if (v.toString().includes('3')) throw new Error('cannot include number 3')
-                }),
-                T.number,
-                x => {
-                  const n = parseFloat(x)
-                  if (n.toString() !== x.toString()) throw new Error('Non parsable number')
-                  return n
-                }
-              ),
-            }),
-            T.boolean,
-          ] as const)
-        ),
-        y: T.null_oneOf([T.boolean] as const),
-        ny: T.null_oneOf([T.boolean] as const),
-      })
+      await validateSimpleDataAgainstSchema(
+        T.object({
+          x: T.list(
+            T.oneOf([
+              T.object({
+                castNum: T.transformType(
+                  'x',
+                  T.addValidator(T.string, async v => {
+                    await delay(100)
+                    if (v.toString().includes('3')) throw new Error('cannot include number 3')
+                  }),
+                  T.number,
+                  x => {
+                    const n = parseFloat(x)
+                    if (n.toString() !== x.toString()) throw new Error('Non parsable number')
+                    return n
+                  }
+                ),
+              }),
+              T.boolean,
+            ] as const)
+          ),
+          y: T.null_oneOf([T.boolean] as const),
+          ny: T.null_oneOf([T.boolean] as const),
+        }),
 
-      await validateDataAgainstSchema(
-        'decode',
-        x,
         {
           x: [{ castNum: 4 }, true, false, { castNum: 124 }],
           y: true,
           ny: undefined,
         },
+
         {
           status: 'rejected',
           reason: [
             {
+              path: 'x[0]',
               errors: [
                 {
-                  allOptionSchemaErrors: [
-                    [
-                      {
-                        errors: ['this must be a `string` type, but the final value was: `4`.'],
-                        path: 'castNum',
-                      },
-                    ],
-                    [
-                      {
-                        errors: [
-                          'this must be a `boolean` type, but the final value was: `{"castNum":4}`.',
-                        ],
-                        path: '',
-                      },
-                    ],
-                  ],
+                  message: 'data does not match any of allowed schemas',
                   currentValue: {
                     castNum: 4,
                   },
-                  message: 'data does not match any of allowed schemas',
-                },
-              ],
-              path: 'x[0]',
-            },
-            {
-              errors: [
-                {
                   allOptionSchemaErrors: [
                     [
                       {
-                        errors: ['this must be a `string` type, but the final value was: `124`.'],
                         path: 'castNum',
+                        errors: ['this must be a `string` type, but the final value was: `4`.'],
                       },
                     ],
                     [
                       {
-                        errors: [
-                          'this must be a `boolean` type, but the final value was: `{"castNum":124}`.',
-                        ],
                         path: '',
+                        errors: [
+                          'this must be a `boolean` type, but the final value was: `{"castNum":4}`.',
+                        ],
                       },
                     ],
                   ],
+                },
+              ],
+            },
+            // {
+            //   path: 'x[2]',
+            //   errors: [
+            //     {
+            //       message: 'data does not match any of allowed schemas',
+            //       currentValue: false,
+            //       allOptionSchemaErrors: [
+            //         [
+            //           {
+            //             path: '',
+            //             errors: ['this must be a `object` type, but the final value was: `false`.'],
+            //           },
+            //         ],
+            //       ],
+            //     },
+            //   ],
+            // },
+            {
+              path: 'x[3]',
+              errors: [
+                {
+                  message: 'data does not match any of allowed schemas',
                   currentValue: {
                     castNum: 124,
                   },
-                  message: 'data does not match any of allowed schemas',
+                  allOptionSchemaErrors: [
+                    [
+                      {
+                        path: 'castNum',
+                        errors: ['this must be a `string` type, but the final value was: `124`.'],
+                      },
+                    ],
+                    [
+                      {
+                        path: '',
+                        errors: [
+                          'this must be a `boolean` type, but the final value was: `{"castNum":124}`.',
+                        ],
+                      },
+                    ],
+                  ],
                 },
               ],
-              path: 'x[3]',
             },
           ],
         }

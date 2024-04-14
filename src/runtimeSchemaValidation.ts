@@ -1,5 +1,5 @@
 import * as yup from 'yup'
-import { mapEntries, notNullable, syncAllSettled } from './utils'
+import { mapEntries, notNullable, syncAllSettled, validateUntilFirstSuccess } from './utils'
 import { TSchema } from './tsSchema'
 
 /**
@@ -49,8 +49,11 @@ export const convertSchemaToYupValidationObject = (
         mapEntries(([k, v]) => {
           let yupValidator = convertSchemaToYupValidationObject(v, extra)
           // keys of object needs to be required if value is required
-          // lazy object has no required() method
-          if (v.required && yupValidator.required) {
+          if (
+            // lazy object has no required() method
+            v.required &&
+            yupValidator.required
+          ) {
             yupValidator = yupValidator.required()
           }
 
@@ -198,33 +201,42 @@ export const convertSchemaToYupValidationObject = (
   } else if (schema?.type === 'any') {
     yupValidator = yupValidator.mixed()
   } else if (schema?.type === 'hashMap') {
-    yupValidator = yup.mixed()
+    yupValidator = yup
 
     const objValueValidator = convertSchemaToYupValidationObject(schema.property, extra)
 
-    // lazy object has no required() method
-    if (schema.property.required && yupValidator.required) {
+    // TODO: is this code needed?
+    if (
+      // lazy object has no required() method
+      schema.property.required &&
+      yupValidator.required
+    ) {
       yupValidator = yupValidator.required()
     }
 
-    yupValidator = yup.lazy(v => {
-      if (schema.required === false && (v === null || v === undefined)) {
-        return yup.object({}).nullable()
+    yupValidator = yupValidator.lazy(
+      // @ts-expect-error
+      v => {
+        if (schema.required === false && (v === null || v === undefined)) {
+          return yup.object({}).nullable()
+        }
+
+        if (v === null || v === undefined) {
+          return yup.object({}).required()
+        }
+
+        return yup.object(mapEntries(([k]) => [k, objValueValidator], v))
       }
-      if (v === null || v === undefined) {
-        return yup.object({}).required()
-      }
-      return yup.object(mapEntries(([k]) => [k, objValueValidator], v))
-    })
+    )
   } else if (schema?.type === 'enum') {
     // TODO: error message does not return which value was received for better err debug msgs
     yupValidator = yupValidator.mixed().test({
       name: 'strict-custom-enum',
       message: (d: any) =>
         [
-          `${d.path} must be one of `,
-          schema.options.join(', '),
-          ` type, but the final value was: \`${JSON.stringify(d.value)}\`.`,
+          `${d.path} must be one of [`,
+          schema.options.join(' | '),
+          `] type, but the final value was: \`${JSON.stringify(d.value)}\`.`,
         ].join(''),
       test: (value: any) => {
         if (schema.required === false && (value === null || value === undefined)) return true
@@ -236,46 +248,47 @@ export const convertSchemaToYupValidationObject = (
     // .oneOf(schema.options)
   } else if (schema?.type === 'oneOf') {
     // oneOf cannot match value based on async validator
+
+    const extraNoAsyncValidation = {
+      ...extra,
+      runAsyncValidations: false, // cannot run async function inside .transform
+    }
+
+    const validators = schema.options.map(o =>
+      // oneOf exec a lot of un-optimized validateSync of the same data structure...
+      // because of it its CPU slow as fuck
+      convertSchemaToYupValidationObject(o, extraNoAsyncValidation)
+    )
+
     yupValidator = yupValidator
       .mixed()
-      .transform((value: any) => {
+      .transform((value: any, ogValue: any, context: any) => {
         if (schema.required === false && (value === null || value === undefined)) {
           return value
         }
-        // cannot run async function inside .transform
-        const extraNoAsyncValidation = { ...extra, runAsyncValidations: false }
 
-        const areValidOptions = syncAllSettled(
-          schema.options.map(o => {
+        const maybeMatchedItem = validateUntilFirstSuccess(
+          schema.options.map((_o, index) => {
+            // oneOf exec a lot of un-optimized validateSync of the same data structure...
+            // because of it its CPU slow as fuck
             return () =>
-              convertSchemaToYupValidationObject(o, extraNoAsyncValidation).validateSync(value, {
+              validators[index].validateSync(value, {
                 abortEarly: false,
               })
           })
         )
 
-        const matchOptionIndex = areValidOptions.findIndex(i => i.status === 'fulfilled')
-
         try {
-          if (matchOptionIndex === -1) {
-            const allOptionSchemaErrors = areValidOptions
-              .map(i => normalizeYupError(i.reason))
+          if (maybeMatchedItem.status === 'rejected') {
+            const allOptionSchemaErrors = maybeMatchedItem.reasons
+              .map(reason => normalizeYupError(reason))
               .filter(notNullable)
 
-            // const analyzedErrors = schemasErrors.map(i =>
-            //   i.map(ii => {
-            //     const path = ii.path
-            //     const errors = ii.errors
-            //     const pathNesting = path ? path.split('.').length + 1 : 0
-            //     // biggest pathNesting with the
-            //     return {
-            //       path,
-            //       errors,
-            //       pathNesting,
-            //       errorsCount: errors.length,
-            //     }
-            //   })
-            // )
+            // TODO: find the best matching error to have short log
+            // const analyzedErrors = schemasErrors.map(i => i.map(ii => {
+            //     const pathNesting = ii.path ? ii.path.split('.').length + 1 : 0
+            //     return { path:ii.path, errors: ii.errors, pathNesting, errorsCount: ii.errors.length }
+            //   }))
 
             const errMsg = {
               message: 'data does not match any of allowed schemas',
@@ -289,12 +302,7 @@ export const convertSchemaToYupValidationObject = (
             return err
           }
 
-          const transformedItem = convertSchemaToYupValidationObject(
-            schema.options[matchOptionIndex],
-            extraNoAsyncValidation
-          ).validateSync(value)
-
-          return transformedItem
+          return maybeMatchedItem.data
         } catch (err) {
           return err
         }
@@ -317,9 +325,11 @@ export const convertSchemaToYupValidationObject = (
               return true
             }
             // this is duplicated code with .transform( method, but i dunno how to handle yup context info share
+            // ----
 
             const extraNoAsyncValidation = { ...extra, runAsyncValidations: false }
 
+            // TODO: extremely slow CPU code!!!
             const areValidOptions = schema.options.map(o =>
               convertSchemaToYupValidationObject(o, extraNoAsyncValidation).isValidSync(value)
             )
@@ -327,6 +337,12 @@ export const convertSchemaToYupValidationObject = (
             const matchOptionIndex = areValidOptions.findIndex(i => i === true)
 
             const activeTSchema = schema.options[matchOptionIndex]
+
+            // ----
+            /*
+            const matchOptionIndex = conf.schema.maybeMatchedItem.index
+            const activeTSchema = schema.options[matchOptionIndex]
+            */
 
             // de-reference this to be sure that its properly put into the async arrow fn
             const { path, createError } = this
@@ -353,6 +369,11 @@ export const convertSchemaToYupValidationObject = (
           }
         },
       })
+  } else if (schema?.type === 'lazy') {
+    yupValidator = yupValidator.lazy(() => {
+      // return yup.mixed()
+      return convertSchemaToYupValidationObject(schema.getSchema(), extra)
+    })
   } else {
     throw new Error(`unsupported type ${(schema as any)?.type}`)
   }
@@ -373,10 +394,7 @@ export const convertSchemaToYupValidationObject = (
         try {
           // if transformType parse something as error, we want to recreate error
           if (value instanceof Error) return false
-          await schema.validator?.(
-            // @ts-expect-error
-            value
-          )
+          await schema.validator?.(value)
         } catch (err) {
           return this.createError({ path: this.path, message: (err as Error)?.message ?? '' })
         }

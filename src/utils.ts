@@ -38,6 +38,24 @@ export const syncAllSettled = <T>(syncFns: (() => T)[]) => {
   })
 }
 
+export const validateUntilFirstSuccess = (validationFns: any[]) => {
+  const errors = { status: 'rejected' as const, reasons: [] as any[] }
+  let index = -1
+
+  for (const validate of validationFns) {
+    try {
+      index++
+      const result = validate()
+      return { status: 'fulfilled' as const, data: result, index }
+    } catch (err) {
+      errors.reasons.push(err)
+      continue
+    }
+  }
+
+  return errors
+}
+
 // we can optional generic use for apis where we have to integrate inconsistent responses
 // inspiration: https://stackoverflow.com/a/51365037
 export type DeepPartial<T> = T extends (infer Item)[]
