@@ -142,17 +142,15 @@ describe('testing TS compile time data types', () => {
   it('transform types', () => {
     const schema = T.object({
       t1: T.transformType(
-        't1',
         T.list(T.boolean),
         T.boolean,
         x => (x ? true : false),
         x => [x, x]
       ),
 
-      t2: T.transformType('t2', T.string, T.number, parseFloat, x => x.toString()),
+      t2: T.transformType(T.string, T.number, parseFloat, x => x.toString()),
 
       t3: T.transformType(
-        't3',
         T.null_string,
         T.null_boolean,
         v => {

@@ -12,7 +12,7 @@ type GenerateOpenAPIPathArg = {
 // openapi do not support any type as typescript do
 const anyTypeOpenAPI = {}
 
-const toOpenAPISchema = (schema: TSchema): any => {
+const toOpenAPISchema = (schema: TSchema, mutDefinitions: any): any => {
   const obj = {
     ...(schema.required ? {} : { nullable: true }),
   } as any
@@ -32,40 +32,47 @@ const toOpenAPISchema = (schema: TSchema): any => {
 
       return {
         ...obj,
-        type: 'object',
-        // ...schema,
-        // TODO: add requires
-        // mmm, not sure about this line of code
         ...(required.length > 0 ? { required } : {}),
-        properties: mapEntries(([k, v]) => [k, toOpenAPISchema(v)], schema.properties),
+        type: 'object',
+        properties: mapEntries(
+          ([k, v]) => [k, toOpenAPISchema(v, mutDefinitions)],
+          schema.properties
+        ),
       }
 
     case 'hashMap':
       return {
         ...obj,
         type: 'object',
-        additionalProperties: toOpenAPISchema(schema.property),
+        additionalProperties: toOpenAPISchema(schema.property, mutDefinitions),
       }
 
     case 'array':
       return {
         ...obj,
         type: 'array',
-        // ...schema,
-        items: toOpenAPISchema(schema.items),
+        items: toOpenAPISchema(schema.items, mutDefinitions),
       }
 
     case 'oneOf':
       return {
         ...obj,
-        oneOf: schema.options.map(option => toOpenAPISchema(option)),
+        oneOf: schema.options.map(option => toOpenAPISchema(option, mutDefinitions)),
       }
 
     case 'any':
       return anyTypeOpenAPI
 
     case 'transformType':
-      return toOpenAPISchema(schema.encodedTSchema)
+      return toOpenAPISchema(schema.encodedTSchema, mutDefinitions)
+
+    case 'lazy':
+      if (!mutDefinitions[schema.name]) {
+        mutDefinitions[schema.name] = 'will be filled in th future'
+        mutDefinitions[schema.name] = toOpenAPISchema(schema.getSchema(), mutDefinitions)
+      }
+
+      return { $ref: `#/components/schemas/${schema.name}` }
 
     default:
       return {
@@ -79,28 +86,28 @@ const toOpenAPISchema = (schema: TSchema): any => {
  * TODO: add support for enum/union type
  * TODO: add smarter support for customizing of openAPI documentations
  */
-export const generateOpenAPIPath = (schemas: GenerateOpenAPIPathArg) => {
-  return {
+export const generateOpenAPIPath = (schemas: GenerateOpenAPIPathArg, mutDefinitions: any) => {
+  const x = {
     parameters: [
       ...Object.entries(schemas.pathSchema?.properties ?? {}).map(([k, v]) => ({
         in: 'path',
         name: k,
         required: v.required,
-        schema: toOpenAPISchema(v),
+        schema: toOpenAPISchema(v, mutDefinitions),
       })),
 
       ...Object.entries(schemas.querySchema?.properties ?? {}).map(([k, v]) => ({
         in: 'query',
         name: k,
         required: v.required,
-        schema: toOpenAPISchema(v),
+        schema: toOpenAPISchema(v, mutDefinitions),
       })),
 
       ...Object.entries(schemas.headersSchema?.properties ?? {}).map(([k, v]) => ({
         in: 'header',
         name: k,
         required: v.required,
-        schema: toOpenAPISchema(v),
+        schema: toOpenAPISchema(v, mutDefinitions),
       })),
     ].filter(Boolean),
 
@@ -110,7 +117,7 @@ export const generateOpenAPIPath = (schemas: GenerateOpenAPIPathArg) => {
             required: true,
             content: {
               'application/json': {
-                schema: toOpenAPISchema(schemas.bodySchema!),
+                schema: toOpenAPISchema(schemas.bodySchema!, mutDefinitions),
               },
             },
           },
@@ -125,7 +132,7 @@ export const generateOpenAPIPath = (schemas: GenerateOpenAPIPathArg) => {
               content: {
                 'application/json': {
                   // description: '',
-                  schema: toOpenAPISchema(schemas.returnsSchema!),
+                  schema: toOpenAPISchema(schemas.returnsSchema!, mutDefinitions),
                 },
               },
             }
@@ -133,6 +140,8 @@ export const generateOpenAPIPath = (schemas: GenerateOpenAPIPathArg) => {
       },
     },
   }
+
+  return x
 }
 
 type Method = string // 'post' | 'get' | 'option' | ...,
@@ -150,7 +159,8 @@ export type UrlsMethodDocs = Record<EndpointPath, Record<Method, GenerateOpenAPI
  */
 const colonUrlVariableReplaceWithBrackets = (url: string) => url.replaceAll(/:(\w+)/g, '{$1}')
 
-export const convertUrlsMethodsSchemaToOpenAPI = (obj: UrlsMethodDocs) => {
+export const convertUrlsMethodsSchemaToOpenAPI = (obj: UrlsMethodDocs, mutDefinitions: any) => {
+  // @ts-ignore
   return mapEntries(
     ([url, methods]) => [
       colonUrlVariableReplaceWithBrackets(url),
@@ -158,7 +168,7 @@ export const convertUrlsMethodsSchemaToOpenAPI = (obj: UrlsMethodDocs) => {
         ([method, schema]) => [
           //
           method,
-          generateOpenAPIPath(schema),
+          generateOpenAPIPath(schema, mutDefinitions),
         ],
         methods
       ),

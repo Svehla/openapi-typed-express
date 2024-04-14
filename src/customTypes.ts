@@ -17,7 +17,7 @@ import { TSchema } from './tsSchema'
 // ----------------------- cast types -----------------------
 // string: 'null' and string 'undefined' parsing is not supported by custom types right now...
 const tCast_date = T.transformType(
-  'cast_date',
+  // 'cast_date',
   T.string,
   T.any,
   value => {
@@ -36,7 +36,7 @@ const tCast_date = T.transformType(
 
 // TODO: how to solve basic types (boolean|string) casting?
 const tCast_number = T.transformType(
-  'cast_number',
+  // 'cast_number',
   T.string,
   T.number,
   value => {
@@ -55,7 +55,7 @@ const tCast_number = T.transformType(
 )
 
 export const tCast_boolean = T.transformType(
-  'parseBool',
+  // 'parseBool',
   T.enum(['true', 'false' /*, 'null', 'undefined', ''*/] as const),
   T.boolean,
   value => {
@@ -125,7 +125,6 @@ export const tISOString = T.addValidator(T.string, str => {
 
 export const tToListIfNot = <T extends TSchema>(tSchema: T) =>
   T.transformType(
-    'tListOrNot',
     T.oneOf([
       //
       tSchema,

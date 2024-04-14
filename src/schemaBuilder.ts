@@ -68,14 +68,15 @@ const tList = <T extends TSchema>(items: T) => ({
   items,
 })
 
-const tLazy = (tSchema: () => any) => ({
+const tLazy = (name: string, tSchema: () => any) => ({
   type: 'lazy' as const,
+  name,
   required: true,
   getSchema: tSchema,
 })
 
 export const tTransformType = <
-  Name extends string,
+  // Name extends string,
   EncodedTSchema extends TSchema,
   DecodedTSchema extends TSchema,
   R,
@@ -89,7 +90,7 @@ export const tTransformType = <
   DecType = InferSchemaType<DecodedTSchema>
   */
 >(
-  name: Name, // TODO: is this field
+  // name: Name, // TODO: is this field
   encodedTSchema: EncodedTSchema,
   decodedTSchema: DecodedTSchema,
 
@@ -110,7 +111,6 @@ export const tTransformType = <
   syncEncoder = ((v: any) => v as any) as (value: R) => RR
 ) => {
   return {
-    name: name,
     type: 'transformType' as const,
     encodedTSchema,
     decodedTSchema,

@@ -9,7 +9,7 @@ describe('recursive schema', () => {
 
   const tSchema = T.object({
     type: T.enum(['x'] as const),
-    x: T.lazy(lazySchemaFn),
+    x: T.lazy('compName', lazySchemaFn),
   })
 
   type T0 = InferSchemaType<typeof tSchema>
@@ -68,7 +68,7 @@ describe('recursive schema', () => {
     )
   })
 
-  test.only('slow comparison of tSchema of tSchema...', async () => {
+  test('slow comparison of tSchema of tSchema...', async () => {
     console.time('ttt')
 
     await validateSimpleDataAgainstSchema(
@@ -118,6 +118,6 @@ describe('recursive schema', () => {
       // so it means, that its still slow as fuck :D
     )
 
-    console.timeEnd('ttt')
+    // console.timeEnd('ttt')
   })
 })

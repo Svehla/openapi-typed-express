@@ -54,7 +54,6 @@ export type TNumber = {
 }
 
 export type TTransform = {
-  name: string
   type: 'transformType'
   // TODO: find proper name... what about Parent group type or something like that?
   encodedTSchema: TSchema
@@ -97,6 +96,7 @@ export type TOneOf = {
 // TLazy support recursive runtime validation
 export type TLazy = {
   type: 'lazy'
+  name: string
   required: boolean
 
   validator?: (v: any) => MaybePromise<void>

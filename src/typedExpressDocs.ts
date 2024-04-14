@@ -324,7 +324,9 @@ export const initApiDocs = (
   expressApp: { _router: ExpressRouteInternalStruct },
   customOpenAPIType: OpenAPIShape = {}
 ) => {
-  return deepMerge(
+  const mutDefinitions = {}
+
+  const openApiTypes = deepMerge(
     {
       openapi: '3.0.0',
       info: {
@@ -338,11 +340,16 @@ export const initApiDocs = (
       ],
       // schemes: ['https', 'http'],
       paths: convertUrlsMethodsSchemaToOpenAPI(
-        resolveRouteHandlersAndExtractAPISchema(expressApp._router)
+        resolveRouteHandlersAndExtractAPISchema(expressApp._router),
+        mutDefinitions
       ),
     },
     customOpenAPIType
   )
+
+  openApiTypes.components = { schemas: mutDefinitions }
+
+  return openApiTypes
 }
 
 // there are not properly typing inferences

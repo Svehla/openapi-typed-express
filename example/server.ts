@@ -5,6 +5,7 @@ import packageJSON from '../package.json'
 import swaggerUi from 'swagger-ui-express'
 import { queryParser } from 'express-query-parser'
 import { getMock_apiDocInstance } from '../src/typedExpressDocs'
+import { tSchemaOfTSchema } from '../src/tSchemaOfTSchema'
 
 const app = express()
 const port = 5000
@@ -31,13 +32,30 @@ const customMockErrApiDoc = getMock_apiDocInstance({
 
 // TODO: check if it works properly
 
+const tXXX = T.lazy('a1', () =>
+  T.object({
+    xd: T.string,
+    yyy: T.nullable(tYYY),
+  })
+)
+
+const tYYY = T.lazy('b2', () =>
+  T.object({
+    xd: T.string,
+    xxx: T.nullable(tXXX),
+  })
+)
+
+// const arr = T.lazy('xxx', () => T.list(arr))
+
 app.get(
   '/xx',
   apiDoc({
-    // TODO: rename to reqHeaders
-    headers: T.object({
-      x: T.cast.number,
-      authorization: T.string,
+    body: T.object({
+      xxx: tXXX,
+      yyy: tYYY,
+      x: tSchemaOfTSchema,
+      // arr,
     }),
     returns: T.string,
   })((req, res) => {
@@ -56,7 +74,6 @@ app.get(
         T.oneOf([
           T.object({
             castNum: T.transformType(
-              'x',
               T.addValidator(T.string, async v => {
                 await delay(100)
                 if (v.toString().includes('3')) throw new Error('cannot include number 3')
@@ -86,7 +103,6 @@ app.get(
     body: T.object({
       obj: T.object({
         a: T.transformType(
-          'uniq_id_in_da_db_a',
           T.addValidator(T.string, async () => {
             await delay(10)
             throw new Error('value is... invalid!!!!')
@@ -95,7 +111,6 @@ app.get(
           v => v
         ),
         b: T.transformType(
-          'uniq_id_in_da_db_b',
           T.addValidator(T.string, async () => {
             await delay(1_000)
             throw new Error('value is ... ... ... invalid!!!!')
@@ -104,7 +119,6 @@ app.get(
           v => v
         ),
         c: T.transformType(
-          'uniq_id_in_da_db_c',
           T.addValidator(T.string, async () => {
             await delay(1_000)
             throw new Error('value is ... ... ... invalid!!!!')

@@ -320,7 +320,6 @@ describe('experimental transform types', () => {
     test('1', async () => {
       const x = T.object({
         x: T.transformType(
-          'x',
           T.string,
           T.string,
           p => ('in: ' + p[0]) as `in: ${string}`,
@@ -346,7 +345,6 @@ describe('experimental transform types', () => {
         x: T.oneOf([
           T.boolean,
           T.transformType(
-            'x',
             T.addValidator(T.string, async () => {
               await delay(100)
             }),
@@ -376,7 +374,6 @@ describe('experimental transform types', () => {
     //  async validations + custom type parsing + union nesting
     test('1', async () => {
       const tCastNumber = T.transformType(
-        'x',
         T.addValidator(T.string, async () => delay(100)),
         T.number,
         x => {
@@ -388,7 +385,6 @@ describe('experimental transform types', () => {
 
       // cannot infer from other custom type
       const tParseOddSerializedNumbers = T.transformType(
-        'x',
         T.addValidator(T.string, async () => delay(100)),
         T.oneOf([T.number, T.string]),
         x => {
@@ -414,7 +410,6 @@ describe('experimental transform types', () => {
 
     test('3 custom type can inherit from other custom type', async () => {
       const tSomeCustom = T.transformType(
-        'xxxx',
         T.oneOf([T.string] as const),
         T.oneOf([T.string] as const),
         v => v
@@ -422,7 +417,7 @@ describe('experimental transform types', () => {
 
       await validateDataAgainstSchema(
         'decode',
-        T.transformType('xxxx', tSomeCustom, tSomeCustom, v => `${v} world`),
+        T.transformType(tSomeCustom, tSomeCustom, v => `${v} world`),
         'hello world',
         { status: 'fulfilled' }
       )
@@ -576,7 +571,6 @@ describe('experimental transform types', () => {
             T.oneOf([
               T.object({
                 castNum: T.transformType(
-                  'x',
                   T.addValidator(T.string, async v => {
                     await delay(100)
                     if (v.toString().includes('3')) throw new Error('cannot include number 3')
@@ -607,7 +601,6 @@ describe('experimental transform types', () => {
             T.oneOf([
               T.object({
                 castNum: T.transformType(
-                  'x',
                   T.addValidator(T.string, async v => {
                     await delay(100)
                     if (v.toString().includes('3')) throw new Error('cannot include number 3')

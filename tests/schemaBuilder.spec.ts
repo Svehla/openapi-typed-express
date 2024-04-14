@@ -10,14 +10,14 @@ describe('schemaBuilder', () => {
     f: T.any,
     g: T.enum(['a', 'b', 'c', 'd']),
     h: {
-      ...T.transformType('h', T.string, T.string, value => value),
+      ...T.transformType(T.string, T.string, value => value),
       // @ts-expect-error hack for raw JSON schema comparison
       syncDecoder: undefined,
       // @ts-expect-error hack for raw JSON schema comparison
       syncEncoder: undefined,
     },
     i: {
-      ...T.transformType('i', T.string, T.string, value => value),
+      ...T.transformType(T.string, T.string, value => value),
       // @ts-expect-error hack for raw JSON schema comparison
       syncDecoder: undefined,
       // @ts-expect-error hack for raw JSON schema comparison
@@ -56,7 +56,6 @@ describe('schemaBuilder', () => {
         },
         h: {
           type: 'transformType',
-          name: 'h',
           required: true,
           encodedTSchema: {
             required: true,
@@ -71,7 +70,6 @@ describe('schemaBuilder', () => {
         },
         i: {
           type: 'transformType',
-          name: 'i',
           required: true,
           encodedTSchema: {
             required: true,
@@ -104,7 +102,7 @@ describe('schemaBuilder', () => {
               e: T.enum(['a', 'b', 'c'] as const),
               o: T.oneOf([T.string, T.boolean]),
               l: T.list(T.string),
-              c: T.transformType('a', T.string, T.string, a => a),
+              c: T.transformType(T.string, T.string, a => a),
               nest: T.list(
                 T.list(
                   T.object({
@@ -116,7 +114,7 @@ describe('schemaBuilder', () => {
                     e: T.enum(['a', 'b', 'c'] as const),
                     o: T.oneOf([T.string, T.boolean]),
                     l: T.list(T.string),
-                    c: T.transformType('a', T.string, T.string, a => a),
+                    c: T.transformType(T.string, T.string, a => a),
                   })
                 )
               ),
@@ -134,7 +132,7 @@ describe('schemaBuilder', () => {
             e: T.null_enum(['a', 'b', 'c'] as const),
             o: T.null_oneOf([T.null_string, T.null_boolean] as const),
             l: T.null_list(T.null_string),
-            c: T.nullableTransform(T.nullable(T.transformType('a', T.string, T.string, a => a))),
+            c: T.nullableTransform(T.nullable(T.transformType(T.string, T.string, a => a))),
             nest: T.null_list(
               T.null_list(
                 T.null_object({
@@ -146,9 +144,7 @@ describe('schemaBuilder', () => {
                   e: T.null_enum(['a', 'b', 'c'] as const),
                   o: T.null_oneOf([T.null_string, T.null_boolean] as const),
                   l: T.null_list(T.null_string),
-                  c: T.nullableTransform(
-                    T.nullable(T.transformType('a', T.string, T.string, a => a))
-                  ),
+                  c: T.nullableTransform(T.nullable(T.transformType(T.string, T.string, a => a))),
                 })
               )
             ),

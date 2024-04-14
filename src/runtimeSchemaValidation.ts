@@ -189,7 +189,7 @@ export const convertSchemaToYupValidationObject = (
         }
       })
       .test({
-        name: schema.name,
+        name: `custom-transform-type`,
         test: function (value: any) {
           // check if parser found error => if yes, do yup error stuffs
           // TODO: check if its my own custom error instance with uniq js pointer
