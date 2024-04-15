@@ -21,6 +21,32 @@ describe('runtimeSchemaValidation', () => {
       )
     })
 
+    test('002', async () => {
+      await validateSimpleDataAgainstSchema(
+        //
+        T.oneOf([T.string, T.null_boolean] as const),
+        undefined,
+        { status: 'fulfilled', value: undefined }
+      )
+    })
+
+    test('003', async () => {
+      await validateSimpleDataAgainstSchema(
+        //
+        T.oneOf([T.string, T.null_boolean] as const),
+        undefined,
+        { status: 'fulfilled', value: undefined }
+      )
+    })
+
+    test('004', async () => {
+      await validateSimpleDataAgainstSchema(
+        T.oneOf([T.object({ x: T.string }), T.object({ x: T.number })] as const),
+        { x: 3 },
+        { status: 'fulfilled' }
+      )
+    })
+
     test('0.0', async () => {
       await validateSimpleDataAgainstSchema(
         T.object({ s: T.string }),

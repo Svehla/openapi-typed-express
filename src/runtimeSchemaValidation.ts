@@ -263,6 +263,7 @@ export const convertSchemaToYupValidationObject = (
 
     yupValidator = yupValidator
       .mixed()
+      // transform function is not called if value is undefined
       .transform((value: any, ogValue: any, context: any) => {
         if (schema.required === false && (value === null || value === undefined)) {
           return value
@@ -279,8 +280,8 @@ export const convertSchemaToYupValidationObject = (
           })
         )
 
-        try {
-          if (maybeMatchedItem.status === 'rejected') {
+        if (maybeMatchedItem.status === 'rejected') {
+          try {
             const allOptionSchemaErrors = maybeMatchedItem.reasons
               .map(reason => normalizeYupError(reason))
               .filter(notNullable)
@@ -301,12 +302,14 @@ export const convertSchemaToYupValidationObject = (
             // @ts-expect-error
             err._data = errMsg
             return err
+          } catch (err) {
+            return err
           }
-
-          return maybeMatchedItem.data
-        } catch (err) {
-          return err
         }
+
+        // TODO: transform is not called when value === `undefined`, so i cannot used this ctx caching mechanism
+        // context.xxxIndex = maybeMatchedItem.index
+        return maybeMatchedItem.data
       })
       .test({
         name: 'one-of-schema',
@@ -343,23 +346,39 @@ export const convertSchemaToYupValidationObject = (
               // ---- bad un-optimized code ----
               // ---- I HATE YUP!!!! ----
 
-              // TODO: extremely slow CPU code!!!
-              const areValidOptions = schema.options.map(o =>
-                convertSchemaToYupValidationObject(o, {
-                  ...extra,
-                  runAsyncValidations: false,
-                }).isValidSync(value)
+              // duplicated extremely slow CPU code!!!
+              const maybeMatchedItem = validateUntilFirstSuccess(
+                schema.options.map((_o, index) => {
+                  // oneOf exec a lot of un-optimized validateSync of the same data structure...
+                  // because of it its CPU slow as fuck
+                  return () =>
+                    validators[index].validateSync(value, {
+                      abortEarly: true,
+                    })
+                })
               )
 
-              const matchOptionIndex = areValidOptions.findIndex(i => i === true)
+              if (maybeMatchedItem.status === 'rejected')
+                throw new Error('invalid oneOf transform function call')
+              // const matchOptionIndex = areValidOptions.findIndex(i => i === true)
 
-              const activeTSchema = schema.options[matchOptionIndex]
+              const activeTSchema = schema.options[maybeMatchedItem.index]
+
+              /*
+              console.log('x', maybeMatchedItem.index, activeTSchema)
+              console.log('y', conf.schema.xxxIndex)
+              const activeTSchemaIndexFromTransform = conf.schema.xxxIndex
+              // console.log('ahoj', activeTSchema)
+              const activeTSchema = schema.options[activeTSchemaIndexFromTransform]
+              console.log(activeTSchemaIndexFromTransform, activeTSchema)
+              */
 
               // de-reference this to be sure that its properly put into the async arrow fn
               const { path, createError } = this
 
               return (async () => {
                 try {
+                  // triplicate nested validation slow CPU code...
                   await convertSchemaToYupValidationObject(activeTSchema, extra).validate(value, {
                     abortEarly: false,
                   })
@@ -392,6 +411,7 @@ export const convertSchemaToYupValidationObject = (
     yupValidator = yupValidator.nullable()
   }
 
+  // TODO: call async fn, if it returns promise, ignore result, if not, do a validation...
   if (runAsyncValidations && schema.validator) {
     yupValidator = yupValidator.test({
       name: 'async-validation',

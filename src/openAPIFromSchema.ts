@@ -30,6 +30,7 @@ const toOpenAPISchema = (schema: TSchema, mutDefinitions: any): any => {
         .filter(([k, v]) => v.required === true)
         .map(([k, v]) => k)
 
+      // TODO: add named object for enabling definition?
       return {
         ...obj,
         ...(required.length > 0 ? { required } : {}),

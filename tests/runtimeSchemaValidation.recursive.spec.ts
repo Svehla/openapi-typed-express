@@ -1,5 +1,5 @@
 import { InferSchemaType, T } from '../src'
-import { delay, validateSimpleDataAgainstSchema } from './shared'
+import { validateSimpleDataAgainstSchema } from './shared'
 import { tSchemaOfTSchema } from '../src/tSchemaOfTSchema'
 
 jest.setTimeout(10_000)
@@ -114,10 +114,11 @@ describe('recursive schema', () => {
       // when you enable I run async validation, there is bug with oneOf + transform + asyncValidation
       // and performance results are:
       // true === 240ms
-      // false === 2400ms
+      // false === 1700ms
       // so it means, that its still slow as fuck :D
+      // TODO: its weird that normal run is slow as well, i would like to validate objects in single ms
     )
 
-    // console.timeEnd('ttt')
+    console.timeEnd('ttt')
   })
 })
