@@ -346,7 +346,8 @@ export const convertSchemaToYupValidationObject = (
               // ---- bad un-optimized code ----
               // ---- I HATE YUP!!!! ----
 
-              // duplicated extremely slow CPU code!!!
+              // TODO: add short time memoization!!! to share validateSync
+              // duplicated for extremely slow CPU duplicated code!!!
               const maybeMatchedItem = validateUntilFirstSuccess(
                 schema.options.map((_o, index) => {
                   // oneOf exec a lot of un-optimized validateSync of the same data structure...
@@ -447,6 +448,12 @@ export const getTSchemaValidator = <TSch extends TSchema, TT extends 'decode' | 
 
   const validate = async (value: any, { stripUnknown = true } = {}) => {
     const transformedValue = await convertor.validate(value, { abortEarly: false, stripUnknown })
+    // TODO: should I add encode/decode type inferring?
+    return transformedValue // as any as InferSchemaTypeEncDec<TSch, TT> // possible infinite deep recursion..
+  }
+
+  const validateSync = async (value: any) => {
+    const transformedValue = convertor.validateSync(value, { abortEarly: false })
     // TODO: should I add encode/decode type inferring?
     return transformedValue // as any as InferSchemaTypeEncDec<TSch, TT> // possible infinite deep recursion..
   }
