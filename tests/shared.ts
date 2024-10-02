@@ -40,3 +40,7 @@ export const validateSimpleDataAgainstSchema = async (
 }
 
 export const delay = (ms: number) => new Promise(res => setTimeout(res, ms))
+
+export const removeWhiteSpaces = (str: string) =>
+  // @ts-ignore
+  str.replaceAll(' ', '').replaceAll('\n', '')

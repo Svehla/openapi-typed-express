@@ -1,12 +1,8 @@
 /* eslint-disable prettier/prettier */
 import { codegenSchemaToJSCode, T } from '../src'
+import { removeWhiteSpaces } from'./shared'
 
 // TODO: decentralize it and put "toString" methods for all types???
-
-const removeWhiteSpaces = (str: string) =>
-  // @ts-ignore
-  str.replaceAll(' ', '').replaceAll('\n', '')
-
 // output may be tested against eval(...)
 // TODO: add formatter codegen
 describe('codegen.test', () => {

@@ -14,6 +14,7 @@ export {
   initApiDocs,
   mock_apiDoc,
 } from './typedExpressDocs'
+export { tSchemaToTypescript } from './tSchemaToTypescript'
 export { codegenSchemaToJSCode } from './codegen'
 export { tUtils } from './tUtils'
 
