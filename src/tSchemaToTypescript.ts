@@ -17,7 +17,7 @@ export const tSchemaToTypescript = (schema: TSchema, indentLevel = 0): string =>
       str = `{\n${Object.entries(schema.properties)
         .map(([k, v]) => {
           const isRequired = requiredKeys.includes(k)
-          const key = isRequired ? `${k}:` : `${k}?:`
+          const key = `'${k}'${isRequired ? '?' : ''}:`
           const value = tSchemaToTypescript(v, indentLevel + 1)
           return `${indent}  ${key} ${value}`
         })
