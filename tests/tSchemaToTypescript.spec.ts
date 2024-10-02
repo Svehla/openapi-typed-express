@@ -35,6 +35,8 @@ describe('tSchemaToTypescript', () => {
             }),
           })
         ),
+
+        ooo: T.object({}),
       })
     )
 
@@ -45,29 +47,30 @@ describe('tSchemaToTypescript', () => {
     expect(removeWhiteSpaces(tsCode)).toBe(
       removeWhiteSpaces(`
       type tsType = {
-        's'?: string;
-        'ns': string | null | undefined;
-        'n'?: number;
-        'nn': number | null | undefined;
-        'b'?: boolean;
-        'nb': boolean | null | undefined;
-        'a'?: any;
-        'na': any | null | undefined;
-        'h'?: { [key: string]: string };
-        'nh': { [key: string]: string } | null | undefined;
-        'e'?: 'a' | 'b' | 'c';
-        'en': 'a' | 'b' | 'c' | null | undefined;
-        'o'?: string | boolean;
-        'no': string | boolean | null | undefined;
-        'l'?: string[];
-        'nl': string[] | null | undefined;
-        'oo': ({
-          'oo'?: {
-            'ooo': {
-              'oooo'?: 'oooo'[];
+        's': string;
+        'ns'?: string | null | undefined;
+        'n': number;
+        'nn'?: number | null | undefined;
+        'b': boolean;
+        'nb'?: boolean | null | undefined;
+        'a': any;
+        'na'?: any | null | undefined;
+        'h': { [key: string]: string };
+        'nh'?: { [key: string]: string } | null | undefined;
+        'e': 'a' | 'b' | 'c';
+        'en'?: 'a' | 'b' | 'c' | null | undefined;
+        'o': string | boolean;
+        'no'?: string | boolean | null | undefined;
+        'l': string[];
+        'nl'?: string[] | null | undefined;
+        'oo'?: ({
+          'oo': {
+            'ooo'?: {
+              'oooo': 'oooo'[];
             };
           };
         } | null | undefined)[] | null | undefined;
+        'ooo': {};
       }
     `)
     )

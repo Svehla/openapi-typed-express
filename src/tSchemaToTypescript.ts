@@ -10,18 +10,21 @@ export const tSchemaToTypescript = (schema: TSchema, indentLevel = 0): string =>
       break
 
     case 'object':
-      const requiredKeys = Object.entries(schema.properties)
-        .filter(([_, v]) => v.required === true)
-        .map(([k, _]) => k)
+      const properties = Object.entries(schema.properties)
+      if (properties.length === 0) {
+        str = '{}'
+      } else {
+        const requiredKeys = properties.filter(([_, v]) => v.required === true).map(([k, _]) => k)
 
-      str = `{\n${Object.entries(schema.properties)
-        .map(([k, v]) => {
-          const isRequired = requiredKeys.includes(k)
-          const key = `'${k}'${isRequired ? '?' : ''}:`
-          const value = tSchemaToTypescript(v, indentLevel + 1)
-          return `${indent}  ${key} ${value}`
-        })
-        .join(';\n')};\n${indent}}`
+        str = `{\n${properties
+          .map(([k, v]) => {
+            const isRequired = requiredKeys.includes(k)
+            const key = `'${k}'${isRequired ? '' : '?'}:`
+            const value = tSchemaToTypescript(v, indentLevel + 1)
+            return `${indent}  ${key} ${value}`
+          })
+          .join(';\n')};\n${indent}}`
+      }
       break
 
     case 'hashMap':
@@ -61,7 +64,6 @@ export const tSchemaToTypescript = (schema: TSchema, indentLevel = 0): string =>
       throw new Error(`Unsupported type: ${JSON.stringify(schema)}`)
   }
 
-  // Přidáme pouze `| null` a `| undefined` pro nepovinné schéma, které není objekt
   if (!schema.required && schema.type !== 'object') {
     str = `${str} | null | undefined`
   }
