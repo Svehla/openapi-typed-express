@@ -68,7 +68,7 @@ export const tSchemaToTypescript = (schema: TSchema, indentLevel = 0): string =>
       throw new Error(`Unsupported type: ${JSON.stringify(schema)}`)
   }
 
-  if (!schema.required && schema.type !== 'object') {
+  if (!schema.required) {
     str = `${str} | null | undefined`
   }
 

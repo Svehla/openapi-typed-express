@@ -53,7 +53,7 @@ describe('tSchemaToTypescript', () => {
 
     const tsCode = `type tsType = ${tsType}`
 
-    // console.log(tsCode)
+    console.log(tsCode)
 
     expect(removeWhiteSpaces(tsCode)).toBe(
       removeWhiteSpaces(`
@@ -78,9 +78,9 @@ describe('tSchemaToTypescript', () => {
           'oo': {
             'ooo'?: {
               'oooo': 'oooo'[];
-            };
+            } | null | undefined;
           };
-        })[] | null | undefined;
+        } | null | undefined)[] | null | undefined;
         'ooo': {};
         'instance_permissions'?: (string | null | undefined)[] | null | undefined;
       }
