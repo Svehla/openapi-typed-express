@@ -37,6 +37,17 @@ describe('tSchemaToTypescript', () => {
         ),
 
         ooo: T.object({}),
+
+        // "instance_permissions": {
+        //   "type": "array",
+        //   "required": true,
+        //   "items": {
+        //     "type": "string",
+        //     "required": true
+        //   }
+        // },
+
+        instance_permissions: T.null_list(T.null_string),
       })
     )
 
@@ -69,8 +80,9 @@ describe('tSchemaToTypescript', () => {
               'oooo': 'oooo'[];
             };
           };
-        } | null | undefined)[] | null | undefined;
+        })[] | null | undefined;
         'ooo': {};
+        'instance_permissions'?: (string | null | undefined)[] | null | undefined;
       }
     `)
     )

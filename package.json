@@ -1,6 +1,6 @@
 {
   "name": "swagger-typed-express-docs",
-  "version": "0.8.12",
+  "version": "0.8.13",
   "description": "Simple express runtime parser and documentation swagger generator with 100% support of Typescript static types",
   "keywords": [
     "express",

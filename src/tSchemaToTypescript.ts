@@ -31,10 +31,14 @@ export const tSchemaToTypescript = (schema: TSchema, indentLevel = 0): string =>
       str = `{ [key: string]: ${tSchemaToTypescript(schema.property, indentLevel + 1)} }`
       break
 
-    case 'array':
-      const itemType = tSchemaToTypescript(schema.items, indentLevel)
-      str = schema.items.type === 'object' ? `(${itemType} | null | undefined)[]` : `${itemType}[]`
+    case 'array': {
+      const itemType = schema.items.required
+        ? `${tSchemaToTypescript(schema.items, indentLevel)}`
+        : `(${tSchemaToTypescript(schema.items, indentLevel)})`
+
+      str = `${itemType}[]`
       break
+    }
 
     case 'oneOf':
       str = schema.options.map(o => tSchemaToTypescript(o, indentLevel)).join(' | ')
