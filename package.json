@@ -1,7 +1,50 @@
 {
   "name": "swagger-typed-express-docs",
-  "version": "0.8.14",
+  "version": "0.8.15",
   "description": "Simple express runtime parser and documentation swagger generator with 100% support of Typescript static types",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "check-code": "npm run test && npm run lint && npm run ts:check-types",
+    "clean": "tsc --build --clean",
+    "dev": "ts-node-dev --respawn example/server.ts",
+    "l": "npm run lint:fix",
+    "lint": "eslint \"{src,tests}/**/*.{js,ts}\"",
+    "lint:fix": "eslint \"{src,tests}/**/*{js,ts}\" --fix",
+    "prepare": "npm run clean && npm run build",
+    "publish-lib": "npm run prepare && npm publish",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "ts:check-types": "tsc",
+    "ts:check-types:watch": "tsc --watch",
+    "ts:generate-api": "ts-node npm_scripts/generate-ts-types.ts"
+  },
+  "dependencies": {
+    "yup": "^1.6.1"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/jest": "^29.5.5",
+    "@types/node": "^14.14.41",
+    "@types/swagger-ui-express": "^4.1.2",
+    "@typescript-eslint/eslint-plugin": "^6.7.5",
+    "@typescript-eslint/parser": "^6.7.5",
+    "eslint": "^7.22.0",
+    "eslint-config-prettier": "^8.1.0",
+    "eslint-plugin-prettier": "^3.3.1",
+    "express-query-parser": "^1.3.3",
+    "jest": "^29.7.0",
+    "nodemon": "^3.0.1",
+    "openapi-typescript": "^3.4.1",
+    "prettier": "^2.2.1",
+    "swagger-ui-express": "^4.1.6",
+    "ts-jest": "^29.1.1",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.2.2"
+  },
+  "peerDependencies": {
+    "express": "^4.21.2"
+  },
   "keywords": [
     "express",
     "typescript",
@@ -23,48 +66,5 @@
   "main": "dist/index.js",
   "browser": {
     "fs": false
-  },
-  "types": "dist/index.d.ts",
-  "scripts": {
-    "build": "tsc",
-    "check-code": "npm run test && npm run lint && npm run ts:check-types",
-    "clean": "tsc --build --clean",
-    "dev": "ts-node-dev --respawn example/server.ts",
-    "l": "npm run lint:fix",
-    "lint": "eslint \"{src,tests}/**/*.{js,ts}\"",
-    "lint:fix": "eslint \"{src,tests}/**/*{js,ts}\" --fix",
-    "prepare": "npm run clean && npm run build",
-    "publish-lib": "npm run prepare && npm publish",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "ts:check-types": "tsc",
-    "ts:check-types:watch": "tsc --watch",
-    "ts:generate-api": "ts-node npm_scripts/generate-ts-types.ts"
-  },
-  "dependencies": {
-    "yup": "^1.4.0"
-  },
-  "devDependencies": {
-    "@types/express": "^4.17.18",
-    "@types/jest": "^29.5.5",
-    "@types/node": "^14.14.41",
-    "@types/swagger-ui-express": "^4.1.2",
-    "@typescript-eslint/eslint-plugin": "^6.7.5",
-    "@typescript-eslint/parser": "^6.7.5",
-    "eslint": "^7.22.0",
-    "eslint-config-prettier": "^8.1.0",
-    "eslint-plugin-prettier": "^3.3.1",
-    "express-query-parser": "^1.3.3",
-    "jest": "^29.7.0",
-    "nodemon": "^3.0.1",
-    "openapi-typescript": "^3.4.1",
-    "prettier": "^2.2.1",
-    "swagger-ui-express": "^4.1.6",
-    "ts-jest": "^29.1.1",
-    "ts-node-dev": "^2.0.0",
-    "typescript": "^5.2.2"
-  },
-  "peerDependencies": {
-    "express": "^4.19.2"
   }
 }

@@ -53,8 +53,6 @@ describe('tSchemaToTypescript', () => {
 
     const tsCode = `type tsType = ${tsType}`
 
-    console.log(tsCode)
-
     expect(removeWhiteSpaces(tsCode)).toBe(
       removeWhiteSpaces(`
       type tsType = {

@@ -192,7 +192,7 @@ export const getApiDocInstance =
     // make the sign for the function metadata to be sure that resolver is enhanced by this library
     lazyInitializeHandler[__expressTypedHack_key__] = __expressOpenAPIHack__
 
-    return lazyInitializeHandler
+    return lazyInitializeHandler as any
   }
 
 export const apiDoc = getApiDocInstance()

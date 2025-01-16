@@ -348,7 +348,9 @@ const lazyOpenAPI3_0_0JSON = initApiDocs(app, {
   },
 })
 
-app.use('/api-docs/', (req, res) => res.send(lazyOpenAPI3_0_0JSON))
+app.use('/api-docs/', (req, res) => {
+  res.send(lazyOpenAPI3_0_0JSON)
+})
 
 // ----------------------------------------------------------
 // ---- Coffee for those who understand what's happening ----

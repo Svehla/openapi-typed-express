@@ -37,10 +37,10 @@ app.get(
     },
     query: {
       name: T.string,
-      header: T.list(T.enum(['a', 'b', 'c'] as const))),
+      header: T.list(T.enum(['a', 'b', 'c'] as const)),
     },
     body: {
-      header: T.list(T.enum(['a', 'b', 'c'] as const))),
+      header: T.list(T.enum(['a', 'b', 'c'] as const)),
       message: T.string,
       footer: T.string,
     },

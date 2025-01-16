@@ -365,15 +365,6 @@ export const convertSchemaToYupValidationObject = (
 
               const activeTSchema = schema.options[maybeMatchedItem.index]
 
-              /*
-              console.log('x', maybeMatchedItem.index, activeTSchema)
-              console.log('y', conf.schema.xxxIndex)
-              const activeTSchemaIndexFromTransform = conf.schema.xxxIndex
-              // console.log('ahoj', activeTSchema)
-              const activeTSchema = schema.options[activeTSchemaIndexFromTransform]
-              console.log(activeTSchemaIndexFromTransform, activeTSchema)
-              */
-
               // de-reference this to be sure that its properly put into the async arrow fn
               const { path, createError } = this
 
