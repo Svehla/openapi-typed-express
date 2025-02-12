@@ -165,6 +165,19 @@ app.get(
 )
 
 app.get(
+  '/T-cast-date',
+  apiDoc({
+    query: {
+      x: T.cast.date,
+    },
+    returns: T.cast.date,
+  })(async (req, res) => {
+    console.log('x', req.query.x)
+    res.send(new Date())
+  })
+)
+
+app.get(
   '/cast',
   apiDoc({
     query: {

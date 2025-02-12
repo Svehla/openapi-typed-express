@@ -32,9 +32,14 @@ export const normalizeYupError = (obj?: any) => {
   return niceYErrObj
 }
 
+type TransformTypeMode = 'decode' | 'encode' | 'keep-encoded' | 'keep-decoded'
+
 export const convertSchemaToYupValidationObject = (
   schema: TSchema,
-  extra?: { transformTypeMode?: 'decode' | 'encode'; runAsyncValidations?: boolean }
+  extra?: {
+    transformTypeMode?: TransformTypeMode
+    runAsyncValidations?: boolean
+  }
 ): yup.MixedSchema<any, any, any> => {
   const transformTypeMode = extra?.transformTypeMode ?? 'decode'
   const runAsyncValidations = extra?.runAsyncValidations ?? true
@@ -148,34 +153,38 @@ export const convertSchemaToYupValidationObject = (
         try {
           // parser cannot return Promise! https://github.com/jquense/yup/issues/238
           // TODO: decode & encode | parser & serializer
-          if (transformTypeMode === 'decode') {
+          if (transformTypeMode === 'decode' || transformTypeMode === 'keep-decoded') {
             const transformedItem = convertSchemaToYupValidationObject(schema.encodedTSchema, {
               ...extra,
               runAsyncValidations: false,
             }).validateSync(value, { abortEarly: false })
+
+            if (transformTypeMode === 'keep-decoded') return transformedItem
 
             const newValue = schema.syncDecoder(transformedItem)
 
             // this validate, if decoder (parser) returns proper data type
             convertSchemaToYupValidationObject(schema.decodedTSchema, {
               ...extra,
-              transformTypeMode: 'encode',
+              transformTypeMode: 'keep-encoded',
               runAsyncValidations: false,
             }).validateSync(newValue, { abortEarly: false })
 
             return newValue
-          } else if (transformTypeMode === 'encode') {
+          } else if (transformTypeMode === 'encode' || transformTypeMode === 'keep-encoded') {
             const transformedItem = convertSchemaToYupValidationObject(schema.decodedTSchema, {
               ...extra,
               runAsyncValidations: false,
             }).validateSync(value, { abortEarly: false })
+
+            if (transformTypeMode === 'keep-encoded') return transformedItem
 
             const newValue = schema.syncEncoder(transformedItem)
 
             // this validate, if encoder (serializer) returns proper data type
             convertSchemaToYupValidationObject(schema.encodedTSchema, {
               ...extra,
-              transformTypeMode: 'decode',
+              transformTypeMode: 'keep-decoded',
               runAsyncValidations: false,
             }).validateSync(newValue, { abortEarly: false })
 
@@ -431,7 +440,7 @@ export const convertSchemaToYupValidationObject = (
 // this do validation + transformation, should I change the name somehow?
 // validateAndTransform
 // getTSchemaSanitization // sanitization do transformation + add validations...
-export const getTSchemaValidator = <TSch extends TSchema, TT extends 'decode' | 'encode'>(
+export const getTSchemaValidator = <TSch extends TSchema, TT extends TransformTypeMode>(
   tSchema: TSch,
   extra?: { transformTypeMode?: TT; runAsyncValidations?: boolean }
 ) => {
@@ -443,11 +452,13 @@ export const getTSchemaValidator = <TSch extends TSchema, TT extends 'decode' | 
     return transformedValue // as any as InferSchemaTypeEncDec<TSch, TT> // possible infinite deep recursion..
   }
 
+  /*
   const validateSync = async (value: any) => {
     const transformedValue = convertor.validateSync(value, { abortEarly: false })
     // TODO: should I add encode/decode type inferring?
     return transformedValue // as any as InferSchemaTypeEncDec<TSch, TT> // possible infinite deep recursion..
   }
+  */
 
   return { validate }
 }

@@ -1,6 +1,7 @@
 import { InferSchemaType } from '../src'
 import { T } from '../src'
-import { getTSchemaValidator, normalizeYupError } from '../src/runtimeSchemaValidation'
+import { getTSchemaValidator } from '../src/runtimeSchemaValidation'
+import { InferEncodedSchemaType } from '../src/tsSchema'
 import { delay, validateDataAgainstSchema, validateSimpleDataAgainstSchema } from './shared'
 
 // TODO: this file tests encoders & decoders (for casting and converting)
@@ -317,6 +318,34 @@ describe('transform types', () => {
 
 describe('experimental transform types', () => {
   describe('encoder + decoder', () => {
+    test('0', async () => {
+      const x = T.object({
+        // en de ; de en
+        x: T.transformType(
+          T.number,
+          T.boolean,
+          p => p > 10,
+          p => (p === true ? 10 : 20)
+        ),
+      })
+      // encoders and decoders are not called at all
+      const decoderInVal = getTSchemaValidator(x, { transformTypeMode: 'keep-decoded' })
+      const encoderOutVal = getTSchemaValidator(x, { transformTypeMode: 'keep-encoded' })
+
+      type _In = InferSchemaType<typeof x>
+      type _Dec = InferEncodedSchemaType<typeof x>
+      // TODO: it's not possible to get Type of decoder?
+      // type Out = InferSchemaType<typeof x>
+
+      const o1 = await decoderInVal.validate({ x: 1337 })
+      const o2 = await encoderOutVal.validate({ x: true })
+
+      // no changes at all...
+      expect(o1).toEqual({ x: 1337 })
+      // no changes at all...
+      expect(o2).toEqual({ x: true })
+    })
+
     test('1', async () => {
       const x = T.object({
         x: T.transformType(

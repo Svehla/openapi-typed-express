@@ -74,19 +74,6 @@ export const tCast_boolean = T.transformType(
   value => value!.toString() as 'true' | 'false' // | 'null' | 'undefined'
 )
 
-// TODO: tCast nullable/undefined string to fully support parsing query params...
-
-export const tCast = {
-  date: T.nonNullable(tCast_date),
-  null_date: T.nullable(T.nullableTransform(tCast_date)),
-
-  number: T.nonNullable(tCast_number),
-  null_number: T.nullable(T.nullableTransform(tCast_number)),
-
-  boolean: T.nonNullable(tCast_boolean),
-  null_boolean: T.nullable(T.nullableTransform(tCast_boolean)),
-}
-
 // ----- ---------------------------------------------------------- ----
 // ----- more exact format runtime validation without changing type ----
 // put min max into the part of base schema protocol?
@@ -147,4 +134,39 @@ export const tExtra = {
 
   toListIfNot: tToListIfNot,
   null_toListIfNot: <T extends TSchema>(arg: T) => T.nullable(tToListIfNot(arg)),
+}
+
+// TODO: tCast nullable/undefined string to fully support parsing query params...
+/*
+const tCast_IsoToJSDate = T.transformType(
+  // 'cast_date',
+  tISOString,
+  T.any,
+  value => {
+    // if (value === '') return undefined
+    // if (value === 'null') return null
+    // if (value === 'undefined') return undefined
+
+    const parsedValue = new Date(value)
+    if (isNaN(parsedValue?.getTime())) {
+      throw new Error('invalid Date')
+    }
+    return parsedValue
+  },
+  value => value!.toISOString()
+)
+*/
+
+export const tCast = {
+  date: T.nonNullable(tCast_date),
+  null_date: T.nullable(T.nullableTransform(tCast_date)),
+
+  number: T.nonNullable(tCast_number),
+  null_number: T.nullable(T.nullableTransform(tCast_number)),
+
+  boolean: T.nonNullable(tCast_boolean),
+  null_boolean: T.nullable(T.nullableTransform(tCast_boolean)),
+
+  isoToJSDate: T.nonNullable(tCast_boolean),
+  null_isoToJSDate: T.nullable(T.nullableTransform(tCast_boolean)),
 }
