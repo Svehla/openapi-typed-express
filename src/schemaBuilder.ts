@@ -76,6 +76,7 @@ const tLazy = (name: string, tSchema: () => any) => ({
 })
 
 export const tTransformType = <
+  // order: encoded -> decoded -> encoded
   // Name extends string,
   EncodedTSchema extends TSchema,
   DecodedTSchema extends TSchema,

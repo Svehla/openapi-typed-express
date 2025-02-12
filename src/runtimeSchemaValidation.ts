@@ -32,7 +32,7 @@ export const normalizeYupError = (obj?: any) => {
   return niceYErrObj
 }
 
-type TransformTypeMode = 'decode' | 'encode' | 'keep-encoded' | 'keep-decoded'
+export type TransformTypeMode = 'decode' | 'encode' | 'keep-encoded' | 'keep-decoded'
 
 export const convertSchemaToYupValidationObject = (
   schema: TSchema,

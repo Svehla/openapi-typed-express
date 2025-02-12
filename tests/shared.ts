@@ -1,8 +1,9 @@
 import { getTSchemaValidator, normalizeYupError } from '../src'
+import { TransformTypeMode } from '../src/runtimeSchemaValidation'
 
 // TODO: create function to test if parsed cast value is proper
 export const validateDataAgainstSchema = async (
-  transformTypeMode: 'decode' | 'encode',
+  transformTypeMode: TransformTypeMode,
   schema: any,
   objToValidate: any,
   output: { status: 'rejected'; reason?: any } | { status: 'fulfilled'; value?: any },

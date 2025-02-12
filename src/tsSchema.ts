@@ -133,7 +133,7 @@ type GetFilterRequiredKeysUnion<
 
 type InferObjWithOptKeysObject<
   Properties extends TObject['properties'],
-  TT extends 'encode' | 'decode',
+  TT extends 'encoded' | 'decoded',
   ReqKeys = GetFilterRequiredKeysUnion<Properties, true>,
   OptKeys = GetFilterRequiredKeysUnion<Properties, false>,
   // @ts-expect-error
@@ -150,7 +150,7 @@ type InferObjWithOptKeysObject<
 
 export type InferSchemaTypeEncDec<
   T extends TSchema | undefined,
-  TT extends 'encode' | 'decode'
+  TT extends 'encoded' | 'decoded'
 > = T extends undefined
   ? undefined
   : //  worst but faster implementation of object (missing optional keys { key?: ... })
@@ -181,18 +181,18 @@ export type InferSchemaTypeEncDec<
   ? any // Recursive data types are not supported, its too complex, POC is here: https://github.com/Svehla/openapi-typed-express/pull/6
   : T extends { type: 'transformType' }
   ? // TODO: define if you want to run encoder | decoder and by this config inherit proper data type
-    TT extends 'decode'
+    TT extends 'decoded'
     ? MakeTOptional<ReturnType<T['syncDecoder']>, T['required']>
-    : TT extends 'encode'
+    : TT extends 'encoded'
     ? MakeTOptional<ReturnType<T['syncEncoder']>, T['required']>
     : never
   : T extends { type: 'any' }
   ? any
   : never
 
-export type InferSchemaType<T extends TSchema | undefined> = InferSchemaTypeEncDec<T, 'decode'>
+export type InferSchemaType<T extends TSchema | undefined> = InferSchemaTypeEncDec<T, 'decoded'>
 
 export type InferEncodedSchemaType<T extends TSchema | undefined> = InferSchemaTypeEncDec<
   T,
-  'encode'
+  'encoded'
 >
