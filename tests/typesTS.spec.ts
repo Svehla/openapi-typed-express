@@ -165,8 +165,8 @@ describe('testing TS compile time data types', () => {
     })
 
     type T0 = {
-      decoded: InferSchemaTypeEncDec<typeof schema, 'decode'>
-      encoded: InferSchemaTypeEncDec<typeof schema, 'encode'>
+      decoded: InferSchemaTypeEncDec<typeof schema, 'decoded'>
+      encoded: InferSchemaTypeEncDec<typeof schema, 'encoded'>
     }
 
     null as any as T0 satisfies {
