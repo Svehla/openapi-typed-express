@@ -446,19 +446,17 @@ export const getTSchemaValidator = <TSch extends TSchema, TT extends TransformTy
 ) => {
   const convertor = convertSchemaToYupValidationObject(tSchema, extra)
 
-  const validate = async (value: any, { stripUnknown = true } = {}) => {
-    const transformedValue = await convertor.validate(value, { abortEarly: false, stripUnknown })
+  const validate = async (value: any, { stripUnknown = true, abortEarly = false } = {}) => {
+    const transformedValue = await convertor.validate(value, { abortEarly, stripUnknown })
     // TODO: should I add encode/decode type inferring?
     return transformedValue // as any as InferSchemaTypeEncDec<TSch, TT> // possible infinite deep recursion..
   }
 
-  /*
-  const validateSync = async (value: any) => {
-    const transformedValue = convertor.validateSync(value, { abortEarly: false })
+  const validateSync = async (value: any, { stripUnknown = true, abortEarly = false } = {}) => {
+    const transformedValue = convertor.validateSync(value, { abortEarly, stripUnknown })
     // TODO: should I add encode/decode type inferring?
     return transformedValue // as any as InferSchemaTypeEncDec<TSch, TT> // possible infinite deep recursion..
   }
-  */
 
-  return { validate }
+  return { validate, validateSync }
 }
