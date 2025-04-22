@@ -452,11 +452,28 @@ export const getTSchemaValidator = <TSch extends TSchema, TT extends TransformTy
     return transformedValue // as any as InferSchemaTypeEncDec<TSch, TT> // possible infinite deep recursion..
   }
 
-  const validateSync = async (value: any, { stripUnknown = true, abortEarly = false } = {}) => {
+  const validateSync = (value: any, { stripUnknown = true, abortEarly = false } = {}) => {
     const transformedValue = convertor.validateSync(value, { abortEarly, stripUnknown })
     // TODO: should I add encode/decode type inferring?
     return transformedValue // as any as InferSchemaTypeEncDec<TSch, TT> // possible infinite deep recursion..
   }
 
-  return { validate, validateSync }
+  const isValid = async (value: any) => {
+    try {
+      await validate(value)
+      return true
+    } catch (err) {
+      return false
+    }
+  }
+  const isValidSync = (value: any) => {
+    try {
+      validateSync(value)
+      return true
+    } catch (err) {
+      return false
+    }
+  }
+
+  return { validate, validateSync, isValid, isValidSync }
 }
