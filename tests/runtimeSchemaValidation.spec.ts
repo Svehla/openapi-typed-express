@@ -602,3 +602,57 @@ describe('runtimeSchemaValidation', () => {
     })
   })
 })
+
+describe('oneOf', () => {
+  const t1 = T.object({ type: T.enum(['a'] as const), isOk: T.boolean })
+  const t2 = T.object({ type: T.enum(['b'] as const), age: T.number })
+  const t3 = T.object({ type: T.enum(['c'] as const), list: T.list(T.number) })
+
+  test('1', async () => {
+    await validateSimpleDataAgainstSchema(
+      T.oneOf([t1, t2, t3]),
+      { type: 'a', isOk: true },
+      { status: 'fulfilled' }
+    )
+  })
+
+  test('2', async () => {
+    await validateSimpleDataAgainstSchema(
+      T.oneOf([t1, t2, t3]),
+      { type: 'b', age: 3 },
+      { status: 'fulfilled' }
+    )
+  })
+
+  test('3', async () => {
+    await validateSimpleDataAgainstSchema(
+      T.oneOf([t1, t2, t3]),
+      { type: '<>', isOk: true },
+      {
+        status: 'rejected',
+        reason: [
+          {
+            path: '',
+            errors: [
+              {
+                message: 'data does not match any of allowed schemas',
+                currentValue: {
+                  isOk: true,
+                  type: '<>',
+                },
+                allOptionSchemaErrors: [
+                  [
+                    {
+                      errors: 'type must be one of [a] type, but the final value was: `"<>"`.',
+                      path: '',
+                    },
+                  ],
+                ],
+              },
+            ],
+          },
+        ],
+      }
+    )
+  })
+})
