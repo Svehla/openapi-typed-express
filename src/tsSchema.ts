@@ -83,14 +83,12 @@ export type TEnum = {
   validator?: (v: any) => void
 }
 
-type MaybePromise<T> = T | Promise<T>
-
 export type TOneOf = {
   type: 'oneOf'
   required: boolean
 
   options: any[]
-  validator?: (v: any) => MaybePromise<void>
+  validator?: (v: any) => void
 }
 
 // TLazy support recursive runtime validation
@@ -99,7 +97,7 @@ export type TLazy = {
   name: string
   required: boolean
 
-  validator?: (v: any) => MaybePromise<void>
+  validator?: (v: any) => void
   getSchema: () => any // TSchema -> TS types are not supported, the final code will be too complex
 }
 

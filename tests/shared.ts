@@ -1,19 +1,16 @@
 import { getTSchemaValidator, normalizeYupError } from '../src'
 import { TransformTypeMode } from '../src/runtimeSchemaValidation'
+import { syncAllSettled } from '../src/utils'
 
 // TODO: create function to test if parsed cast value is proper
 export const validateDataAgainstSchema = async (
   transformTypeMode: TransformTypeMode,
   schema: any,
   objToValidate: any,
-  output: { status: 'rejected'; reason?: any } | { status: 'fulfilled'; value?: any },
-  { runAsyncValidations = true } = {}
+  output: { status: 'rejected'; reason?: any } | { status: 'fulfilled'; value?: any }
 ) => {
-  const yupValidator = getTSchemaValidator(schema, {
-    transformTypeMode,
-    runAsyncValidations,
-  })
-  const [objValidationRes] = await Promise.allSettled([yupValidator.validate(objToValidate)])
+  const yupValidator = getTSchemaValidator(schema, { transformTypeMode })
+  const [objValidationRes] = syncAllSettled([() => yupValidator.validate(objToValidate)])
 
   if (objValidationRes.status === 'rejected') {
     objValidationRes.reason = normalizeYupError(objValidationRes.reason)
@@ -34,10 +31,9 @@ export const validateDataAgainstSchema = async (
 export const validateSimpleDataAgainstSchema = async (
   schema: any,
   objToValidate: any,
-  output: { status: 'rejected'; reason?: any } | { status: 'fulfilled'; value?: any },
-  { runAsyncValidations = true } = {}
+  output: { status: 'rejected'; reason?: any } | { status: 'fulfilled'; value?: any }
 ) => {
-  await validateDataAgainstSchema('decode', schema, objToValidate, output, { runAsyncValidations })
+  await validateDataAgainstSchema('decode', schema, objToValidate, output)
 }
 
 export const delay = (ms: number) => new Promise(res => setTimeout(res, ms))

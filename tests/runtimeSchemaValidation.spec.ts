@@ -570,8 +570,7 @@ describe('runtimeSchemaValidation', () => {
   describe('async types validations', () => {
     test('1', async () => {
       await validateSimpleDataAgainstSchema(
-        T.addValidator(T.string, async () => {
-          await delay(10)
+        T.addValidator(T.string, () => {
           throw new Error('value is invalid!!!!')
         }),
         'x',
@@ -581,14 +580,14 @@ describe('runtimeSchemaValidation', () => {
 
     test('2', async () => {
       await validateSimpleDataAgainstSchema(
-        T.addValidator(T.string, async () => await delay(10)),
+        T.addValidator(T.string, () => undefined),
         'x',
         { status: 'fulfilled' }
       )
     })
 
     test('3', async () => {
-      const tAsyncType = T.addValidator(T.string, async () => await delay(10))
+      const tAsyncType = T.addValidator(T.string, () => undefined)
 
       await validateSimpleDataAgainstSchema(
         T.oneOf([
