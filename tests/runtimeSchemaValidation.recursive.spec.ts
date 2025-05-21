@@ -109,9 +109,8 @@ describe('recursive schema', () => {
       }),
       {
         status: 'fulfilled',
-      },
-      { runAsyncValidations: false }
-      // when you enable I run async validation, there is bug with oneOf + transform + asyncValidation
+      }
+      // when you enable I run async validation, there is bug with oneOf + transform
       // and performance results are:
       // true === 240ms
       // false === 1700ms

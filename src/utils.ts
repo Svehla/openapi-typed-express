@@ -28,14 +28,18 @@ export const mergePaths = (path1: string, path2: string) => {
 //  * TODO: add tests
 //  */
 export const syncAllSettled = <T>(syncFns: (() => T)[]) => {
-  return syncFns.map(syncFn => {
+  const results: PromiseSettledResult<T>[] = []
+
+  for (const syncFn of syncFns) {
     try {
-      const data = syncFn()
-      return { status: 'fulfilled' as const, data } as const
+      const value = syncFn()
+      results.push({ status: 'fulfilled', value })
     } catch (err) {
-      return { status: 'rejected' as const, reason: err } as const
+      results.push({ status: 'rejected', reason: err })
     }
-  })
+  }
+
+  return results
 }
 
 export const validateUntilFirstSuccess = (validationFns: any[]) => {

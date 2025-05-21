@@ -39,11 +39,10 @@ export const convertSchemaToYupValidationObject = (
   schema: TSchema,
   extra?: {
     transformTypeMode?: TransformTypeMode
-    runAsyncValidations?: boolean
   }
 ): yup.MixedSchema<any, any, any> => {
   const transformTypeMode = extra?.transformTypeMode ?? 'decode'
-  const runAsyncValidations = extra?.runAsyncValidations ?? true
+  const runAsyncValidations = false
   let yupValidator = yup as any
 
   if (schema?.type === 'array') {
@@ -157,7 +156,6 @@ export const convertSchemaToYupValidationObject = (
           if (transformTypeMode === 'decode' || transformTypeMode === 'keep-decoded') {
             const transformedItem = convertSchemaToYupValidationObject(schema.encodedTSchema, {
               ...extra,
-              runAsyncValidations: false,
             }).validateSync(value, { abortEarly: false })
 
             if (transformTypeMode === 'keep-decoded') return transformedItem
@@ -168,14 +166,12 @@ export const convertSchemaToYupValidationObject = (
             convertSchemaToYupValidationObject(schema.decodedTSchema, {
               ...extra,
               transformTypeMode: 'keep-encoded',
-              runAsyncValidations: false,
             }).validateSync(newValue, { abortEarly: false })
 
             return newValue
           } else if (transformTypeMode === 'encode' || transformTypeMode === 'keep-encoded') {
             const transformedItem = convertSchemaToYupValidationObject(schema.decodedTSchema, {
               ...extra,
-              runAsyncValidations: false,
             }).validateSync(value, { abortEarly: false })
 
             if (transformTypeMode === 'keep-encoded') return transformedItem
@@ -186,7 +182,6 @@ export const convertSchemaToYupValidationObject = (
             convertSchemaToYupValidationObject(schema.encodedTSchema, {
               ...extra,
               transformTypeMode: 'keep-decoded',
-              runAsyncValidations: false,
             }).validateSync(newValue, { abortEarly: false })
 
             return newValue
@@ -262,7 +257,6 @@ export const convertSchemaToYupValidationObject = (
 
     const extraNoAsyncValidation = {
       ...extra,
-      runAsyncValidations: false, // cannot run async function inside .transform
     }
 
     const validators = schema.options.map(o =>
@@ -279,8 +273,9 @@ export const convertSchemaToYupValidationObject = (
           return value
         }
 
-        // yup does not support oneOf with enum discriminator, so there is CPU optimization for it
         const maybeMatchedItem = (() => {
+          // --
+          // yup does not support oneOf with enum discriminator, so there is CPU/error output log optimization for it
           const enumDiscriminatorKey = getOneOfEnumDiscriminator(schema)
 
           if (enumDiscriminatorKey) {
@@ -302,6 +297,7 @@ export const convertSchemaToYupValidationObject = (
               ])
             }
           }
+          // -
 
           return validateUntilFirstSuccess(
             schema.options.map((_o, index) => {
@@ -321,12 +317,6 @@ export const convertSchemaToYupValidationObject = (
             const allOptionSchemaErrors = maybeMatchedItem.reasons
               .map(reason => normalizeYupError(reason))
               .filter(notNullable)
-
-            // TODO: find the best matching error to have short log
-            // const analyzedErrors = schemasErrors.map(i => i.map(ii => {
-            //     const pathNesting = ii.path ? ii.path.split('.').length + 1 : 0
-            //     return { path:ii.path, errors: ii.errors, pathNesting, errorsCount: ii.errors.length }
-            //   }))
 
             const errMsg = {
               message: 'data does not match any of allowed schemas',
@@ -359,71 +349,7 @@ export const convertSchemaToYupValidationObject = (
             })
           }
 
-          const value = conf.originalValue
-          if (schema.required === false && (value === null || value === undefined)) {
-            return true
-          }
-          // CPU HEAVY BUG PROBLEM
-          // combination of oneOf + async validation  make super slow
-          // yup does not support transform + async validation and thanks to that
-          // this is bullshit implementation which works, but is very CPU un-optimized
-          // easy validation may take 10000x more time...
-          // there are a few options how to fix it:
-          // - remove yup and write a custom implementation
-          // - remove async validations
-          // - remove custom types
-          // - disable runtime validations
-          // source: https://github.com/jquense/yup/issues/238
-          if (runAsyncValidations === false) {
-            return true
-          } else {
-            try {
-              // ---- bad un-optimized code ----
-              // ---- I HATE YUP!!!! ----
-
-              // TODO: add short time memoization!!! to share validateSync
-              // duplicated for extremely slow CPU duplicated code!!!
-              const maybeMatchedItem = validateUntilFirstSuccess(
-                schema.options.map((_o, index) => {
-                  // oneOf exec a lot of un-optimized validateSync of the same data structure...
-                  // because of it its CPU slow as fuck
-
-                  return () =>
-                    validators[index].validateSync(value, {
-                      // but then it starts to return error: Error, instead of Error[]
-                      abortEarly: false,
-                    })
-                })
-              )
-
-              if (maybeMatchedItem.status === 'rejected')
-                throw new Error('invalid oneOf transform function call')
-              // const matchOptionIndex = areValidOptions.findIndex(i => i === true)
-
-              const activeTSchema = schema.options[maybeMatchedItem.index]
-
-              // de-reference this to be sure that its properly put into the async arrow fn
-              const { path, createError } = this
-
-              return (async () => {
-                try {
-                  // triplicate nested validation slow CPU code...
-                  await convertSchemaToYupValidationObject(activeTSchema, extra).validate(value, {
-                    abortEarly: false,
-                  })
-                  return true
-                } catch (err: any) {
-                  return createError({
-                    path: path,
-                    message: (err as Error)?.message ?? '',
-                  })
-                }
-              })()
-            } catch (err: any) {
-              return this.createError({ path: this.path, message: (err as Error)?.message ?? '' })
-            }
-            // ---- --------------------- ----
-          }
+          return true
         },
       })
   } else if (schema?.type === 'lazy') {
@@ -441,15 +367,15 @@ export const convertSchemaToYupValidationObject = (
   }
 
   // TODO: call async fn, if it returns promise, ignore result, if not, do a validation...
-  if (runAsyncValidations && schema.validator) {
+  if (schema.validator) {
     yupValidator = yupValidator.test({
-      name: 'async-validation',
-      test: async function (value: any) {
+      name: 'custom-validation',
+      test: function (value: any) {
         if (schema.required === false && (value === null || value === undefined)) return true
         try {
           // if transformType parse something as error, we want to recreate error
           if (value instanceof Error) return false
-          await schema.validator?.(
+          schema.validator?.(
             // @ts-ignore
             value
           )
@@ -470,38 +396,29 @@ export const convertSchemaToYupValidationObject = (
 // getTSchemaSanitization // sanitization do transformation + add validations...
 export const getTSchemaValidator = <TSch extends TSchema, TT extends TransformTypeMode>(
   tSchema: TSch,
-  extra?: { transformTypeMode?: TT; runAsyncValidations?: boolean }
+  extra?: { transformTypeMode?: TT }
 ) => {
   const convertor = convertSchemaToYupValidationObject(tSchema, extra)
 
-  const validate = async (value: any, { stripUnknown = true, abortEarly = false } = {}) => {
-    const transformedValue = await convertor.validate(value, { abortEarly, stripUnknown })
-    // TODO: should I add encode/decode type inferring?
-    return transformedValue // as any as InferSchemaTypeEncDec<TSch, TT> // possible infinite deep recursion..
-  }
-
-  const validateSync = (value: any, { stripUnknown = true, abortEarly = false } = {}) => {
+  const validate = (value: any, { stripUnknown = true, abortEarly = false } = {}) => {
     const transformedValue = convertor.validateSync(value, { abortEarly, stripUnknown })
     // TODO: should I add encode/decode type inferring?
     return transformedValue // as any as InferSchemaTypeEncDec<TSch, TT> // possible infinite deep recursion..
   }
 
-  const isValid = async (value: any) => {
+  const isValid = (value: any) => {
     try {
-      await validate(value)
+      validate(value)
       return true
     } catch (err) {
       return false
     }
   }
-  const isValidSync = (value: any) => {
-    try {
-      validateSync(value)
-      return true
-    } catch (err) {
-      return false
-    }
-  }
+
+  // @deprecated
+  const validateSync = validate
+  // @deprecated
+  const isValidSync = isValid
 
   return { validate, validateSync, isValid, isValidSync }
 }

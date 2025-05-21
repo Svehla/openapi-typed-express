@@ -1,4 +1,4 @@
-import { DeepPartial, deepMerge, mergePaths } from './utils'
+import { DeepPartial, deepMerge, mergePaths, syncAllSettled } from './utils'
 import { NextFunction, Request, Response } from 'express'
 import { T } from './schemaBuilder'
 import { UrlsMethodDocs, convertUrlsMethodsSchemaToOpenAPI } from './openAPIFromSchema'
@@ -114,13 +114,13 @@ export const getApiDocInstance =
           paramValidationRes,
           queryValidationRes,
           bodyValidationRes,
-        ] = await Promise.allSettled([
+        ] = syncAllSettled([
           // strict is not working with transform for custom data types...
           // TODO: may it be optional?
-          headersValidator?.validate(req.headers),
-          paramsValidator?.validate(req.params),
-          queryValidator?.validate(req.query),
-          bodyValidator?.validate(req.body),
+          () => headersValidator?.validate(req.headers),
+          () => paramsValidator?.validate(req.params),
+          () => queryValidator?.validate(req.query),
+          () => bodyValidator?.validate(req.body),
         ])
 
         if (
@@ -159,7 +159,7 @@ export const getApiDocInstance =
 
         const tSend = async (data: any) => {
           try {
-            const transformedData = returnsValidator ? await returnsValidator.validate(data) : data
+            const transformedData = returnsValidator ? returnsValidator.validate(data) : data
 
             res.send(transformedData)
           } catch (errObj) {

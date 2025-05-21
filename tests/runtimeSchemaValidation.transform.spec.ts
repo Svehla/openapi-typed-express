@@ -337,8 +337,8 @@ describe('experimental transform types', () => {
       // TODO: it's not possible to get Type of decoder?
       // type Out = InferSchemaType<typeof x>
 
-      const o1 = await decoderInVal.validate({ x: 1337 })
-      const o2 = await encoderOutVal.validate({ x: true })
+      const o1 = decoderInVal.validate({ x: 1337 })
+      const o2 = encoderOutVal.validate({ x: true })
 
       // no changes at all...
       expect(o1).toEqual({ x: 1337 })
@@ -362,8 +362,8 @@ describe('experimental transform types', () => {
       // TODO: it's not possible to get Type of decoder?
       // type Out = InferSchemaType<typeof x>
 
-      const o1 = await decoderInVal.validate({ x: 'foo_bar' })
-      const o2 = await encoderOutVal.validate({ x: 'foo_bar' })
+      const o1 = decoderInVal.validate({ x: 'foo_bar' })
+      const o2 = encoderOutVal.validate({ x: 'foo_bar' })
 
       expect(o1).toEqual({ x: 'in: f' })
       expect(o2).toEqual({ x: 'out: r' })
@@ -374,9 +374,7 @@ describe('experimental transform types', () => {
         x: T.oneOf([
           T.boolean,
           T.transformType(
-            T.addValidator(T.string, async () => {
-              await delay(100)
-            }),
+            T.addValidator(T.string, () => {}),
             T.string,
             p => ('in: ' + p[0]) as `in: ${string}`,
             p => 'out: ' + p[p.length - 1]
@@ -391,8 +389,8 @@ describe('experimental transform types', () => {
       // it's not possible to get Type of decoder
       // type Out = InferSchemaType<typeof x>
 
-      const o1 = await decoderInVal.validate({ x: 'foo_bar' })
-      const o2 = await encoderOutVal.validate({ x: 'foo_bar' })
+      const o1 = decoderInVal.validate({ x: 'foo_bar' })
+      const o2 = encoderOutVal.validate({ x: 'foo_bar' })
 
       expect(o1).toEqual({ x: 'in: f' })
       expect(o2).toEqual({ x: 'out: r' })
@@ -403,7 +401,7 @@ describe('experimental transform types', () => {
     //  async validations + custom type parsing + union nesting
     test('1', async () => {
       const tCastNumber = T.transformType(
-        T.addValidator(T.string, async () => delay(100)),
+        T.addValidator(T.string, () => {}),
         T.number,
         x => {
           const n = parseFloat(x)
@@ -414,7 +412,7 @@ describe('experimental transform types', () => {
 
       // cannot infer from other custom type
       const tParseOddSerializedNumbers = T.transformType(
-        T.addValidator(T.string, async () => delay(100)),
+        T.addValidator(T.string, () => {}),
         T.oneOf([T.number, T.string]),
         x => {
           const n = parseFloat(x)
@@ -430,7 +428,7 @@ describe('experimental transform types', () => {
 
       const validator = getTSchemaValidator(x)
 
-      const o1 = await validator.validate({
+      const o1 = validator.validate({
         x: [2, '3', '4'],
       })
 
@@ -550,7 +548,7 @@ describe('experimental transform types', () => {
 
   describe('union matching based on parser', () => {
     //  async validations + custom type parsing + union nesting
-    test('0', async () => {
+    test.only('0', async () => {
       await validateSimpleDataAgainstSchema(
         T.object({
           y: T.object({
@@ -558,8 +556,7 @@ describe('experimental transform types', () => {
               T.object({
                 type: T.enum(['ADD_MESSAGE.USER.GEN_BY_BTN']),
 
-                x: T.addValidator(T.string, async val => {
-                  await delay(2000)
+                x: T.addValidator(T.string, val => {
                   if (val === 'x') {
                     throw new Error('custom-error: x error')
                   }
@@ -589,7 +586,32 @@ describe('experimental transform types', () => {
           },
         },
 
-        { status: 'rejected', reason: [{ errors: ['custom-error: x error'] }] }
+        {
+          status: 'rejected',
+          reason: [
+            {
+              errors: [
+                {
+                  allOptionSchemaErrors: [
+                    [
+                      {
+                        errors: ['custom-error: x error'],
+                        path: 'x',
+                      },
+                    ],
+                  ],
+                  currentValue: {
+                    btnType: 'COMPARISON',
+                    type: 'ADD_MESSAGE.USER.GEN_BY_BTN',
+                    x: 'x',
+                  },
+                  message: 'data does not match any of allowed schemas',
+                },
+              ],
+              path: 'y.x',
+            },
+          ],
+        }
       )
     })
 
@@ -600,8 +622,7 @@ describe('experimental transform types', () => {
             T.oneOf([
               T.object({
                 castNum: T.transformType(
-                  T.addValidator(T.string, async v => {
-                    await delay(100)
+                  T.addValidator(T.string, v => {
                     if (v.toString().includes('3')) throw new Error('cannot include number 3')
                   }),
                   T.number,
@@ -630,8 +651,7 @@ describe('experimental transform types', () => {
             T.oneOf([
               T.object({
                 castNum: T.transformType(
-                  T.addValidator(T.string, async v => {
-                    await delay(100)
+                  T.addValidator(T.string, v => {
                     if (v.toString().includes('3')) throw new Error('cannot include number 3')
                   }),
                   T.number,

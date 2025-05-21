@@ -10,8 +10,8 @@ const generateServiceAPI = async () => {
     fs.mkdirSync(mocksPath)
   }
 
-  const url = 'http://localhost:5000/api-docs/'
-  const uiSwaggerUrl = 'http://localhost:5000/swagger-ui/index.html'
+  const url = 'http://localhost:5656/api-docs/'
+  const uiSwaggerUrl = 'http://localhost:5656/swagger-ui/index.html'
 
   const res = await fetch(url)
 
