@@ -42,7 +42,6 @@ export const convertSchemaToYupValidationObject = (
   }
 ): yup.MixedSchema<any, any, any> => {
   const transformTypeMode = extra?.transformTypeMode ?? 'decode'
-  const runAsyncValidations = false
   let yupValidator = yup as any
 
   if (schema?.type === 'array') {
