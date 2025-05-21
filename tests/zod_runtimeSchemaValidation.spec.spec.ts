@@ -1,5 +1,6 @@
-import { T } from '../src'
-import { delay, validateSimpleDataAgainstSchema } from './shared'
+import { T } from '../src/index'
+import { delay } from './shared'
+import { validateSimpleDataAgainstSchema } from './zod_shared'
 
 describe('runtimeSchemaValidation', () => {
   describe('default types', () => {
@@ -215,20 +216,31 @@ describe('runtimeSchemaValidation', () => {
     test('5', async () => {
       await validateSimpleDataAgainstSchema(T.null_string, null, { status: 'fulfilled' })
     })
+
     test('51', async () => {
       await validateSimpleDataAgainstSchema(T.number, '3', {
-        reason: [
-          { path: '', errors: ['this must be a `number` type, but the final value was: `"3"`.'] },
-        ],
         status: 'rejected',
+        reason: [
+          {
+            code: 'invalid_type',
+            expected: 'number',
+            received: 'string',
+            path: [],
+            message: 'Expected number, received string',
+          },
+        ],
       })
     })
+
     test('52', async () => {
       await validateSimpleDataAgainstSchema(T.boolean, 'true', {
         reason: [
           {
-            path: '',
-            errors: ['this must be a `boolean` type, but the final value was: `"true"`.'],
+            code: 'invalid_type',
+            expected: 'boolean',
+            received: 'string',
+            path: [],
+            message: 'Expected boolean, received string',
           },
         ],
         status: 'rejected',
@@ -243,10 +255,17 @@ describe('runtimeSchemaValidation', () => {
     test('7', async () => {
       await validateSimpleDataAgainstSchema(T.string, null, {
         status: 'rejected',
-        reason: [{ path: '', errors: ['this cannot be null'] }],
+        reason: [
+          {
+            code: 'invalid_type',
+            expected: 'string',
+            received: 'null',
+            path: [],
+            message: 'Expected string, received null',
+          },
+        ],
       })
     })
-
     test('7.1', async () => {
       await validateSimpleDataAgainstSchema(
         T.object({ x: T.list(T.string) }),
@@ -255,8 +274,7 @@ describe('runtimeSchemaValidation', () => {
           status: 'rejected',
           reason: [
             {
-              path: 'x[0]',
-              errors: ['x[0] must be a `string` type, but the final value was: `true`.'],
+              path: ['x', 0],
             },
           ],
         }
@@ -271,15 +289,14 @@ describe('runtimeSchemaValidation', () => {
           status: 'rejected',
           reason: [
             {
-              path: 'x[0]',
-              errors: ['x[0] must be a `boolean` type, but the final value was: `"true"`.'],
+              path: ['x', 0],
             },
           ],
         }
       )
     })
 
-    test('7.2', async () => {
+    test('7.3', async () => {
       await validateSimpleDataAgainstSchema(
         T.object({ x: T.list(T.string) }),
         { x: [3] },
@@ -287,8 +304,7 @@ describe('runtimeSchemaValidation', () => {
           status: 'rejected',
           reason: [
             {
-              path: 'x[0]',
-              errors: ['x[0] must be a `string` type, but the final value was: `3`.'],
+              path: ['x', 0],
             },
           ],
         }
@@ -306,13 +322,11 @@ describe('runtimeSchemaValidation', () => {
         status: 'rejected',
         reason: [
           {
-            path: '',
-            errors: ['this must be a `boolean` type, but the final value was: `"true"`.'],
+            path: [],
           },
         ],
       })
     })
-
     test('10', async () => {
       await validateSimpleDataAgainstSchema(
         T.object({
@@ -324,12 +338,10 @@ describe('runtimeSchemaValidation', () => {
           status: 'rejected',
           reason: [
             {
-              path: 'bool',
-              errors: ['bool must be a `boolean` type, but the final value was: `"1234"`.'],
+              path: ['bool'],
             },
             {
-              path: 'num',
-              errors: ['num must be a `number` type, but the final value was: `true`.'],
+              path: ['num'],
             },
           ],
         }
@@ -347,14 +359,19 @@ describe('runtimeSchemaValidation', () => {
           status: 'rejected',
           reason: [
             {
-              path: 'bool',
-              errors: ['bool must be a `boolean` type, but the final value was: `"1234"`.'],
+              code: 'invalid_type',
+              expected: 'boolean',
+              message: 'Expected boolean, received string',
+              path: ['bool'],
+              received: 'string',
             },
             {
-              path: 'num',
-              errors: ['num must be a `number` type, but the final value was: `true`.'],
+              code: 'invalid_type',
+              expected: 'number',
+              message: 'Expected number, received boolean',
+              path: ['num'],
+              received: 'boolean',
             },
-            ,
           ],
         }
       )
@@ -406,8 +423,11 @@ describe('runtimeSchemaValidation', () => {
           status: 'rejected',
           reason: [
             {
-              path: 'dynKey2',
-              errors: ['dynKey2 must be a `string` type, but the final value was: `3`.'],
+              code: 'invalid_type',
+              expected: 'string',
+              message: 'Expected string, received number',
+              path: ['dynKey2'],
+              received: 'number',
             },
           ],
         }
@@ -529,7 +549,7 @@ describe('runtimeSchemaValidation', () => {
     test('5', async () => {
       await validateSimpleDataAgainstSchema(T.extra.minMaxNumber(1, 5), 6, {
         status: 'rejected',
-        reason: [{ path: '', errors: ['value needs to be > 5'] }],
+        reason: [{ path: [] }],
       })
     })
   })
@@ -551,7 +571,7 @@ describe('runtimeSchemaValidation', () => {
     test('2', async () => {
       await validateSimpleDataAgainstSchema(tObjDate, undefined, {
         status: 'fulfilled',
-        value: {}, // wtf???
+        value: {},
       })
     })
 
@@ -570,8 +590,8 @@ describe('runtimeSchemaValidation', () => {
   describe('async types validations', () => {
     test('1', async () => {
       await validateSimpleDataAgainstSchema(
-        T.addValidator(T.string, async () => {
-          await delay(10)
+        T.addValidator(T.string, () => {
+          // await delay(10)
           throw new Error('value is invalid!!!!')
         }),
         'x',
@@ -581,14 +601,14 @@ describe('runtimeSchemaValidation', () => {
 
     test('2', async () => {
       await validateSimpleDataAgainstSchema(
-        T.addValidator(T.string, async () => await delay(10)),
+        T.addValidator(T.string, () => true),
         'x',
         { status: 'fulfilled' }
       )
     })
 
     test('3', async () => {
-      const tAsyncType = T.addValidator(T.string, async () => await delay(10))
+      const tAsyncType = T.addValidator(T.string, () => true)
 
       await validateSimpleDataAgainstSchema(
         T.oneOf([
@@ -632,24 +652,10 @@ describe('oneOf', () => {
         status: 'rejected',
         reason: [
           {
-            path: '',
-            errors: [
-              {
-                message: 'data does not match any of allowed schemas',
-                currentValue: {
-                  isOk: true,
-                  type: '<>',
-                },
-                allOptionSchemaErrors: [
-                  [
-                    {
-                      errors: 'type must be one of [a] type, but the final value was: `"<>"`.',
-                      path: '',
-                    },
-                  ],
-                ],
-              },
-            ],
+            code: 'invalid_union_discriminator',
+            options: ['a', 'b', 'c'],
+            path: ['type'],
+            message: "Invalid discriminator value. Expected 'a' | 'b' | 'c'",
           },
         ],
       }

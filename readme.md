@@ -269,3 +269,8 @@ Null Handling:
 decoder = parser
 encoder = serializer
 transform = encoder + decoder
+
+#### TODO:
+- remove async validations
+- do porting to zod
+- make smarter union object matching 

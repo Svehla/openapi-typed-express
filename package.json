@@ -1,6 +1,6 @@
 {
   "name": "swagger-typed-express-docs",
-  "version": "0.8.19",
+  "version": "0.8.20",
   "description": "Simple express runtime parser and documentation swagger generator with 100% support of Typescript static types",
   "types": "dist/index.d.ts",
   "scripts": {
@@ -20,7 +20,8 @@
     "ts:generate-api": "ts-node npm_scripts/generate-ts-types.ts"
   },
   "dependencies": {
-    "yup": "^1.6.1"
+    "yup": "^1.6.1",
+    "zod": "^3.25.7"
   },
   "devDependencies": {
     "@types/express": "^5.0.0",
