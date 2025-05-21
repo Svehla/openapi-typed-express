@@ -643,8 +643,8 @@ describe('oneOf', () => {
                 allOptionSchemaErrors: [
                   [
                     {
-                      errors: 'type must be one of [a] type, but the final value was: `"<>"`.',
-                      path: '',
+                      errors: ['type must be one of [a] type, but the final value was: `"<>"`.'],
+                      path: 'type',
                     },
                   ],
                 ],

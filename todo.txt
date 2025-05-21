@@ -1,3 +1,6 @@
+# main priority
+- rename encoded/decoded -> parser/serializer
+- remove async validations
 
 TODO:
 - Create readme docs for the whole project

@@ -1,6 +1,7 @@
 import * as yup from 'yup'
-import { mapEntries, notNullable, syncAllSettled, validateUntilFirstSuccess } from './utils'
-import { TOneOf, TSchema } from './tsSchema'
+import { mapEntries, notNullable, validateUntilFirstSuccess } from './utils'
+import { TSchema } from './tsSchema'
+import { getOneOfEnumDiscriminator } from './tSchemaDiscriminator'
 
 /**
  * yup errors are stringified into stack trace
@@ -157,7 +158,7 @@ export const convertSchemaToYupValidationObject = (
             const transformedItem = convertSchemaToYupValidationObject(schema.encodedTSchema, {
               ...extra,
               runAsyncValidations: false,
-            }).validateSync(value, { abortEarly: true })
+            }).validateSync(value, { abortEarly: false })
 
             if (transformTypeMode === 'keep-decoded') return transformedItem
 
@@ -168,14 +169,14 @@ export const convertSchemaToYupValidationObject = (
               ...extra,
               transformTypeMode: 'keep-encoded',
               runAsyncValidations: false,
-            }).validateSync(newValue, { abortEarly: true })
+            }).validateSync(newValue, { abortEarly: false })
 
             return newValue
           } else if (transformTypeMode === 'encode' || transformTypeMode === 'keep-encoded') {
             const transformedItem = convertSchemaToYupValidationObject(schema.decodedTSchema, {
               ...extra,
               runAsyncValidations: false,
-            }).validateSync(value, { abortEarly: true })
+            }).validateSync(value, { abortEarly: false })
 
             if (transformTypeMode === 'keep-encoded') return transformedItem
 
@@ -296,7 +297,9 @@ export const convertSchemaToYupValidationObject = (
 
               const matchingValidator = validators[matchingSchemaIndex] ?? validators[0]
               return validateUntilFirstSuccess([
-                () => matchingValidator.validateSync(value, { abortEarly: true }),
+                // code could be optimized, if we'll set abortEarly: false,
+                // but then it starts to return error: Error, instead of Error[]
+                () => matchingValidator.validateSync(value, { abortEarly: false }),
               ])
             }
           }
@@ -307,6 +310,7 @@ export const convertSchemaToYupValidationObject = (
               // because of it its CPU slow as fuck
               return () =>
                 validators[index].validateSync(value, {
+                  // but then it starts to return error: Error, instead of Error[]
                   abortEarly: false,
                 })
             })
@@ -387,6 +391,7 @@ export const convertSchemaToYupValidationObject = (
 
                   return () =>
                     validators[index].validateSync(value, {
+                      // but then it starts to return error: Error, instead of Error[]
                       abortEarly: false,
                     })
                 })
@@ -500,50 +505,4 @@ export const getTSchemaValidator = <TSch extends TSchema, TT extends TransformTy
   }
 
   return { validate, validateSync, isValid, isValidSync }
-}
-
-// ----
-/**
- * Determines if the oneOf schema has a discriminator based on enum value.
- * Returns the discriminator key if all items are objects, have the same key with enum value,
- * and all these enum values are unique.
- */
-const getOneOfEnumDiscriminator = (schema: TOneOf): string | null => {
-  // Check if all items are objects
-  const allItemsAreObjects = schema.options.every(option => option.type === 'object')
-  if (!allItemsAreObjects || schema.options.length === 0) {
-    return null
-  }
-
-  // Take the first object and find keys that are enums with a single value
-  const firstObjectProperties = schema.options[0].properties
-  const potentialDiscriminators = Object.entries(firstObjectProperties)
-    // @ts-expect-error
-    .filter(([_, v]) => v.type === 'enum' && v.options.length === 1)
-    .map(([k]) => k)
-
-  // For each potential discriminator, check if it exists in all objects
-  for (const discriminatorKey of potentialDiscriminators) {
-    // Check if all objects have this key as an enum with a single value
-    const allHaveDiscriminator = schema.options.every(
-      option =>
-        option.properties[discriminatorKey]?.type === 'enum' &&
-        option.properties[discriminatorKey]?.options.length === 1
-    )
-
-    if (allHaveDiscriminator) {
-      // Get all discriminator values
-      const discriminatorValues = schema.options.map(
-        option => option.properties[discriminatorKey].options[0]
-      )
-
-      // Check if all values are unique
-      const uniqueValues = new Set(discriminatorValues)
-      if (uniqueValues.size === discriminatorValues.length) {
-        return discriminatorKey
-      }
-    }
-  }
-
-  return null
 }
