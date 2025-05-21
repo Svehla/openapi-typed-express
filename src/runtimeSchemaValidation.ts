@@ -187,7 +187,7 @@ export const convertSchemaToYupValidationObject = (
               ...extra,
               transformTypeMode: 'keep-decoded',
               runAsyncValidations: false,
-            }).validateSync(newValue, { abortEarly: true })
+            }).validateSync(newValue, { abortEarly: false })
 
             return newValue
             // return transformedItem
@@ -279,8 +279,7 @@ export const convertSchemaToYupValidationObject = (
           return value
         }
 
-        // make type dynamic => allItemsHasNamedEnum
-
+        // yup does not support oneOf with enum discriminator, so there is CPU optimization for it
         const maybeMatchedItem = (() => {
           const enumDiscriminatorKey = getOneOfEnumDiscriminator(schema)
 
