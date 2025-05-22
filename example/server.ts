@@ -8,7 +8,7 @@ import { getMock_apiDocInstance } from '../src/typedExpressDocs'
 import { tSchemaOfTSchema } from '../src/tSchemaOfTSchema'
 
 const app = express()
-const port = 5000
+const port = 5656
 
 app.use(express.urlencoded({ extended: true }))
 app.use(express.json())
@@ -74,8 +74,7 @@ app.get(
         T.oneOf([
           T.object({
             castNum: T.transformType(
-              T.addValidator(T.string, async v => {
-                await delay(100)
+              T.addValidator(T.string, v => {
                 if (v.toString().includes('3')) throw new Error('cannot include number 3')
               }),
               T.number,
@@ -103,24 +102,21 @@ app.get(
     body: T.object({
       obj: T.object({
         a: T.transformType(
-          T.addValidator(T.string, async () => {
-            await delay(10)
+          T.addValidator(T.string, () => {
             throw new Error('value is... invalid!!!!')
           }),
           T.any,
           v => v
         ),
         b: T.transformType(
-          T.addValidator(T.string, async () => {
-            await delay(1_000)
+          T.addValidator(T.string, () => {
             throw new Error('value is ... ... ... invalid!!!!')
           }),
           T.string,
           v => v
         ),
         c: T.transformType(
-          T.addValidator(T.string, async () => {
-            await delay(1_000)
+          T.addValidator(T.string, () => {
             throw new Error('value is ... ... ... invalid!!!!')
           }),
           T.string,

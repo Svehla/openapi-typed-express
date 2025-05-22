@@ -103,7 +103,7 @@ export const convertSchemaToZodValidationObject = (
           console.log('dpc0')
           //   TADY je bug! nedávám tam transformed data nějak...
           const transformedItem = encodedSchema.parse(value)
-          console.log('dpc', transformedItem)
+          console.log('dpc1', typeof transformedItem, transformedItem)
 
           // If mode is keep-decoded, return the transformed item without further processing
           //   if (transformTypeMode === 'keep-decoded') return transformedItem
@@ -225,6 +225,7 @@ export const convertSchemaToZodValidationObject = (
         try {
           // Use synchronous version of validator
           if (schema.validator) {
+            // @ts-ignore
             schema.validator(value)
           }
           return true
@@ -236,6 +237,7 @@ export const convertSchemaToZodValidationObject = (
         message: (value: unknown): string => {
           try {
             if (schema.validator) {
+              // @ts-ignore
               schema.validator(value)
             }
             return 'Validation failed'
