@@ -153,6 +153,9 @@ export const convertSchemaToYupValidationObject = (
           // parser cannot return Promise! https://github.com/jquense/yup/issues/238
           // TODO: decode & encode | parser & serializer
           if (transformTypeMode === 'decode' || transformTypeMode === 'keep-decoded') {
+            // validate if type is correct=> this enables nesting tranform types
+            // zod have a problem with nesting tranform types => there could be some runtime validation
+            // if transform type is nested, it'll throw tschema error probably???
             const transformedItem = convertSchemaToYupValidationObject(schema.encodedTSchema, {
               ...extra,
             }).validateSync(value, { abortEarly: false })
