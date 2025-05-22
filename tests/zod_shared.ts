@@ -1,4 +1,4 @@
-import { convertSchemaToZodValidationObject } from '../src/zodRuntimeSchemaValidations'
+import { zod_convertSchemaToZodValidationObject } from '../src/zodRuntimeSchemaValidations'
 import { TransformTypeMode } from '../src/runtimeSchemaValidation'
 
 export const validateDataAgainstSchema = async (
@@ -7,7 +7,7 @@ export const validateDataAgainstSchema = async (
   objToValidate: any,
   output: { status: 'rejected'; reason?: any } | { status: 'fulfilled'; value?: any }
 ) => {
-  const zodValidator = convertSchemaToZodValidationObject(schema, {
+  const zodValidator = zod_convertSchemaToZodValidationObject(schema, {
     transformTypeMode,
   })
 

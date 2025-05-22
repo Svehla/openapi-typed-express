@@ -24,7 +24,7 @@ export const normalizeZodError = (obj?: any) => {
   }
 }
 
-export const convertSchemaToZodValidationObject = (
+export const zod_convertSchemaToZodValidationObject = (
   schema: TSchema,
   extra?: {
     transformTypeMode?: TransformTypeMode
@@ -38,14 +38,14 @@ export const convertSchemaToZodValidationObject = (
     const zodProperties = Object.entries(schema.properties).reduce<
       Record<string, z.ZodType<any, any, any>>
     >((acc, [key, value]) => {
-      const zodSchema = convertSchemaToZodValidationObject(value, extra)
+      const zodSchema = zod_convertSchemaToZodValidationObject(value, extra)
       acc[key] = value.required ? zodSchema : zodSchema.nullable().optional()
       return acc
     }, {})
 
     zodSchema = z.object(zodProperties)
   } else if (schema.type === 'array') {
-    const itemSchema = convertSchemaToZodValidationObject(schema.items, extra)
+    const itemSchema = zod_convertSchemaToZodValidationObject(schema.items, extra)
     zodSchema = z.array(itemSchema)
   } else if (schema.type === 'string') {
     zodSchema = z.string()
@@ -59,7 +59,7 @@ export const convertSchemaToZodValidationObject = (
     zodSchema = z.any()
   } else if (schema.type === 'oneOf') {
     const optionSchemas = schema.options.map(option =>
-      convertSchemaToZodValidationObject(option, extra)
+      zod_convertSchemaToZodValidationObject(option, extra)
     )
 
     // Check if we can use a discriminated union
@@ -77,18 +77,13 @@ export const convertSchemaToZodValidationObject = (
       zodSchema = z.union(optionSchemas as [z.ZodTypeAny, z.ZodTypeAny, ...z.ZodTypeAny[]])
     }
   } else if (schema.type === 'hashMap') {
-    const valueSchema = convertSchemaToZodValidationObject(schema.property, extra)
+    const valueSchema = zod_convertSchemaToZodValidationObject(schema.property, extra)
     zodSchema = z.record(z.string(), valueSchema)
   } else if (schema.type === 'lazy') {
-    zodSchema = z.lazy(() => convertSchemaToZodValidationObject(schema.getSchema(), extra))
+    zodSchema = z.lazy(() => zod_convertSchemaToZodValidationObject(schema.getSchema(), extra))
   } else if (schema.type === 'transformType') {
     // combine preprocess with the transform by some smart way probably...
     if (transformTypeMode === 'decode') {
-      const decodedSchema = convertSchemaToZodValidationObject(schema.decodedTSchema, {
-        ...extra,
-        transformTypeMode: 'keep-encoded',
-      })
-
       zodSchema = z.preprocess(value => {
         console.log('decode', value, typeof value, schema)
         if (schema.required === false && (value === null || value === undefined)) {
@@ -96,11 +91,11 @@ export const convertSchemaToZodValidationObject = (
         }
 
         try {
-          const encodedSchema = convertSchemaToZodValidationObject(schema.encodedTSchema, {
-            ...extra,
+          const encodedSchema = zod_convertSchemaToZodValidationObject(schema.encodedTSchema, {
+            transformTypeMode: 'keep-decoded',
           })
           // First validate using encodedSchema
-          console.log('dpc0')
+          console.log('dpc0', value)
           //   TADY je bug! nedávám tam transformed data nějak...
           const transformedItem = encodedSchema.parse(value)
           console.log('dpc1', typeof transformedItem, transformedItem)
@@ -121,9 +116,14 @@ export const convertSchemaToZodValidationObject = (
               },
             ])
           }
+
+          const decodedSchema = zod_convertSchemaToZodValidationObject(schema.decodedTSchema, {
+            transformTypeMode: 'keep-encoded',
+          })
           console.log('kuba', newValue)
           // Verify that the decoder returns the correct data type
           decodedSchema.parse(newValue)
+          console.log('kuba2', newValue)
 
           return newValue
         } catch (error) {
@@ -140,18 +140,13 @@ export const convertSchemaToZodValidationObject = (
         }
       }, z.any())
     } else if (transformTypeMode === 'encode') {
-      const encodedSchema = convertSchemaToZodValidationObject(schema.encodedTSchema, {
-        ...extra,
-        transformTypeMode: 'keep-decoded',
-      })
-
       zodSchema = z.preprocess(value => {
         if (schema.required === false && (value === null || value === undefined)) {
           return value
         }
 
         try {
-          const decodedSchema = convertSchemaToZodValidationObject(schema.decodedTSchema, {
+          const decodedSchema = zod_convertSchemaToZodValidationObject(schema.decodedTSchema, {
             ...extra,
           })
           // First validate using decodedSchema
@@ -173,7 +168,10 @@ export const convertSchemaToZodValidationObject = (
               },
             ])
           }
-
+          const encodedSchema = zod_convertSchemaToZodValidationObject(schema.encodedTSchema, {
+            ...extra,
+            transformTypeMode: 'keep-decoded',
+          })
           // Verify that the encoder returns the correct data type
           encodedSchema.parse(newValue)
 
@@ -192,13 +190,13 @@ export const convertSchemaToZodValidationObject = (
         }
       }, z.any())
     } else if (transformTypeMode === 'keep-encoded') {
-      const encodedSchema = convertSchemaToZodValidationObject(schema.encodedTSchema, {
+      const encodedSchema = zod_convertSchemaToZodValidationObject(schema.encodedTSchema, {
         ...extra,
         transformTypeMode: 'keep-decoded',
       })
       zodSchema = encodedSchema
     } else if (transformTypeMode === 'keep-decoded') {
-      const decodedSchema = convertSchemaToZodValidationObject(schema.decodedTSchema, {
+      const decodedSchema = zod_convertSchemaToZodValidationObject(schema.decodedTSchema, {
         ...extra,
         transformTypeMode: 'keep-encoded',
       })
@@ -296,41 +294,26 @@ const getOneOfEnumDiscriminator = (schema: TOneOf): string | null => {
 }
 
 // Abstraction over Zod for validation and transformation
-export const getTSchemaValidator = <TSch extends TSchema, TT extends TransformTypeMode>(
+export const zod_getTSchemaValidator = <TSch extends TSchema, TT extends TransformTypeMode>(
   tSchema: TSch,
   extra?: { transformTypeMode?: TT }
 ) => {
-  const zodValidator = convertSchemaToZodValidationObject(tSchema, extra)
+  const zodValidator = zod_convertSchemaToZodValidationObject(tSchema, extra)
 
-  const validate = async (value: any, { stripUnknown = true } = {}) => {
-    try {
-      return zodValidator.parse(value)
-    } catch (err) {
-      throw err
-    }
-  }
-
-  const validateSync = (value: any, { stripUnknown = true } = {}) => {
+  // zod strip keys by default, so we need to strip them manually
+  const validate = (value: any, { stripUnknown = true } = {}) => {
     return zodValidator.parse(value)
+    // return (stripUnknown ? zodValidator.strip() : zodValidator).parse(value)
   }
 
-  const isValid = async (value: any) => {
+  const isValid = (value: any) => {
     try {
-      await validate(value)
+      zodValidator.parse(value)
       return true
     } catch (err) {
       return false
     }
   }
 
-  const isValidSync = (value: any) => {
-    try {
-      validateSync(value)
-      return true
-    } catch (err) {
-      return false
-    }
-  }
-
-  return { validate, validateSync, isValid, isValidSync }
+  return { validate, isValid }
 }
