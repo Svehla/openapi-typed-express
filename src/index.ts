@@ -17,6 +17,10 @@ export {
 export { tSchemaToTypescript } from './tSchemaToTypescript'
 export { codegenSchemaToJSCode } from './codegen'
 export { tUtils } from './tUtils'
+export {
+  zod_convertSchemaToZodValidationObject,
+  zod_getTSchemaValidator,
+} from './zodRuntimeSchemaValidations'
 
 const tSchema = {
   ...rawT,
