@@ -1,12 +1,13 @@
 import { TObject, TSchema } from './tsSchema'
 import { isObject, mapEntries } from './utils'
+import { z } from 'zod'
 
 type GenerateOpenAPIPathArg = {
-  headersSchema: TObject | null | undefined
-  querySchema: TObject | null | undefined
-  pathSchema: TObject | null | undefined
-  bodySchema: TObject | null | undefined
-  returnsSchema: TSchema | null | undefined
+  headersSchema: z.ZodType | null | undefined
+  querySchema: z.ZodType | null | undefined
+  pathSchema: z.ZodType | null | undefined
+  bodySchema: z.ZodType | null | undefined
+  returnsSchema: z.ZodType | null | undefined
 }
 
 // openapi do not support any type as typescript do

@@ -20,7 +20,8 @@
     "ts:generate-api": "ts-node npm_scripts/generate-ts-types.ts"
   },
   "dependencies": {
-    "yup": "^1.6.1"
+    "yup": "^1.6.1",
+    "zod": "^4.0.17"
   },
   "devDependencies": {
     "@types/express": "^5.0.0",

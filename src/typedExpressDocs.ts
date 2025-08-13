@@ -1,11 +1,11 @@
-import { DeepPartial, deepMerge, mergePaths, syncAllSettled } from './utils'
+import { DeepPartial, deepMerge, mergePaths, tryAllSync } from './utils'
 import { NextFunction, Request, Response } from 'express'
-import { T } from './schemaBuilder'
+import { z } from 'zod'
 import { UrlsMethodDocs, convertUrlsMethodsSchemaToOpenAPI } from './openAPIFromSchema'
-import { getTSchemaValidator, normalizeYupError } from './runtimeSchemaValidation'
+import { normalizeYupError, normalizeZodError } from './runtimeSchemaValidation'
 import { parseUrlFromExpressRegexp } from './expressRegExUrlParser'
-import { InferSchemaType, TSchema } from './tsSchema'
 import { tSchemaToJSValue } from './jsValueToSchema'
+import { getZodValidator } from './runtimeSchemaValidation'
 
 // symbol as a key is not sended via express down to the _routes
 export const __expressTypedHack_key__ = '__expressTypedHack_key__'
@@ -17,11 +17,11 @@ export const __expressOpenAPIHack__ = Symbol('__expressOpenAPIHack__')
 
 type Config = {
   // those are incoming request headers (not the response one)
-  headers?: TSchema
-  params?: Record<string, TSchema>
-  query?: Record<string, TSchema>
-  body?: TSchema
-  returns?: TSchema
+  headers?: z.ZodType
+  params?: Record<string, z.ZodType>
+  query?: Record<string, z.ZodType>
+  body?: z.ZodType
+  returns?: z.ZodType
 }
 
 // eslint-disable-next-line @typescript-eslint/ban-types
@@ -51,50 +51,50 @@ export const getApiDocInstance =
       // express by default binds empty object for params/body/query
       req: Omit<
         Request<
-          InferSchemaType<WrapToTObject<UseEmptyObjectAsDefault<C['params']>>>,
+          z.infer<WrapToTObject<UseEmptyObjectAsDefault<C['params']>>>,
           any,
-          InferSchemaType<C['body']>,
-          InferSchemaType<WrapToTObject<UseEmptyObjectAsDefault<C['query']>>>
+          z.infer<C['body']>,
+          z.infer<WrapToTObject<UseEmptyObjectAsDefault<C['query']>>>
         >,
         'headers'
-      > & { headers: InferSchemaType<WrapToTObject<UseEmptyObjectAsDefault<C['headers']>>> },
+      > & { headers: z.infer<WrapToTObject<UseEmptyObjectAsDefault<C['headers']>>> },
       res: Omit<Response, 'send'> & {
-        send: (data: InferSchemaType<C['returns']>) => void
-        tSend: (data: InferSchemaType<C['returns']>) => void
+        send: (data: z.infer<C['returns']>) => void
+        tSend: (data: z.infer<C['returns']>) => void
       },
       next: NextFunction
     ) => void
   ) => {
     // --- this function is called only for initialization of handlers ---
     const headersSchema = docs.headers ? docs.headers : null
-    const paramsSchema = docs.params ? T.object(docs.params) : null
-    const querySchema = docs.query ? T.object(docs.query) : null
+    const paramsSchema = docs.params ? z.object(docs.params) : null
+    const querySchema = docs.query ? z.object(docs.query) : null
     const bodySchema = docs.body ? docs.body : null
     const returnsSchema = docs.returns ? docs.returns : null
 
-    const headersValidator = headersSchema ? getTSchemaValidator(headersSchema) : null
+    const headersValidator = headersSchema ? getZodValidator(headersSchema) : null
 
     const paramsValidator = paramsSchema
-      ? getTSchemaValidator(paramsSchema, { transformTypeMode: 'decode' })
+      ? getZodValidator(paramsSchema, { transformTypeMode: 'decode' })
       : null
 
     const queryValidator = querySchema
-      ? getTSchemaValidator(querySchema, { transformTypeMode: 'decode' })
+      ? getZodValidator(querySchema, { transformTypeMode: 'decode' })
       : null
 
     const bodyValidator = bodySchema
-      ? getTSchemaValidator(bodySchema, { transformTypeMode: 'decode' })
+      ? getZodValidator(bodySchema, { transformTypeMode: 'decode' })
       : null
 
     const returnsValidator = returnsSchema
-      ? getTSchemaValidator(returnsSchema, { transformTypeMode: 'encode' })
+      ? getZodValidator(returnsSchema, { transformTypeMode: 'encode' })
       : null
 
-    // `apiDocs()` have to return an function because express runtime checks
-    // if handler is a function and if not it throw new Error
+    // `apiDocs()` has to return a function because express runtime checks
+    // if handler is a function and if not it throws new Error
     const lazyInitializeHandler = (message: symbol) => {
-      // if someone forget to call `initApiDocs()` before server starts to listen
-      // each HTTP call to apiDocs()() decorated handler should fails
+      // if someone forgets to call `initApiDocs()` before server starts to listen
+      // each HTTP call to apiDocs()() decorated handler should fail
       // because this fn is synchronous express should return nicely stringified error
       if (message !== __expressOpenAPIHack__) {
         throw new Error('You probably forget to call `initApiDocs()` for typed-express library')
@@ -114,7 +114,7 @@ export const getApiDocInstance =
           paramValidationRes,
           queryValidationRes,
           bodyValidationRes,
-        ] = syncAllSettled([
+        ] = tryAllSync([
           // strict is not working with transform for custom data types...
           // TODO: may it be optional?
           () => headersValidator?.validate(req.headers),
@@ -140,7 +140,7 @@ export const getApiDocInstance =
 
           const errObj = {
             errors: {
-              headers: normalizeYupError(headersErrors),
+              headers: normalizeZodError(headersErrors),
               params: normalizeYupError(paramsErrors),
               query: normalizeYupError(queryErrors),
               body: normalizeYupError(bodyErrors),
@@ -152,10 +152,10 @@ export const getApiDocInstance =
         }
 
         // ==== override casted (transformed) transformTypes into JS runtime objects ====
-        if (headersValidator) req.headers = headersValidationRes.value
-        if (paramsValidator) req.params = paramValidationRes.value
-        if (queryValidator) req.query = queryValidationRes.value
-        if (bodyValidator) req.body = bodyValidationRes.value
+        if (headersValidator) req.headers = headersValidationRes.value as any
+        if (paramsValidator) req.params = paramValidationRes.value as any
+        if (queryValidator) req.query = queryValidationRes.value as any
+        if (bodyValidator) req.body = bodyValidationRes.value as any
 
         const tSend = async (data: any) => {
           try {

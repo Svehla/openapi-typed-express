@@ -2,6 +2,8 @@ import * as yup from 'yup'
 import { mapEntries, notNullable, validateUntilFirstSuccess } from './utils'
 import { TSchema } from './tsSchema'
 import { getOneOfEnumDiscriminator } from './tSchemaDiscriminator'
+import { z } from 'zod'
+import { deprecate } from 'node:util'
 
 /**
  * yup errors are stringified into stack trace
@@ -420,4 +422,120 @@ export const getTSchemaValidator = <TSch extends TSchema, TT extends TransformTy
   const isValidSync = isValid
 
   return { validate, validateSync, isValid, isValidSync }
+}
+
+/**
+ * zod errors are already well structured
+ * this function normalizes them to match the expected format
+ */
+export const normalizeZodError = (obj?: any) => {
+  if (!obj) return undefined
+
+  if (obj instanceof z.ZodError) {
+    return obj.issues.map(error => ({
+      path: error.path.join('.'),
+      errors: [error.message]
+    }))
+  }
+
+  return [{ errors: [obj?.message || 'Unknown error'], path: '' }]
+}
+
+type Mode = 'decode' | 'encode'
+
+type ZDual<Dec extends z.ZodTypeAny, Enc extends z.ZodTypeAny> = {
+  __dual: true
+  decode: Dec
+  encode: Enc
+  // you can now write `z.object({ a: zDual(_schema_, _schema_).optional() })`
+  optional(): ZDual<z.ZodOptional<Dec>, z.ZodOptional<Enc>>
+  nullable(): ZDual<z.ZodNullable<Dec>, z.ZodNullable<Enc>>
+}
+
+export const zDual = <Dec extends z.ZodTypeAny, Enc extends z.ZodTypeAny>(
+  decode: Dec, encode: Enc
+): z.ZodTypeAny => {
+  const self: any = { __dual: true, decode, encode }
+  self.optional = () => zDual(decode.optional(), encode.optional())
+  self.nullable = () => zDual(decode.nullable(), encode.nullable())
+  return self as ZDual<Dec, Enc> as unknown as z.ZodTypeAny
+}
+
+type ValidateReturn<S, TT extends Mode> =
+  S extends ZDual<infer Enc, infer Dec>
+    ? TT extends 'decode'
+      ? z.output<Enc>
+      : z.output<Dec>
+    : S extends z.ZodTypeAny
+      ? z.output<S>
+      : never
+
+type Validator<S, TT extends Mode> = {
+  validate: (
+    value: unknown,
+  ) => ValidateReturn<S, TT>
+  isValid: (value: unknown) => boolean
+}
+
+const isDual = (s: unknown): s is ZDual<any, any> =>
+  !!s && typeof s === 'object' && (s as any).__dual === true
+
+const materialize = (s: z.ZodTypeAny | ZDual<any, any>, mode: Mode): z.ZodTypeAny => {
+  if (isDual(s)) {
+    const out = mode === 'decode' ? s.decode : s.encode
+    return materialize(out as any, mode)
+  }
+
+  if (s instanceof z.ZodObject) {
+    const shape = Object.fromEntries(
+      Object.entries(s.shape).map(([k, v]) => [k, materialize(v as any, mode)])
+    )
+    return z.object(shape as any)
+  }
+  if (s instanceof z.ZodArray) return z.array(materialize(s.element as any, mode))
+  if (s instanceof z.ZodRecord) {
+    const keySchema = materialize((s as any)._def.keyType ?? z.string(), mode)
+    const valSchema = materialize((s as any)._def.valueType, mode)
+    return z.record(keySchema as any, valSchema)
+  }
+  if (s instanceof z.ZodUnion)
+    return z.union(((s as any)._def.options as z.ZodTypeAny[]).map(o => materialize(o, mode)))
+  if ((s as any)?._def?.typeName === 'ZodDiscriminatedUnion') {
+    const du = s as any
+    return z.discriminatedUnion(
+      du._def.discriminator,
+      du._def.options.map((o: any) => materialize(o, mode))
+    )
+  }
+  if (s instanceof z.ZodOptional) return materialize((s as any)._def.innerType, mode).optional()
+  if (s instanceof z.ZodNullable) return materialize((s as any)._def.innerType, mode).nullable()
+  if (s instanceof z.ZodLazy) return z.lazy(() => materialize((s as any)._def.getter(), mode))
+  return s
+}
+
+export const getZodValidator = <
+  S extends z.ZodTypeAny | ZDual<z.ZodTypeAny, z.ZodTypeAny>,
+  TT extends Mode = 'decode'
+>(
+  schema: S,
+  extra?: { transformTypeMode?: TT }
+): Validator<S, TT> => {
+  const mode = (extra?.transformTypeMode ?? 'decode') as TT
+
+  const materializedSchema = materialize(schema, mode)
+
+  const validate = ((value: unknown) => {
+    return materializedSchema.parse(value) as any
+  }) as Validator<S, TT>['validate']
+
+  const isValid = (value: unknown) => {
+    try {
+      validate(value)
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  return { validate, isValid }
 }
