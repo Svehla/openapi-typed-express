@@ -1,10 +1,9 @@
-import { DeepPartial, deepMerge, mergePaths, tryAllSync } from './utils'
+import { DeepPartial, deepMerge, mergePaths } from './utils'
 import { NextFunction, Request, Response } from 'express'
-import { z } from 'zod'
+import { z, ZodObject } from 'zod'
 import { UrlsMethodDocs, convertUrlsMethodsSchemaToOpenAPI } from './openAPIFromSchema'
-import { normalizeYupError, normalizeZodError } from './runtimeSchemaValidation'
+import { Dualish, DualRawShape, MaterializeTypeShape, MaterializeType, normalizeZodError, MaterializeInput } from './runtimeSchemaValidation'
 import { parseUrlFromExpressRegexp } from './expressRegExUrlParser'
-import { tSchemaToJSValue } from './jsValueToSchema'
 import { getZodValidator } from './runtimeSchemaValidation'
 
 // symbol as a key is not sended via express down to the _routes
@@ -16,22 +15,31 @@ export const __expressOpenAPIHack__ = Symbol('__expressOpenAPIHack__')
 // --------------------------------------------------------------------------
 
 type Config = {
-  // those are incoming request headers (not the response one)
-  headers?: z.ZodType
-  params?: Record<string, z.ZodType>
-  query?: Record<string, z.ZodType>
-  body?: z.ZodType
-  returns?: z.ZodType
-}
+  headers?: Dualish;
+  params?: DualRawShape;  // duals allowed
+  query?: DualRawShape;   // duals allowed
+  body?: Dualish;         // may be dual
+  returns?: Dualish;      // may be dual
+};
 
-// eslint-disable-next-line @typescript-eslint/ban-types
-type UseEmptyObjectAsDefault<T> = T extends Record<any, any> ? T : {}
-
-type WrapToTObject<T> = { type: 'object'; required: true; properties: T }
-
-// type WrapToTObjectOrUndef<T> = T extends void
-//   ? undefined
-//   : { type: 'object'; required: true; properties: T }
+type TypedHandleDual<C extends Config> = (
+  req: Omit<
+    Request<
+      C["params"] extends DualRawShape ? MaterializeTypeShape<C["params"], "decode"> : Record<string, never>,
+      any,
+      C["body"]   extends Dualish       ? MaterializeType<C["body"],   "decode">     : unknown,
+      C["query"]  extends DualRawShape  ? MaterializeTypeShape<C["query"], "decode"> : Record<string, never>
+    >,
+    "headers"
+  > & (
+    C["headers"] extends Dualish ? { headers: MaterializeType<C["headers"], "decode"> } : {}
+  ),
+  res: Omit<Response, "send"> & {
+    send : (data: C["returns"] extends Dualish ? MaterializeInput<C["returns"], "encode"> : unknown) => void;
+    transformSend: (data: C["returns"] extends Dualish ? MaterializeInput<C["returns"], "encode"> : unknown) => void;
+  },
+  next: NextFunction
+) => void;
 
 export const getApiDocInstance =
   ({
@@ -46,24 +54,8 @@ export const getApiDocInstance =
     }) => any,
   } = {}) =>
   <C extends Config>(docs: C) =>
-  (
-    handle: (
-      // express by default binds empty object for params/body/query
-      req: Omit<
-        Request<
-          z.infer<WrapToTObject<UseEmptyObjectAsDefault<C['params']>>>,
-          any,
-          z.infer<C['body']>,
-          z.infer<WrapToTObject<UseEmptyObjectAsDefault<C['query']>>>
-        >,
-        'headers'
-      > & { headers: z.infer<WrapToTObject<UseEmptyObjectAsDefault<C['headers']>>> },
-      res: Omit<Response, 'send'> & {
-        send: (data: z.infer<C['returns']>) => void
-        tSend: (data: z.infer<C['returns']>) => void
-      },
-      next: NextFunction
-    ) => void
+  ( // express by default binds empty object for params/body/query
+    handle: TypedHandleDual<C>
   ) => {
     // --- this function is called only for initialization of handlers ---
     const headersSchema = docs.headers ? docs.headers : null
@@ -72,23 +64,11 @@ export const getApiDocInstance =
     const bodySchema = docs.body ? docs.body : null
     const returnsSchema = docs.returns ? docs.returns : null
 
-    const headersValidator = headersSchema ? getZodValidator(headersSchema) : null
-
-    const paramsValidator = paramsSchema
-      ? getZodValidator(paramsSchema, { transformTypeMode: 'decode' })
-      : null
-
-    const queryValidator = querySchema
-      ? getZodValidator(querySchema, { transformTypeMode: 'decode' })
-      : null
-
-    const bodyValidator = bodySchema
-      ? getZodValidator(bodySchema, { transformTypeMode: 'decode' })
-      : null
-
-    const returnsValidator = returnsSchema
-      ? getZodValidator(returnsSchema, { transformTypeMode: 'encode' })
-      : null
+    const headersValidator = getZodValidator(headersSchema, { transformTypeMode: 'decode' })
+    const paramsValidator = getZodValidator(paramsSchema, { transformTypeMode: 'decode' })
+    const queryValidator = getZodValidator(querySchema, { transformTypeMode: 'decode' })
+    const bodyValidator = getZodValidator(bodySchema, { transformTypeMode: 'decode' })
+    const returnsValidator = getZodValidator(returnsSchema, { transformTypeMode: 'encode' })
 
     // `apiDocs()` has to return a function because express runtime checks
     // if handler is a function and if not it throws new Error
@@ -102,48 +82,37 @@ export const getApiDocInstance =
 
       const handleRouteWithRuntimeValidations = async (
         req: Request,
-        res: Response, // & { tSend: (data: C['returns']) => void },
+        res: Response, // & { transformSend: (data: C['returns']) => void },
         next: NextFunction
       ) => {
         // --- this function include runtime validations which are triggered each request ---
 
         // TODO: add formBody? i think its not needed in the modern rest-api
-        const [
-          //
-          headersValidationRes,
-          paramValidationRes,
-          queryValidationRes,
-          bodyValidationRes,
-        ] = tryAllSync([
-          // strict is not working with transform for custom data types...
-          // TODO: may it be optional?
-          () => headersValidator?.validate(req.headers),
-          () => paramsValidator?.validate(req.params),
-          () => queryValidator?.validate(req.query),
-          () => bodyValidator?.validate(req.body),
-        ])
+        const [headersValidationRes, paramValidationRes, queryValidationRes, bodyValidationRes] = [
+          headersValidator?.validate(req.headers),
+          paramsValidator?.validate(req.params),
+          queryValidator?.validate(req.query),
+          bodyValidator?.validate(req.body),
+        ]
 
+        // if there are errors, we need to format them and send them to the client
         if (
-          headersValidationRes.status === 'rejected' ||
-          paramValidationRes.status === 'rejected' ||
-          queryValidationRes.status === 'rejected' ||
-          bodyValidationRes.status === 'rejected'
+          !headersValidationRes.success ||
+          !paramValidationRes.success ||
+          !queryValidationRes.success ||
+          !bodyValidationRes.success
         ) {
-          const headersErrors =
-            headersValidationRes.status === 'rejected' ? headersValidationRes.reason : null
-          const paramsErrors =
-            paramValidationRes.status === 'rejected' ? paramValidationRes.reason : null
-          const queryErrors =
-            queryValidationRes.status === 'rejected' ? queryValidationRes.reason : null
-          const bodyErrors =
-            bodyValidationRes.status === 'rejected' ? bodyValidationRes.reason : null
+          const headersErrors = !headersValidationRes.success ? headersValidationRes.error : null
+          const paramsErrors = !paramValidationRes.success ? paramValidationRes.error : null
+          const queryErrors = !queryValidationRes.success ? queryValidationRes.error : null
+          const bodyErrors = !bodyValidationRes.success ? bodyValidationRes.error : null
 
           const errObj = {
             errors: {
               headers: normalizeZodError(headersErrors),
-              params: normalizeYupError(paramsErrors),
-              query: normalizeYupError(queryErrors),
-              body: normalizeYupError(bodyErrors),
+              params: normalizeZodError(paramsErrors),
+              query: normalizeZodError(queryErrors),
+              body: normalizeZodError(bodyErrors),
             },
           }
 
@@ -152,12 +121,13 @@ export const getApiDocInstance =
         }
 
         // ==== override casted (transformed) transformTypes into JS runtime objects ====
-        if (headersValidator) req.headers = headersValidationRes.value as any
-        if (paramsValidator) req.params = paramValidationRes.value as any
-        if (queryValidator) req.query = queryValidationRes.value as any
-        if (bodyValidator) req.body = bodyValidationRes.value as any
-
-        const tSend = async (data: any) => {
+        if (headersValidator) req.headers = headersValidationRes.data as any
+        if (paramsValidator) req.params = paramValidationRes.data as any
+        if (queryValidator) req.query = queryValidationRes.data as any
+        if (bodyValidator) req.body = bodyValidationRes.data as any
+        
+        /** transform data to the output type before sending it to the client */
+        const transformSend = async (data: any) => {
           try {
             const transformedData = returnsValidator ? returnsValidator.validate(data) : data
 
@@ -165,13 +135,13 @@ export const getApiDocInstance =
           } catch (errObj) {
             res.status(500).send({
               type: 'invalid data came from app handler',
-              error: errorFormatter({ errors: { returns: normalizeYupError(errObj) } }),
+              error: errorFormatter({ errors: { returns: normalizeZodError(errObj) } }),
             })
           }
         }
 
         // @ts-expect-error
-        res.tSend = tSend
+        res.transformSend = transformSend
         // TODO: apply encoder (serializer) for transform types like `Date -> string`
         // @ts-ignore
         return handle(req as any, res, next)
@@ -351,20 +321,3 @@ export const initApiDocs = (
 
   return openApiTypes
 }
-
-// there are not properly typing inferences
-export const getMock_apiDocInstance =
-  ({ errorFormatter = (e => e) as (err: any) => any } = {}) =>
-  <T extends (req: Request, res: Response, next: NextFunction) => any>(
-    a: Parameters<typeof apiDoc>[0]
-  ) =>
-  (_handler: T) => {
-    return getApiDocInstance({ errorFormatter })(a)(
-      // @ts-ignore TS infinite deep recursion
-      (_req, res) => {
-        res.send(a.returns ? tSchemaToJSValue(a.returns) : undefined)
-      }
-    )
-  }
-
-export const mock_apiDoc = getMock_apiDocInstance()

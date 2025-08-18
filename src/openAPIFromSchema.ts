@@ -1,115 +1,37 @@
-import { TObject, TSchema } from './tsSchema'
 import { isObject, mapEntries } from './utils'
-import { z } from 'zod'
+import { z, toJSONSchema } from 'zod'
+import { materialize } from './runtimeSchemaValidation'
 
 type GenerateOpenAPIPathArg = {
-  headersSchema: z.ZodType | null | undefined
-  querySchema: z.ZodType | null | undefined
-  pathSchema: z.ZodType | null | undefined
-  bodySchema: z.ZodType | null | undefined
-  returnsSchema: z.ZodType | null | undefined
+  headersSchema: z.ZodObject | null | undefined
+  querySchema: z.ZodObject | null | undefined
+  pathSchema: z.ZodObject | null | undefined
+  bodySchema: z.ZodObject | null | undefined
+  returnsSchema: z.ZodObject | null | undefined
 }
 
-// openapi do not support any type as typescript do
-const anyTypeOpenAPI = {}
-
-const toOpenAPISchema = (schema: TSchema, mutDefinitions: any): any => {
-  const obj = {
-    ...(schema.required ? {} : { nullable: true }),
-  } as any
-
-  switch (schema.type) {
-    case 'enum':
-      return {
-        ...obj,
-        type: 'string',
-        enum: schema.options,
-      }
-
-    case 'object':
-      const required = Object.entries(schema.properties)
-        .filter(([k, v]) => v.required === true)
-        .map(([k, v]) => k)
-
-      // TODO: add named object for enabling definition?
-      return {
-        ...obj,
-        ...(required.length > 0 ? { required } : {}),
-        type: 'object',
-        properties: mapEntries(
-          ([k, v]) => [k, toOpenAPISchema(v, mutDefinitions)],
-          schema.properties
-        ),
-      }
-
-    case 'hashMap':
-      return {
-        ...obj,
-        type: 'object',
-        additionalProperties: toOpenAPISchema(schema.property, mutDefinitions),
-      }
-
-    case 'array':
-      return {
-        ...obj,
-        type: 'array',
-        items: toOpenAPISchema(schema.items, mutDefinitions),
-      }
-
-    case 'oneOf':
-      return {
-        ...obj,
-        oneOf: schema.options.map(option => toOpenAPISchema(option, mutDefinitions)),
-      }
-
-    case 'any':
-      return anyTypeOpenAPI
-
-    case 'transformType':
-      return toOpenAPISchema(schema.encodedTSchema, mutDefinitions)
-
-    case 'lazy':
-      if (!mutDefinitions[schema.name]) {
-        mutDefinitions[schema.name] = 'will be filled in th future'
-        mutDefinitions[schema.name] = toOpenAPISchema(schema.getSchema(), mutDefinitions)
-      }
-
-      return { $ref: `#/components/schemas/${schema.name}` }
-
-    default:
-      return {
-        ...obj,
-        type: schema.type,
-      }
-  }
-}
-
-/**
- * TODO: add support for enum/union type
- * TODO: add smarter support for customizing of openAPI documentations
- */
 export const generateOpenAPIPath = (schemas: GenerateOpenAPIPathArg, mutDefinitions: any) => {
   const x = {
     parameters: [
-      ...Object.entries(schemas.pathSchema?.properties ?? {}).map(([k, v]) => ({
+      ...Object.entries(schemas.pathSchema?.shape ?? {}).map(([k, v]) => ({
         in: 'path',
         name: k,
         required: v.required,
-        schema: toOpenAPISchema(v, mutDefinitions),
+        schema: toJSONSchema(materialize(v, 'decode'), { io: 'input' }),
       })),
 
-      ...Object.entries(schemas.querySchema?.properties ?? {}).map(([k, v]) => ({
+      ...Object.entries(schemas.querySchema?.shape ?? {}).map(([k, v]) => ({
         in: 'query',
         name: k,
         required: v.required,
-        schema: toOpenAPISchema(v, mutDefinitions),
+        schema: toJSONSchema(materialize(v, 'decode'), { io: 'input' }),
       })),
 
-      ...Object.entries(schemas.headersSchema?.properties ?? {}).map(([k, v]) => ({
+      ...Object.entries(schemas.headersSchema?.shape ?? {}).map(([k, v]) => ({
         in: 'header',
         name: k,
         required: v.required,
-        schema: toOpenAPISchema(v, mutDefinitions),
+        schema: toJSONSchema(materialize(v, 'decode'), { io: 'input' }),
       })),
     ].filter(Boolean),
 
@@ -119,7 +41,7 @@ export const generateOpenAPIPath = (schemas: GenerateOpenAPIPathArg, mutDefiniti
             required: true,
             content: {
               'application/json': {
-                schema: toOpenAPISchema(schemas.bodySchema!, mutDefinitions),
+                schema: toJSONSchema(materialize(schemas.bodySchema!, 'decode'), { io: 'input' }),
               },
             },
           },
@@ -134,7 +56,7 @@ export const generateOpenAPIPath = (schemas: GenerateOpenAPIPathArg, mutDefiniti
               content: {
                 'application/json': {
                   // description: '',
-                  schema: toOpenAPISchema(schemas.returnsSchema!, mutDefinitions),
+                  schema: toJSONSchema(materialize(schemas.returnsSchema!, 'decode'), { io: 'input' }),
                 },
               },
             }
