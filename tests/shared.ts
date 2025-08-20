@@ -1,43 +1,47 @@
-import { getTSchemaValidator, normalizeYupError } from '../src'
-import { TransformTypeMode } from '../src/runtimeSchemaValidation'
-import { syncAllSettled } from '../src/utils'
+import { getZodValidator, normalizeZodError } from "../src";
+import type { Mode } from "../src/runtimeSchemaValidation";
 
-// TODO: create function to test if parsed cast value is proper
 export const validateDataAgainstSchema = async (
-  transformTypeMode: TransformTypeMode,
-  schema: any,
-  objToValidate: any,
-  output: { status: 'rejected'; reason?: any } | { status: 'fulfilled'; value?: any }
+	transformTypeMode: Mode,
+	schema: any,
+	objToValidate: any,
+	output: { success: false; error?: any } | { success: true; data?: any },
 ) => {
-  const yupValidator = getTSchemaValidator(schema, { transformTypeMode })
-  const [objValidationRes] = syncAllSettled([() => yupValidator.validate(objToValidate)])
-
-  if (objValidationRes.status === 'rejected') {
-    objValidationRes.reason = normalizeYupError(objValidationRes.reason)
-    if (
-      output.status === 'fulfilled' &&
-      objValidationRes.status === 'rejected' &&
-      // @ts-expect-error
-      output.reason === undefined
-    ) {
-      // @ts-expect-error
-      output.reason = '<<<ERROR REASON WILL BE FILLED>>>'
-    }
-  }
-
-  expect(objValidationRes).toMatchObject(output)
-}
+	const zodValidator = getZodValidator(schema, { transformTypeMode });
+	const objValidationRes = zodValidator.validate(objToValidate);
+	expect(objValidationRes).toMatchObject(output as any);
+};
 
 export const validateSimpleDataAgainstSchema = async (
-  schema: any,
-  objToValidate: any,
-  output: { status: 'rejected'; reason?: any } | { status: 'fulfilled'; value?: any }
+	schema: any,
+	objToValidate: any,
+	output: { success: false; error?: any } | { success: true; data?: any },
+) => validateDataAgainstSchema("parse", schema, objToValidate, output);
+
+export const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
+export const removeWhiteSpaces = (str: string) => str.replaceAll(" ", "").replaceAll("\n", "");
+
+export const validateAndExpectData = async (
+	transformTypeMode: Mode,
+	schema: any,
+	objToValidate: any,
+	expectedData: any,
 ) => {
-  await validateDataAgainstSchema('decode', schema, objToValidate, output)
-}
+	const zodValidator = getZodValidator(schema, { transformTypeMode });
+	const res = zodValidator.validate(objToValidate);
+	expect(res).toMatchObject({ success: true });
+	expect(res.success && (res as any).data).toEqual(expectedData);
+};
 
-export const delay = (ms: number) => new Promise(res => setTimeout(res, ms))
-
-export const removeWhiteSpaces = (str: string) =>
-  // @ts-ignore
-  str.replaceAll(' ', '').replaceAll('\n', '')
+export const validateAndExpectErrors = async (
+	transformTypeMode: Mode,
+	schema: any,
+	objToValidate: any,
+	expectedIssuesSubset: any[],
+) => {
+	const zodValidator = getZodValidator(schema, { transformTypeMode });
+	const res = zodValidator.validate(objToValidate);
+	expect(res.success).toBe(false);
+	// Jest's toMatchObject lets us check only selected fields of each issue
+	expect(normalizeZodError((res as any).error)).toMatchObject(expectedIssuesSubset);
+};

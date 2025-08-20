@@ -1,38 +1,38 @@
-import fs from 'fs'
+import fs from "fs";
 // https://github.com/drwpow/openapi-typescript/issues/726
-import * as x from 'openapi-typescript'
-import path from 'path'
+import * as x from "openapi-typescript";
+import path from "path";
 
-const mocksPath = path.join(__dirname, '../example/__generated-api__')
+const mocksPath = path.join(__dirname, "../example/__generated-api__");
 
 const generateServiceAPI = async () => {
-  if (!fs.existsSync(mocksPath)) {
-    fs.mkdirSync(mocksPath)
-  }
+	if (!fs.existsSync(mocksPath)) {
+		fs.mkdirSync(mocksPath);
+	}
 
-  const url = 'http://localhost:5656/api-docs/'
-  const uiSwaggerUrl = 'http://localhost:5656/swagger-ui/index.html'
+	const url = "http://localhost:5656/api-docs/";
+	const uiSwaggerUrl = "http://localhost:5656/swagger-ui/index.html";
 
-  const res = await fetch(url)
+	const res = await fetch(url);
 
-  if (!res.ok) throw new Error(`Network response was not ok: ${res.status}`)
+	if (!res.ok) throw new Error(`Network response was not ok: ${res.status}`);
 
-  const data = await res.json()
+	const data = await res.json();
 
-  const tsTypes = await x.default(data)
+	const tsTypes = await x.default(data);
 
-  fs.writeFileSync(
-    path.join(mocksPath, '/server-api.ts'),
-    '/* eslint-disable */\n\n' +
-      `/* swagger url: ${uiSwaggerUrl} */\n` +
-      `/* source: ${url} */\n\n` +
-      `${tsTypes}\n`,
-    'utf-8'
-  )
+	fs.writeFileSync(
+		path.join(mocksPath, "/server-api.ts"),
+		"/* eslint-disable */\n\n" +
+			`/* swagger url: ${uiSwaggerUrl} */\n` +
+			`/* source: ${url} */\n\n` +
+			`${tsTypes}\n`,
+		"utf-8",
+	);
 
-  // TODO: add prettying via eslint
-  // https://eslint.org/docs/developer-guide/nodejs-api#eslint-class
-  console.info('.ts types generated')
-}
+	// TODO: add prettying via eslint
+	// https://eslint.org/docs/developer-guide/nodejs-api#eslint-class
+	console.info(".ts types generated");
+};
 
-generateServiceAPI()
+generateServiceAPI();

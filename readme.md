@@ -1,19 +1,21 @@
-# swagger-typed-express-docs
+# openapi-zodtyped-express
 
-swagger-typed-express-docs keep you simple document your endpoints with just one single source of truth which
-
-this project generates OpenAPI 3.0.0, not swagger!
+openapi-zodtyped-express keeps your endpoints documented using OPENAPI with just one single source of truth defined in the endpoints with zod schemas
 
 - **Generate OpenAPI API documentation**
 - **Compile time validations - Infer Typescript static types out of the box**
 - **Runtime validate each of your HTTP request with user-friendly error messages**
 
-To do that there is just a simple high-order-function API.
-So you can just simply wrap your endpoint with the `apiDoc(...)` and initialize project via `initApiDocs()`
+All of this is done with a single higher-order-function used in the express endpoints.
+So you can just simply wrap your handler with the `apiDoc(...)` and initialize project via `initApiDocs()`
+
+## ZDual schemas
+This lib also introduces ZDual schemas which merge encode and decode zod schemas. This can be useful when having a different representation of the data in the code then on the input. for example isostring - Date.
+The ApiDoc automatically chooses the shema based on where the ZDual is used (request/response) and infers types.
 
 ## Example usage
 
-[You can see full app example in the repository:](https://github.com/Svehla/swagger-typed-express-docs/blob/main/example/)
+[example usage](https://github.com/lukdmine/openapi-zodtyped-express/blob/main/example/)
 
 ```typescript
 import express from 'express'
@@ -127,28 +129,6 @@ app.get(
 )
 ```
 
-The library exposes many functions and objects which help you to create schema as you want.
-
-- `T.string(...)`
-- `T.null_string(...)`
-- `T.boolean(...)`
-- `T.null_boolean(...)`
-- `T.number(...)`
-- `T.null_number(...)`
-- `T.enum(...)`
-- `T.null_enum(...)`
-- `T.oneOf(...)`
-- `T.null_oneOf(...)`
-- `T.any(...)`
-- `T.null_any(...)`
-- `T.object(...)`
-- `T.null_object(...)`
-- `T.list(...)`
-- `T.null_list(...)`
-- `T.nonNullable(...)`
-
-if you want to see more examples on how to build schema structure by function compositions
-you can check the tests
 
 ## Setup environments
 
@@ -174,77 +154,17 @@ to make fully work `tNonNullable` you have to setup `tsconfig.json` properly.
 }
 ```
 
-## Example library preview
+## Example library preview TODO
 
-![static type helper preview](./docs/preview-typed-code-body.png)
+### res.transformSend()
 
-![static type helper preview](./docs/preview-typed-code-query.png)
+The library automatically injects the `transformSend()` function into `res`. This function takes data, validates it and applies transformaions with `apiDoc({ returns: ... })` and if the validation succeeds 200 and the data. The type of this function is automatically infered from the  `apiDoc({ returns: ... })` schema so you cant input data that cant be sent.
 
-![Swagger preview](./docs/preview-swagger-docs.png)
-
-## Decisions
-
-if some field in the object is nullable `null_` key may not be required, but in TS types, only value is of type `| undefined`
-
-so the non existed keys are nullable as well, thanks to this, the schema is simplier for the writter, because there is less edge cases to think about
-
-## All defined schema attribute stripping
-
-if you define one of apiDoc objects like `query`, `body`, `params` or `headers` it'll strip all unknown object attributes so omit potential security data injections
-
-By default, if you do not define some of the tSchema, nothing is validate or parsed for current object
-
-### Express query parsing
-
-You can parse query thanks to `express-query-parser` library.
-
-We parser to keep parsing only undefined and null values and the rest may be done by transform types.
-Many transform types is predefined in the `T.cast.` object.
-
-```typescript
-import { queryParser } from 'express-query-parser'
-
-app.use(
-  queryParser({
-    parseNumber: false,
-    parseBoolean: false,
-    // turn on only null & undefined values, to use T.cast. utils
-    parseNull: true,
-    parseUndefined: true,
-  })
-)
-
-app.get(
-  '/',
-  apiDoc({
-    query: {
-      name: T.cast.number,
-      ids: T.extra.null_toListIfNot(T.cast.number),
-    },
-  })((req, res) => {
-    const body = req.body
-    const query = req.query
-
-    res.send({
-      body,
-      query,
-    })
-  })
-)
-```
-
-if you want to parse string `'null'` by yourself, you need to create a custom T.transform data type which will handle this edge case
-
-### Validating output via res.tSend
-
-The library automatically injects the `tSend` function into `res.tSend`. This function takes data and sends a 200 success status response.
-However, before sending, it verifies if the schema matches the `apiDoc({ returns: ... })` schema definition and sanitizes the data.
-Therefore, if you send more data than what is defined (for example, an object with additional attributes),
-the surplus data will be stripped. This mechanism enhances the function's reliability.
-
-After defining `T.transform` types, encoders are applied, and the data is transformed accordingly.
+Normal `res.send()` just sends the data in the encoded type also infered from `apiDoc({ returns: ... })`.
 
 ### Custom transformation of incoming data (Encoders / decoders)
+
+#### implemented with zDual()
 
 Data Transformation Flow:
 User -> HTTP -> Encoded -> Decoded -> Express Handler
@@ -252,20 +172,3 @@ Express Handler -> Decoded -> Encoded -> HTTP -> User
 
 - Users interact exclusively with encoded types.
 - Express handlers interact solely with decoded types.
-
-Null Handling:
-
-- If a data type is nullable, `null` and `undefined` values are automatically handled, and the encoder/decoder functions will not be invoked.
-- If `null` is not explicitly defined, encoder and decoder functions may still be called with `null` or `undefined` values. In such cases, handling must be implemented manually within the parser/serializer functions.
-
-### Data utils:
-
-```
-- T.deepNullable
-```
-
-### Vocabularies
-
-decoder = parser
-encoder = serializer
-transform = encoder + decoder

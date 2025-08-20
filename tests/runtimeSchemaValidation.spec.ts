@@ -1,657 +1,475 @@
-import { T } from '../src'
-import { delay, validateSimpleDataAgainstSchema } from './shared'
-
-describe('runtimeSchemaValidation', () => {
-  describe('default types', () => {
-    test('000', async () => {
-      await validateSimpleDataAgainstSchema(
-        //
-        T.oneOf([T.string, T.boolean] as const),
-        false,
-        { status: 'fulfilled', value: false }
-      )
-    })
-
-    test('001', async () => {
-      await validateSimpleDataAgainstSchema(
-        //
-        T.oneOf([T.string, T.null_boolean] as const),
-        undefined,
-        { status: 'fulfilled', value: undefined }
-      )
-    })
-
-    test('002', async () => {
-      await validateSimpleDataAgainstSchema(
-        //
-        T.oneOf([T.string, T.null_boolean] as const),
-        undefined,
-        { status: 'fulfilled', value: undefined }
-      )
-    })
-
-    test('003', async () => {
-      await validateSimpleDataAgainstSchema(
-        //
-        T.oneOf([T.string, T.null_boolean] as const),
-        undefined,
-        { status: 'fulfilled', value: undefined }
-      )
-    })
-
-    test('004', async () => {
-      await validateSimpleDataAgainstSchema(
-        T.oneOf([T.object({ x: T.string }), T.object({ x: T.number })] as const),
-        { x: 3 },
-        { status: 'fulfilled' }
-      )
-    })
-
-    test('0.0', async () => {
-      await validateSimpleDataAgainstSchema(
-        T.object({ s: T.string }),
-        { s: undefined },
-        { status: 'rejected' }
-      )
-    })
-
-    test('0.1', async () => {
-      await validateSimpleDataAgainstSchema(
-        T.object({ b: T.boolean }),
-        { b: undefined },
-        { status: 'rejected' }
-      )
-    })
-
-    test('0.2', async () => {
-      await validateSimpleDataAgainstSchema(
-        T.object({ c: T.number }),
-        { c: undefined },
-        { status: 'rejected' }
-      )
-    })
-
-    test('0.3', async () => {
-      await validateSimpleDataAgainstSchema(T.object({ c: T.number }), {}, { status: 'rejected' })
-    })
-
-    test('0.4', async () => {
-      await validateSimpleDataAgainstSchema(T.object({ c: T.number }), null, { status: 'rejected' })
-    })
-
-    test('0.5', async () => {
-      await validateSimpleDataAgainstSchema(T.object({ c: T.number }), undefined, {
-        status: 'rejected',
-      })
-    })
-
-    test('0.6', async () => {
-      await validateSimpleDataAgainstSchema(T.object({ c: T.oneOf([T.string]) }), 0, {
-        status: 'rejected',
-      })
-    })
-
-    test('0.7', async () => {
-      await validateSimpleDataAgainstSchema(T.object({ c: T.oneOf([T.number]) }), undefined, {
-        status: 'rejected',
-      })
-    })
-
-    test('0.8', async () => {
-      await validateSimpleDataAgainstSchema(T.object({ c: T.oneOf([T.boolean]) }), null, {
-        status: 'rejected',
-      })
-    })
-
-    test('0.9', async () => {
-      await validateSimpleDataAgainstSchema(
-        T.object({ c: T.oneOf([T.number]) }),
-        {},
-        {
-          status: 'rejected',
-        }
-      )
-    })
-
-    test('0.11', async () => {
-      await validateSimpleDataAgainstSchema(T.object({ c: T.oneOf([T.number]) }), NaN, {
-        status: 'rejected',
-      })
-    })
-
-    test('0.12', async () => {
-      await validateSimpleDataAgainstSchema(T.hashMap(T.any), NaN, {
-        status: 'rejected',
-      })
-    })
-
-    test('0.13', async () => {
-      await validateSimpleDataAgainstSchema(T.hashMap(T.any), null, {
-        status: 'rejected',
-      })
-    })
-
-    test('0.14', async () => {
-      await validateSimpleDataAgainstSchema(T.hashMap(T.any), undefined, {
-        status: 'rejected',
-      })
-    })
-
-    test('0.15', async () => {
-      await validateSimpleDataAgainstSchema(
-        T.hashMap(T.any),
-        {},
-        {
-          status: 'fulfilled',
-        }
-      )
-    })
-
-    test('0.16', async () => {
-      await validateSimpleDataAgainstSchema(T.null_hashMap(T.any), NaN, {
-        status: 'rejected',
-      })
-    })
-
-    test('0.17', async () => {
-      await validateSimpleDataAgainstSchema(T.null_hashMap(T.any), null, {
-        status: 'fulfilled',
-      })
-    })
-
-    test('0.18', async () => {
-      await validateSimpleDataAgainstSchema(T.null_hashMap(T.any), undefined, {
-        status: 'fulfilled',
-      })
-    })
-
-    test('1', async () => {
-      await validateSimpleDataAgainstSchema(
-        T.object({
-          s: T.null_string,
-          b: T.null_boolean,
-          n: T.null_number,
-          n_s: T.null_string,
-          n_b: T.null_boolean,
-          n_n: T.null_number,
-          not_exist_s: T.null_string,
-          not_exist_b: T.null_boolean,
-          not_exist_n: T.null_number,
-        }),
-        {
-          a: undefined,
-          b: undefined,
-          n: undefined,
-          n_s: null,
-          n_b: null,
-          n_n: null,
-        },
-        { status: 'fulfilled' }
-      )
-    })
-
-    test('1.1', async () => {
-      await validateSimpleDataAgainstSchema(
-        T.object({
-          a: T.string,
-        }),
-        { a: 'a -> is string' },
-        { status: 'fulfilled' }
-      )
-    })
-
-    test('2', async () => {
-      await validateSimpleDataAgainstSchema(T.string, 'hello', { status: 'fulfilled' })
-    })
-
-    test('3', async () => {
-      await validateSimpleDataAgainstSchema(T.boolean, true, { status: 'fulfilled' })
-    })
-
-    test('4', async () => {
-      await validateSimpleDataAgainstSchema(T.number, 3, { status: 'fulfilled' })
-    })
-
-    test('5', async () => {
-      await validateSimpleDataAgainstSchema(T.null_string, null, { status: 'fulfilled' })
-    })
-    test('51', async () => {
-      await validateSimpleDataAgainstSchema(T.number, '3', {
-        reason: [
-          { path: '', errors: ['this must be a `number` type, but the final value was: `"3"`.'] },
-        ],
-        status: 'rejected',
-      })
-    })
-    test('52', async () => {
-      await validateSimpleDataAgainstSchema(T.boolean, 'true', {
-        reason: [
-          {
-            path: '',
-            errors: ['this must be a `boolean` type, but the final value was: `"true"`.'],
-          },
-        ],
-        status: 'rejected',
-      })
-    })
-
-    // test('6', async () => {
-    //   // mmmm undefined is not nullable in yup... but types enable to put undefined
-    //   await validateSimpleDataAgainstSchema(T.null_string, undefined, { status: 'fulfilled' })
-    // })
-
-    test('7', async () => {
-      await validateSimpleDataAgainstSchema(T.string, null, {
-        status: 'rejected',
-        reason: [{ path: '', errors: ['this cannot be null'] }],
-      })
-    })
-
-    test('7.1', async () => {
-      await validateSimpleDataAgainstSchema(
-        T.object({ x: T.list(T.string) }),
-        { x: [true] },
-        {
-          status: 'rejected',
-          reason: [
-            {
-              path: 'x[0]',
-              errors: ['x[0] must be a `string` type, but the final value was: `true`.'],
-            },
-          ],
-        }
-      )
-    })
-
-    test('7.2', async () => {
-      await validateSimpleDataAgainstSchema(
-        T.object({ x: T.list(T.boolean) }),
-        { x: ['true'] },
-        {
-          status: 'rejected',
-          reason: [
-            {
-              path: 'x[0]',
-              errors: ['x[0] must be a `boolean` type, but the final value was: `"true"`.'],
-            },
-          ],
-        }
-      )
-    })
-
-    test('7.2', async () => {
-      await validateSimpleDataAgainstSchema(
-        T.object({ x: T.list(T.string) }),
-        { x: [3] },
-        {
-          status: 'rejected',
-          reason: [
-            {
-              path: 'x[0]',
-              errors: ['x[0] must be a `string` type, but the final value was: `3`.'],
-            },
-          ],
-        }
-      )
-    })
-
-    test('8', async () => {
-      await validateSimpleDataAgainstSchema(T.null_number, undefined, {
-        status: 'fulfilled',
-      })
-    })
-
-    test('9', async () => {
-      await validateSimpleDataAgainstSchema(T.null_boolean, 'true', {
-        status: 'rejected',
-        reason: [
-          {
-            path: '',
-            errors: ['this must be a `boolean` type, but the final value was: `"true"`.'],
-          },
-        ],
-      })
-    })
-
-    test('10', async () => {
-      await validateSimpleDataAgainstSchema(
-        T.object({
-          bool: T.boolean,
-          num: T.number,
-        }),
-        { bool: '1234', num: true },
-        {
-          status: 'rejected',
-          reason: [
-            {
-              path: 'bool',
-              errors: ['bool must be a `boolean` type, but the final value was: `"1234"`.'],
-            },
-            {
-              path: 'num',
-              errors: ['num must be a `number` type, but the final value was: `true`.'],
-            },
-          ],
-        }
-      )
-    })
-
-    test('11', async () => {
-      await validateSimpleDataAgainstSchema(
-        T.object({
-          bool: T.boolean,
-          num: T.number,
-        }),
-        { bool: '1234', num: true },
-        {
-          status: 'rejected',
-          reason: [
-            {
-              path: 'bool',
-              errors: ['bool must be a `boolean` type, but the final value was: `"1234"`.'],
-            },
-            {
-              path: 'num',
-              errors: ['num must be a `number` type, but the final value was: `true`.'],
-            },
-            ,
-          ],
-        }
-      )
-    })
-
-    test('12', async () => {
-      await validateSimpleDataAgainstSchema(
-        T.hashMap(
-          T.null_object({
-            bool: T.boolean,
-            num: T.number,
-          })
-        ),
-        {
-          dynKey1: { bool: true, num: 3 },
-          dynKey2: null,
-          dynKey3: undefined,
-          dynKey4: { bool: false, num: -1 },
-        },
-        {
-          status: 'fulfilled',
-        }
-      )
-    })
-
-    test('12.1', async () => {
-      await validateSimpleDataAgainstSchema(
-        T.null_hashMap(
-          T.null_object({
-            bool: T.boolean,
-            num: T.number,
-          })
-        ),
-        undefined,
-        {
-          status: 'fulfilled',
-        }
-      )
-    })
-
-    test('13', async () => {
-      await validateSimpleDataAgainstSchema(
-        T.hashMap(T.string),
-        {
-          dynKey1: 'a',
-          dynKey2: 3,
-        },
-        {
-          status: 'rejected',
-          reason: [
-            {
-              path: 'dynKey2',
-              errors: ['dynKey2 must be a `string` type, but the final value was: `3`.'],
-            },
-          ],
-        }
-      )
-    })
-
-    test('14', async () => {
-      await validateSimpleDataAgainstSchema(
-        T.object({
-          x1: T.nullable(T.hashMap(T.string)),
-          y1: T.null_hashMap(T.string),
-          x2: T.nullable(T.hashMap(T.string)),
-          y2: T.null_hashMap(T.string),
-          z: T.hashMap(T.string),
-          zz: T.hashMap(T.string),
-        }),
-        {
-          x1: null,
-          y1: undefined,
-          x2: { x2: 'x2' },
-          y2: {},
-          z: {},
-          zz: { zz: 'zz' },
-        },
-        {
-          status: 'fulfilled',
-          // reason: [],
-        }
-      )
-    })
-
-    test('15', async () => {
-      // object of null object is not working...
-      // double nested objects cannot be transformed, but thanks to .strict(true)
-      await validateSimpleDataAgainstSchema(
-        T.object({
-          a: T.null_object({ x: T.any }),
-          b: T.null_object({ x: T.any }),
-          c: T.null_object({ bool: T.boolean }),
-
-          d: T.null_hashMap(T.hashMap(T.boolean)),
-          e: T.object({ x: T.null_object({ x: T.object({ x: T.boolean }) }) }),
-        }),
-        {
-          a: undefined,
-          b: null,
-          e: {},
-        },
-        {
-          status: 'fulfilled',
-          // reason: [],
-        }
-      )
-    })
-
-    test('16', async () => {
-      // object of null object is not working...
-      // double nested objects cannot be transformed, but thanks to .strict(true)
-      await validateSimpleDataAgainstSchema(
-        T.object({
-          a: T.null_hashMap(T.string),
-          b: T.null_hashMap(T.string),
-          c: T.null_hashMap(T.string),
-          d: T.null_hashMap(T.string),
-        }),
-        {
-          a: {},
-          b: null,
-          c: undefined,
-        },
-
-        {
-          status: 'fulfilled',
-        }
-      )
-    })
-  })
-
-  describe('custom types', () => {
-    describe('date', () => {
-      test('6', async () => {
-        await validateSimpleDataAgainstSchema(T.list(T.extra.minMaxNumber(0, 1)), [3], {
-          status: 'rejected',
-        })
-      })
-
-      test('9', async () => {
-        await validateSimpleDataAgainstSchema(
-          T.object({ a: T.extra.ISOString }),
-          { a: new Date().toISOString() + 'x' },
-          { status: 'rejected' }
-        )
-      })
-
-      test('10', async () => {
-        await validateSimpleDataAgainstSchema(
-          T.object({
-            a: T.extra.ISOString,
-            b: T.extra.minMaxNumber(0, 10),
-            c: T.extra.minMaxString(1, 2),
-            d: T.extra.minMaxString(1, 2),
-          }),
-          {
-            a: new Date().toISOString(),
-            b: 1,
-            c: 'cc',
-          },
-          { status: 'rejected' }
-        )
-      })
-    })
-
-    test('4', async () => {
-      await validateSimpleDataAgainstSchema(T.extra.minMaxNumber(1, 5), 2, {
-        status: 'fulfilled',
-      })
-    })
-
-    test('5', async () => {
-      await validateSimpleDataAgainstSchema(T.extra.minMaxNumber(1, 5), 6, {
-        status: 'rejected',
-        reason: [{ path: '', errors: ['value needs to be > 5'] }],
-      })
-    })
-  })
-
-  describe('nullable keys with validator function', () => {
-    const tISODate = T.addValidator(T.string, _str => {
-      throw new Error('this should never be called')
-    })
-
-    const tObjDate = T.null_object({ date: T.nullable(tISODate) })
-
-    test('1', async () => {
-      await validateSimpleDataAgainstSchema(tObjDate, null, {
-        status: 'fulfilled',
-        value: null,
-      })
-    })
-
-    test('2', async () => {
-      await validateSimpleDataAgainstSchema(tObjDate, undefined, {
-        status: 'fulfilled',
-        value: {}, // wtf???
-      })
-    })
-
-    test('3', async () => {
-      await validateSimpleDataAgainstSchema(
-        tObjDate,
-        { date: null },
-        {
-          status: 'fulfilled',
-          value: { date: null },
-        }
-      )
-    })
-  })
-
-  describe('async types validations', () => {
-    test('1', async () => {
-      await validateSimpleDataAgainstSchema(
-        T.addValidator(T.string, () => {
-          throw new Error('value is invalid!!!!')
-        }),
-        'x',
-        { status: 'rejected' }
-      )
-    })
-
-    test('2', async () => {
-      await validateSimpleDataAgainstSchema(
-        T.addValidator(T.string, () => undefined),
-        'x',
-        { status: 'fulfilled' }
-      )
-    })
-
-    test('3', async () => {
-      const tAsyncType = T.addValidator(T.string, () => undefined)
-
-      await validateSimpleDataAgainstSchema(
-        T.oneOf([
-          T.object({
-            x: tAsyncType,
-          }),
-        ] as const),
-        { x: 'x' },
-        { status: 'fulfilled' }
-      )
-    })
-  })
-})
-
-describe('oneOf', () => {
-  const t1 = T.object({ type: T.enum(['a'] as const), isOk: T.boolean })
-  const t2 = T.object({ type: T.enum(['b'] as const), age: T.number })
-  const t3 = T.object({ type: T.enum(['c'] as const), list: T.list(T.number) })
-
-  test('1', async () => {
-    await validateSimpleDataAgainstSchema(
-      T.oneOf([t1, t2, t3]),
-      { type: 'a', isOk: true },
-      { status: 'fulfilled' }
-    )
-  })
-
-  test('2', async () => {
-    await validateSimpleDataAgainstSchema(
-      T.oneOf([t1, t2, t3]),
-      { type: 'b', age: 3 },
-      { status: 'fulfilled' }
-    )
-  })
-
-  test('3', async () => {
-    await validateSimpleDataAgainstSchema(
-      T.oneOf([t1, t2, t3]),
-      { type: '<>', isOk: true },
-      {
-        status: 'rejected',
-        reason: [
-          {
-            path: '',
-            errors: [
-              {
-                message: 'data does not match any of allowed schemas',
-                currentValue: {
-                  isOk: true,
-                  type: '<>',
-                },
-                allOptionSchemaErrors: [
-                  [
-                    {
-                      errors: ['type must be one of [a] type, but the final value was: `"<>"`.'],
-                      path: 'type',
-                    },
-                  ],
-                ],
-              },
-            ],
-          },
-        ],
-      }
-    )
-  })
-})
+import { z } from "zod";
+import { validateSimpleDataAgainstSchema } from "./shared";
+
+describe("runtimeSchemaValidation", () => {
+	describe("default types", () => {
+		test("000 - boolean ok", async () => {
+			await validateSimpleDataAgainstSchema(z.boolean(), false, { success: true });
+		});
+
+		test("001 - undefined ok", async () => {
+			await validateSimpleDataAgainstSchema(z.undefined(), undefined, { success: true });
+		});
+
+		test("002 - undefined ok (again)", async () => {
+			await validateSimpleDataAgainstSchema(z.undefined(), undefined, { success: true });
+		});
+
+		test("003 - undefined ok (dup)", async () => {
+			await validateSimpleDataAgainstSchema(z.undefined(), undefined, { success: true });
+		});
+
+		test("004 - object with union field", async () => {
+			await validateSimpleDataAgainstSchema(
+				z.object({ x: z.union([z.string(), z.number()]) }),
+				{ x: 3 },
+				{ success: true },
+			);
+		});
+
+		test("0.0 - missing string fails", async () => {
+			await validateSimpleDataAgainstSchema(
+				z.object({ s: z.string() }),
+				{ s: undefined },
+				{ success: false },
+			);
+		});
+
+		test("0.1 - missing boolean fails", async () => {
+			await validateSimpleDataAgainstSchema(
+				z.object({ b: z.boolean() }),
+				{ b: undefined },
+				{ success: false },
+			);
+		});
+
+		test("0.2 - missing number fails", async () => {
+			await validateSimpleDataAgainstSchema(
+				z.object({ c: z.number() }),
+				{ c: undefined },
+				{ success: false },
+			);
+		});
+
+		test("0.3 - required key missing fails", async () => {
+			await validateSimpleDataAgainstSchema(z.object({ c: z.number() }), {}, { success: false });
+		});
+
+		test("0.4 - object expected, got null", async () => {
+			await validateSimpleDataAgainstSchema(z.object({ c: z.number() }), null, { success: false });
+		});
+
+		test("0.5 - object expected, got undefined", async () => {
+			await validateSimpleDataAgainstSchema(z.object({ c: z.number() }), undefined, {
+				success: false,
+			});
+		});
+
+		test("0.6 - object expected, got number", async () => {
+			await validateSimpleDataAgainstSchema(
+				z.object({ c: z.discriminatedUnion("x", [z.object({ x: z.literal("a") })]) }),
+				0,
+				{ success: false },
+			);
+		});
+
+		test("0.7 - required discriminated union missing", async () => {
+			await validateSimpleDataAgainstSchema(
+				z.object({ c: z.discriminatedUnion("x", [z.object({ x: z.literal("a") })]) }),
+				undefined,
+				{ success: false },
+			);
+		});
+
+		test("0.8 - object expected, got null", async () => {
+			await validateSimpleDataAgainstSchema(
+				z.object({ c: z.discriminatedUnion("x", [z.object({ x: z.literal("a") })]) }),
+				null,
+				{ success: false },
+			);
+		});
+
+		test("0.9 - required key missing", async () => {
+			await validateSimpleDataAgainstSchema(
+				z.object({ c: z.discriminatedUnion("x", [z.object({ x: z.literal("a") })]) }),
+				{},
+				{ success: false },
+			);
+		});
+
+		test("0.11 - NaN not allowed where object expected", async () => {
+			await validateSimpleDataAgainstSchema(
+				z.object({ c: z.discriminatedUnion("x", [z.object({ x: z.literal("a") })]) }),
+				NaN as any,
+				{ success: false },
+			);
+		});
+
+		test("0.12 - record expects object, not NaN", async () => {
+			await validateSimpleDataAgainstSchema(z.record(z.string(), z.any()), NaN as any, {
+				success: false,
+			});
+		});
+
+		test("0.13 - record expects object, not null", async () => {
+			await validateSimpleDataAgainstSchema(z.record(z.string(), z.any()), null as any, {
+				success: false,
+			});
+		});
+
+		test("0.14 - record expects object, not undefined", async () => {
+			await validateSimpleDataAgainstSchema(z.record(z.string(), z.any()), undefined as any, {
+				success: false,
+			});
+		});
+
+		test("0.15 - empty record is fine", async () => {
+			await validateSimpleDataAgainstSchema(z.record(z.string(), z.any()), {}, { success: true });
+		});
+
+		test("0.16 - record still fails for NaN", async () => {
+			await validateSimpleDataAgainstSchema(z.record(z.string(), z.any()), NaN as any, {
+				success: false,
+			});
+		});
+
+		test("0.17 - record null should fail", async () => {
+			await validateSimpleDataAgainstSchema(z.record(z.string(), z.any()), null as any, {
+				success: false,
+			});
+		});
+
+		test("0.18 - record undefined should fail", async () => {
+			await validateSimpleDataAgainstSchema(z.record(z.string(), z.any()), undefined as any, {
+				success: false,
+			});
+		});
+
+		test("1 - many nullable/optional fields (allow missing/null)", async () => {
+			await validateSimpleDataAgainstSchema(
+				z.object({
+					s: z.string().nullable().optional(),
+					b: z.boolean().nullable().optional(),
+					n: z.number().nullable().optional(),
+					n_s: z.string().nullable().optional(),
+					n_b: z.boolean().nullable().optional(),
+					n_n: z.number().nullable().optional(),
+					not_exist_s: z.string().nullable().optional(),
+					not_exist_b: z.boolean().nullable().optional(),
+					not_exist_n: z.number().nullable().optional(),
+				}),
+				{
+					a: undefined,
+					b: undefined,
+					n: undefined,
+					n_s: null,
+					n_b: null,
+					n_n: null,
+				} as any,
+				{ success: true },
+			);
+		});
+
+		test("1.1 - simple object ok", async () => {
+			await validateSimpleDataAgainstSchema(
+				z.object({ a: z.string() }),
+				{ a: "a -> is string" },
+				{ success: true },
+			);
+		});
+
+		test("2 - primitive string ok", async () => {
+			await validateSimpleDataAgainstSchema(z.string(), "hello", { success: true });
+		});
+
+		test("3 - primitive boolean ok", async () => {
+			await validateSimpleDataAgainstSchema(z.boolean(), true, { success: true });
+		});
+
+		test("4 - primitive number ok", async () => {
+			await validateSimpleDataAgainstSchema(z.number(), 3, { success: true });
+		});
+
+		test("5 - nullable string with null ok", async () => {
+			await validateSimpleDataAgainstSchema(z.string().nullable(), null, { success: true });
+		});
+
+		test("51 - number from string should fail (no coercion)", async () => {
+			await validateSimpleDataAgainstSchema(z.number(), "3" as any, { success: false });
+		});
+
+		test("52 - boolean from string should fail (no coercion)", async () => {
+			await validateSimpleDataAgainstSchema(z.boolean(), "true" as any, { success: false });
+		});
+
+		test("7 - string expected, got null", async () => {
+			await validateSimpleDataAgainstSchema(z.string(), null as any, { success: false });
+		});
+
+		test("7.1 - array element type mismatch (true in string[])", async () => {
+			await validateSimpleDataAgainstSchema(
+				z.object({ x: z.array(z.string()) }),
+				{ x: [true] as any },
+				{ success: false },
+			);
+		});
+
+		test("7.2 - array element type mismatch (string in boolean[])", async () => {
+			await validateSimpleDataAgainstSchema(
+				z.object({ x: z.array(z.boolean()) }),
+				{ x: ["true"] as any },
+				{ success: false },
+			);
+		});
+
+		test("7.3 - array element type mismatch (number in string[])", async () => {
+			await validateSimpleDataAgainstSchema(
+				z.object({ x: z.array(z.string()) }),
+				{ x: [3] as any },
+				{ success: false },
+			);
+		});
+
+		test("8 - nullable number allows undefined only if optional()", async () => {
+			await validateSimpleDataAgainstSchema(z.number().nullable().optional(), undefined, {
+				success: true,
+			});
+		});
+
+		test("9 - boolean.nullable() does not accept string", async () => {
+			await validateSimpleDataAgainstSchema(z.boolean().nullable(), "true" as any, {
+				success: false,
+			});
+		});
+
+		test("10 - wrong object field types fail", async () => {
+			await validateSimpleDataAgainstSchema(
+				z.object({ bool: z.boolean(), num: z.number() }),
+				{ bool: "1234", num: true } as any,
+				{ success: false },
+			);
+		});
+
+		test("11 - fix missing parentheses in schema", async () => {
+			await validateSimpleDataAgainstSchema(
+				z.object({ bool: z.boolean(), num: z.number() }),
+				{ bool: "1234", num: true } as any,
+				{ success: false },
+			);
+		});
+
+		test("12 - record value must match inner object schema", async () => {
+			await validateSimpleDataAgainstSchema(
+				z.record(
+					z.string(),
+					z.object({
+						bool: z.boolean(),
+						num: z.number(),
+					}),
+				),
+				{
+					dynKey1: { bool: true, num: 3 },
+					dynKey2: null,
+					dynKey3: undefined,
+					dynKey4: { bool: false, num: -1 },
+				} as any,
+				{ success: false },
+			);
+		});
+
+		test("12.1 - record expects object, not undefined", async () => {
+			await validateSimpleDataAgainstSchema(
+				z.record(
+					z.string(),
+					z.object({
+						bool: z.boolean(),
+						num: z.number(),
+					}),
+				),
+				undefined as any,
+				{ success: false },
+			);
+		});
+
+		test("13 - record<string,string> rejects number value", async () => {
+			await validateSimpleDataAgainstSchema(
+				z.record(z.string(), z.string()),
+				{ dynKey1: "a", dynKey2: 3 } as any,
+				{ success: false },
+			);
+		});
+
+		test("14 - records with null/undefined and empties (allow where optional/nullable)", async () => {
+			await validateSimpleDataAgainstSchema(
+				z.object({
+					x1: z.record(z.string(), z.string()).nullable().optional(),
+					y1: z.record(z.string(), z.string()).optional(),
+					x2: z.record(z.string(), z.string()).nullable().optional(),
+					y2: z.record(z.string(), z.string()).optional(),
+					z: z.record(z.string(), z.string()),
+					zz: z.record(z.string(), z.string()),
+				}),
+				{
+					x1: null,
+					y1: undefined,
+					x2: { x2: "x2" },
+					y2: {},
+					z: {},
+					zz: { zz: "zz" },
+				},
+				{ success: true },
+			);
+		});
+
+		test("15 - nested records: mark optional/nullable to match input", async () => {
+			await validateSimpleDataAgainstSchema(
+				z.object({
+					a: z.record(z.string(), z.any()).optional(),
+					b: z.record(z.string(), z.any()).nullable().optional(),
+					c: z.record(z.string(), z.boolean()).optional(),
+					d: z.record(z.string(), z.record(z.string(), z.boolean())).optional(),
+					e: z.record(z.string(), z.record(z.string(), z.boolean())).optional(),
+				}),
+				{ a: undefined, b: null, e: {} } as any,
+				{ success: true },
+			);
+		});
+
+		test("16 - flat records: allow undefined/null via optional/nullable", async () => {
+			await validateSimpleDataAgainstSchema(
+				z.object({
+					a: z.record(z.string(), z.string()).optional(),
+					b: z.record(z.string(), z.string()).nullable().optional(),
+					c: z.record(z.string(), z.string()).optional(),
+					d: z.record(z.string(), z.string()).optional(),
+				}),
+				{ a: {}, b: null, c: undefined } as any,
+				{ success: true },
+			);
+		});
+	});
+
+	describe("custom types", () => {
+		describe("date/number/string bounds", () => {
+			test("6 - number in [0,1] fails for 3", async () => {
+				await validateSimpleDataAgainstSchema(z.array(z.number().min(0).max(1)), [3], {
+					success: false,
+				});
+			});
+
+			test("9 - ISO datetime string invalid", async () => {
+				await validateSimpleDataAgainstSchema(
+					z.object({ a: z.string().datetime() }),
+					{ a: new Date().toISOString() + "x" },
+					{ success: false },
+				);
+			});
+
+			test("10 - missing required 'd' fails", async () => {
+				await validateSimpleDataAgainstSchema(
+					z.object({
+						a: z.string().datetime(),
+						b: z.number().min(0).max(10),
+						c: z.string().min(1).max(2),
+						d: z.string().min(1).max(2),
+					}),
+					{ a: new Date().toISOString(), b: 1, c: "cc" },
+					{ success: false },
+				);
+			});
+		});
+
+		test("4 - number in range ok", async () => {
+			await validateSimpleDataAgainstSchema(z.number().min(1).max(5), 2, { success: true });
+		});
+
+		test("5 - number outside range fails", async () => {
+			await validateSimpleDataAgainstSchema(z.number().min(1).max(5), 6, { success: false });
+		});
+	});
+
+	describe("nullable keys with validator function", () => {
+		const tISODate = z.string().transform((_str) => {
+			throw new Error("this should never be called");
+		});
+
+		const tObjDate = z.object({ date: z.string().nullable() });
+
+		test("1 - null root fails (expects object)", async () => {
+			await validateSimpleDataAgainstSchema(tObjDate, null as any, { success: false });
+		});
+
+		test("2 - undefined root fails (expects object)", async () => {
+			await validateSimpleDataAgainstSchema(tObjDate, undefined as any, { success: false });
+		});
+
+		test("3 - { date: null } passes", async () => {
+			await validateSimpleDataAgainstSchema(tObjDate, { date: null }, { success: true });
+		});
+	});
+
+	describe("async types validations", () => {
+		test("1 - transform throws => fail", async () => {
+			await validateSimpleDataAgainstSchema(
+				z.string().transform(() => {
+					throw new Error("value is invalid!!!!");
+				}),
+				"x",
+				{ success: false },
+			);
+		});
+
+		test("2 - transform to undefined then pipe(undefined) => success", async () => {
+			await validateSimpleDataAgainstSchema(
+				z
+					.string()
+					.transform(() => undefined)
+					.pipe(z.undefined()),
+				"x",
+				{ success: true },
+			);
+		});
+
+		test("3 - async-like pipeline inside discriminated union branch", async () => {
+			const tAsyncType = z
+				.string()
+				.transform(() => undefined)
+				.pipe(z.undefined());
+			await validateSimpleDataAgainstSchema(
+				z.discriminatedUnion("x", [z.object({ x: z.literal("only"), y: tAsyncType })]),
+				{ x: "only", y: "x" },
+				{ success: true },
+			);
+		});
+	});
+});
+
+describe("oneOf (discriminatedUnion)", () => {
+	const t1 = z.object({ type: z.literal("a"), isOk: z.boolean() });
+	const t2 = z.object({ type: z.literal("b"), age: z.number() });
+	const t3 = z.object({ type: z.literal("c"), list: z.array(z.any()) });
+
+	test("1 - branch a ok", async () => {
+		await validateSimpleDataAgainstSchema(
+			z.discriminatedUnion("type", [t1, t2, t3]),
+			{ type: "a", isOk: true },
+			{ success: true },
+		);
+	});
+
+	test("2 - branch b ok", async () => {
+		await validateSimpleDataAgainstSchema(
+			z.discriminatedUnion("type", [t1, t2, t3]),
+			{ type: "b", age: 3 },
+			{ success: true },
+		);
+	});
+
+	test("3 - invalid discriminator fails (no brittle shape assertions)", async () => {
+		await validateSimpleDataAgainstSchema(
+			z.discriminatedUnion("type", [t1, t2, t3]),
+			{ type: "<>", isOk: true } as any,
+			{ success: false },
+		);
+	});
+});
