@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { validateSimpleDataAgainstSchema } from "./shared";
+import { validateAndExpectErrors, validateSimpleDataAgainstSchema } from "./shared";
 
 jest.setTimeout(10_000);
 
@@ -26,7 +26,8 @@ describe("recursive schema", () => {
 	});
 
 	test("1", async () => {
-		await validateSimpleDataAgainstSchema(
+		await validateAndExpectErrors(
+			"parse",
 			zSchema,
 			{
 				type: "x",
@@ -49,17 +50,12 @@ describe("recursive schema", () => {
 					},
 				},
 			},
-			{
-				success: false,
-				error: [
-					{
-						code: "invalid_value",
-						values: ["x"],
-						path: ["x", "x", "x", "x", "x", "x", "type"],
-						message: 'Invalid input: expected "x"',
-					},
-				],
-			},
+			[
+				{
+				  path: 'x.x.x.x.x.x.type',
+				  errors: [ 'Invalid input: expected "x"' ]
+				}
+			  ],
 		);
 	});
 

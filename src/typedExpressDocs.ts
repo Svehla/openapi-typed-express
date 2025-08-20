@@ -1,5 +1,5 @@
 import type { NextFunction, Request, Response } from "express";
-import { ZodObject, z } from "zod";
+import { z } from "zod";
 import { parseUrlFromExpressRegexp } from "./expressRegExUrlParser";
 import { convertUrlsMethodsSchemaToOpenAPI, type UrlsMethodDocs } from "./openAPIFromSchema";
 import {
@@ -12,7 +12,7 @@ import {
 } from "./runtimeSchemaValidation";
 import { type DeepPartial, deepMerge, mergePaths } from "./utils";
 
-// symbol as a key is not sended via express down to the _routes
+// symbol as a key is not sent via express down to the _routes
 export const __expressTypedHack_key__ = "__expressTypedHack_key__";
 export const __expressOpenAPIHack__ = Symbol("__expressOpenAPIHack__");
 
@@ -73,32 +73,32 @@ type Config = {
 
 type Present<T> = Exclude<T, undefined>;
 
-type BodyOf<C extends Config> =
+type BodyType<C extends Config> =
   [Present<C["body"]>] extends [never]
     ? unknown
     : MaterializeType<Present<C["body"]>, "parse", "output">;
 
-type ParamsOf<C extends Config> =
+type ParamsType<C extends Config> =
   [Present<C["params"]>] extends [never]
     ? Record<string, never>
     : MaterializeTypeShape<Present<C["params"]>, "parse", "output">;
 
-type QueryOf<C extends Config> =
+type QueryType<C extends Config> =
   [Present<C["query"]>] extends [never]
     ? Record<string, never>
     : MaterializeTypeShape<Present<C["query"]>, "parse", "output">;
 
-type HeadersOf<C extends Config> =
+type HeadersType<C extends Config> =
   [Present<C["headers"]>] extends [never]
     ? {}
     : { headers: MaterializeType<Present<C["headers"]>, "parse", "output"> };
 
-type Returns<C extends Config> =
+type ReturnsType<C extends Config> =
   [Present<C["returns"]>] extends [never]
     ? unknown
     : MaterializeType<Present<C["returns"]>, "serialize", "output">;
 
-type ReturnsTransform<C extends Config> =
+type ReturnsTransformType<C extends Config> =
   [Present<C["returns"]>] extends [never]
     ? unknown
     : MaterializeType<Present<C["returns"]>, "serialize", "input">;
@@ -106,20 +106,20 @@ type ReturnsTransform<C extends Config> =
 type TypedHandleDual<C extends Config> = (
 	req: Omit<
 		Request<
-			ParamsOf<C>,
+			ParamsType<C>,
 			any,
-			BodyOf<C>,
-			QueryOf<C>
+			BodyType<C>,
+			QueryType<C>
 		>,
 		"headers"
 	> &
-		HeadersOf<C>,
+		HeadersType<C>,
 	res: Omit<Response, "send"> & {
 		send: (
-			data: Returns<C>,
+			data: ReturnsType<C>,
 		) => void;
 		transformSend: (
-			data: ReturnsTransform<C>,
+			data: ReturnsTransformType<C>,
 		) => void;
 	},
 	next: NextFunction,

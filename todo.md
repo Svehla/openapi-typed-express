@@ -1,6 +1,8 @@
 ## TODO:
 
-- rename encoded/decoded -> parser/serializer
-- start supporting zod somehow?
 - Create readme docs for the whole project
-- Rewrite tests
+- add tests for express handler
+
+DONE
+- start supporting zod somehow?
+- rename encoded/decoded -> parser/serializer

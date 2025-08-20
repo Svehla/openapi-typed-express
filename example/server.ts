@@ -20,11 +20,11 @@ const zDateISO = zDual(
 		.pipe(z.date())
 		.meta({
 			description: "Date in ISO string format",
-		}),
+		}).optional(),
 	z
 		.date()
 		.transform((d) => d.toISOString())
-		.pipe(z.string()),
+		.pipe(z.string()).optional(),
 );
 
 const ztransformOneWay = z.number().transform(String).pipe(z.string());
@@ -33,6 +33,18 @@ const ztransformOneWay = z.number().transform(String).pipe(z.string());
 const zNumber = zDual(
 	z.string().transform(Number).pipe(z.number()),
 	z.number().transform(String).pipe(z.string()),
+);
+
+app.post("/users/:id", apiDoc({
+		params: {
+			id: zNumber,
+		},
+		body: z.object({
+			name: z.string(),
+		}),
+	})((req, res) => {
+		res.send({ id: req.params.id, name: req.body.name });
+	}),
 );
 
 app.post(
@@ -56,11 +68,11 @@ app.post(
 		}),
 	})((req, res) => {
 		const id = req.params.id satisfies string | undefined;
-		const date = req.body.date satisfies Date;
+		const date = req.body.date satisfies Date | undefined;
 		const x = req.body.x satisfies number;
-		const date2 = req.query.date satisfies Date;
+		const date2 = req.query.date satisfies Date | undefined;
 		const x2 = req.query.x satisfies number;
-		const outDate = new Date(date.getTime());
+		const outDate = new Date(date?.getTime() ?? Date.now());
 		outDate.setUTCDate(outDate.getUTCDate() + 1);
 		res.transformSend({ date: date, oneway: x });
 	}),

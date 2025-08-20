@@ -9,6 +9,9 @@ export const validateDataAgainstSchema = async (
 ) => {
 	const zodValidator = getZodValidator(schema, { transformTypeMode });
 	const objValidationRes = zodValidator.validate(objToValidate);
+	if (!objValidationRes.success) {
+		//console.log(normalizeZodError(objValidationRes.error));
+	}
 	expect(objValidationRes).toMatchObject(output as any);
 };
 
@@ -29,6 +32,9 @@ export const validateAndExpectData = async (
 ) => {
 	const zodValidator = getZodValidator(schema, { transformTypeMode });
 	const res = zodValidator.validate(objToValidate);
+	if (!res.success) {
+		//console.log(normalizeZodError(res.error));
+	}
 	expect(res).toMatchObject({ success: true });
 	expect(res.success && (res as any).data).toEqual(expectedData);
 };
@@ -37,11 +43,11 @@ export const validateAndExpectErrors = async (
 	transformTypeMode: Mode,
 	schema: any,
 	objToValidate: any,
-	expectedIssuesSubset: any[],
+	expectedNormalizedErrors: any[],
 ) => {
 	const zodValidator = getZodValidator(schema, { transformTypeMode });
 	const res = zodValidator.validate(objToValidate);
 	expect(res.success).toBe(false);
 	// Jest's toMatchObject lets us check only selected fields of each issue
-	expect(normalizeZodError((res as any).error)).toMatchObject(expectedIssuesSubset);
+	expect(normalizeZodError((res as any).error)).toMatchObject(expectedNormalizedErrors);
 };

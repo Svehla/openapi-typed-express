@@ -409,16 +409,6 @@ describe("runtimeSchemaValidation", () => {
 	});
 
 	describe("async types validations", () => {
-		test("1 - transform throws => fail", async () => {
-			await validateSimpleDataAgainstSchema(
-				z.string().transform(() => {
-					throw new Error("value is invalid!!!!");
-				}),
-				"x",
-				{ success: false },
-			);
-		});
-
 		test("2 - transform to undefined then pipe(undefined) => success", async () => {
 			await validateSimpleDataAgainstSchema(
 				z

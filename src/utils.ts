@@ -23,42 +23,6 @@ export const mergePaths = (path1: string, path2: string) => {
 	return `/${[trimSlash(path1), trimSlash(path2)].filter(Boolean).join("/")}`;
 };
 
-// /**
-//  * this function works nice for batching synchronous errors into metadata object
-//  * TODO: add tests
-//  */
-export const tryAllSync = <T>(syncFns: (() => T)[]) => {
-	const results: PromiseSettledResult<T>[] = [];
-
-	for (const syncFn of syncFns) {
-		try {
-			const value = syncFn();
-			results.push({ status: "fulfilled", value });
-		} catch (err) {
-			results.push({ status: "rejected", reason: err });
-		}
-	}
-
-	return results;
-};
-
-export const validateUntilFirstSuccess = (validationFns: any[]) => {
-	const errors = { status: "rejected" as const, reasons: [] as any[] };
-	let index = -1;
-
-	for (const validate of validationFns) {
-		try {
-			index++;
-			const result = validate();
-			return { status: "fulfilled" as const, data: result, index };
-		} catch (err) {
-			errors.reasons.push(err);
-		}
-	}
-
-	return errors;
-};
-
 // we can optional generic use for apis where we have to integrate inconsistent responses
 // inspiration: https://stackoverflow.com/a/51365037
 export type DeepPartial<T> = T extends (infer Item)[]
