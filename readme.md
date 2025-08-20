@@ -115,22 +115,22 @@ app.listen(port, () => {
 
 ## Package API
 
-The whole library expose 2 main functions: `initApiDocs(...)` and & `apiDoc(...)`
+The whole library exposes 2 main functions: `initApiDocs(...)` and `apiDoc(...)`
 
 ### initApiDocs
 
-This method takes a swagger metadata which will be deeply merged into generated documentation.
+This function takes swagger metadata which is displayed in the documentation.
 
 `initApiDocs()` returns generated Swagger JSON which you can use to document your API.
 
-[example usage](https://github.com/Svehla/swagger-typed-express-docs/blob/main/tests/schemaBuilder.test.ts#L15)
+example usage:
 
 ```typescript
 const swaggerJSON = initApiDocs(app, { info: { title: 'my application' } })
 ```
 
-to make the application work you have to call `initApiDocs()` at the end of routes definition
-and before you start `app.listen(...)`
+to make the application work you have to call `initApiDocs()` at the end of the routes definition
+and before you call `app.listen(...)`
 
 ### apiDoc
 
