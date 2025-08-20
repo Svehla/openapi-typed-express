@@ -18,57 +18,99 @@ The ApiDoc automatically chooses the shema based on where the ZDual is used (req
 [example usage](https://github.com/lukdmine/openapi-zodtyped-express/blob/main/example/)
 
 ```typescript
-import express from 'express'
-import { apiDoc, initApiDocs, T } from 'swagger-typed-express-docs'
-import swaggerUi from 'swagger-ui-express'
+import express from "express";
+import swaggerUi from "swagger-ui-express";
+import { z } from "zod";
+import { apiDoc, initApiDocs } from "../src";
+import { zDual } from "../src/runtimeSchemaValidation";
 
-const app = express()
-const port = 3000
+// ...
 
-app.get(
-  '/user/:userId',
-  /**
-   * adding metadata for handlers where we want to have
-   *  - runtime checks
-   * - compile-time checks
-   * - generate swagger documentation
-   */
-  apiDoc({
-    params: {
-      userId: T.string,
-    },
-    query: {
-      name: T.string,
-      header: T.list(T.enum(['a', 'b', 'c'] as const)),
-    },
-    body: {
-      header: T.list(T.enum(['a', 'b', 'c'] as const)),
-      message: T.string,
-      footer: T.string,
-    },
-    returns: T.object({
-      enhancedBody: T.object({
-        data: T.enum(['a', 'b', 'c'] as const),
-      }),
-    }),
-  })((req, res) => {
-    const body = req.body
-    const query = req.query
+const app = express();
+const port = 5656;
 
-    // res.send is typed by typescript, but it do not transform values by tSchema, so
-    // you may use tSend instead
-    res.tSend({
-      body,
-      query,
-    })
-  })
-)
-/**
- * before you start the server you have to setup library
- */
-const swaggerJSON = initApiDocs(app, { info: { title: 'my application' } })
+app.use(express.json());
 
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerJSON))
+// zDual: parse (incoming) = ISO string -> Date, serialize (outgoing) = Date -> ISO string
+const zDateISO = zDual(
+	z.string()
+		.datetime()
+		.transform((s: string) => new Date(s))
+		.pipe(z.date())
+		.meta({
+			description: "Date in ISO string format",
+		}).optional(),
+	z.date()
+		.transform((d) => d.toISOString())
+		.pipe(z.string()).optional(),
+);
+
+const ztransformOneWay = z.number().transform(String).pipe(z.string());
+
+// number dual - encoded as string, decoded as number
+const zNumber = zDual(
+	z.string().transform(Number).pipe(z.number()),
+	z.number().transform(String).pipe(z.string()),
+);
+
+app.post("/users/:id", apiDoc({
+		params: {
+			id: zNumber,
+		},
+		body: z.object({
+			name: z.string(),
+		}),
+	})((req, res) => {
+		res.send({ id: req.params.id, name: req.body.name });
+	}),
+);
+
+app.post(
+	"/add-day",
+	apiDoc({
+		params: {
+			id: z.string(),
+		},
+		body: z.object({
+			date: zDateISO,
+			x: zNumber,
+			oneway: ztransformOneWay,
+		}),
+		query: {
+			date: zDateISO,
+			x: zNumber,
+		},
+		returns: z.object({
+			date: zDateISO,
+			oneway: ztransformOneWay,
+		}),
+	})((req, res) => {
+		const id = req.params.id satisfies string | undefined;
+		const date = req.body.date satisfies Date | undefined;
+		const x = req.body.x satisfies number;
+		const date2 = req.query.date satisfies Date | undefined;
+		const x2 = req.query.x satisfies number;
+		const outDate = new Date(date?.getTime() ?? Date.now());
+		outDate.setUTCDate(outDate.getUTCDate() + 1);
+		res.transformSend({ date: date, oneway: x });
+	}),
+);
+
+const openapi = initApiDocs(app, {
+	info: { version: "1.0.0", title: "Date API" },
+	servers: [{ url: `http://localhost:${port}/` }],
+});
+
+app.get("/api-docs", (req, res) => {
+	res.send(openapi);
+});
+
+app.use("/swagger-ui", swaggerUi.serve, swaggerUi.setup(openapi));
+
+app.listen(port, () => {
+	console.info(`Server listening at http://localhost:${port}`);
+	console.info(`OpenAPI docs at http://localhost:${port}/swagger-ui`);
+});
 ```
 
 ## Package API
@@ -92,69 +134,34 @@ and before you start `app.listen(...)`
 
 ### apiDoc
 
-`apiDoc(...)` is high-order-function which you use to wrap express endpoint handler
-and define a meta-information about inputs & outputs of each API handler.
+`apiDoc(...)` is a higher-order-function which wraps an express endpoint handler and
+and defines meta-information about inputs & outputs of each API handler.
 
 example usage:
 
 ```typescript
-import { T } from 'swagger-typed-express-docs'
-
-app.get(
-  '/',
-  apiDoc({
-    query: {
-      name: T.string
-      header: T.list(T.enum(['a', 'b', 'c'] as const))),
-    },
-    body: {
-      header: T.list(T.enum(['a', 'b', 'c'] as const))),
-      message: T.null_list,
-      footer: T.string,
-    },
-    returns: T.null_object({
-      data: T.null_object({
-        nestedData: T.enum(['a', 'b', 'c'] as const),
-      }),
-    }),
-  })((req, res) => {
-    const body = req.body
-    const query = req.query
-
-    res.send({
-      body,
-      query,
-    })
-  })
-)
+app.post("/users/:id", apiDoc({
+		params: {
+			id: zNumber,
+		},
+		body: z.object({
+			name: z.string(),
+		}),
+	})((req, res) => {
+		res.send({ id: req.params.id, name: req.body.name });
+	}),
+);
 ```
-
 
 ## Setup environments
 
 ### Express body parsing
 
-if you want to parser body, you have to setup body parser express middleware.
+if you want to parse the body, you have to setup body parser express middleware.
 
 ```typescript
 app.use(express.json())
 ```
-
-### Typescripts null checks
-
-to make fully work `tNonNullable` you have to setup `tsconfig.json` properly.
-
-```json
-{
-  ...
-  "compilerOptions": {
-    ...
-    "strictNullChecks": true,
-  }
-}
-```
-
-## Example library preview TODO
 
 ### res.transformSend()
 
@@ -172,3 +179,18 @@ Express Handler -> Decoded -> Encoded -> HTTP -> User
 
 - Users interact exclusively with encoded types.
 - Express handlers interact solely with decoded types.
+
+example usage:
+
+```typescript
+// zDual: parse (incoming) = ISO string -> Date, serialize (outgoing) = Date -> ISO string
+const zDateISO = zDual(
+	z.string()
+		.datetime()
+		.transform((s: string) => new Date(s))
+		.pipe(z.date()).optional(),
+	z.date()
+		.transform((d) => d.toISOString())
+		.pipe(z.string()).optional(),
+);
+```
