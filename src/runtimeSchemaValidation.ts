@@ -36,8 +36,6 @@ type ZDual<Dec extends z.ZodTypeAny, Enc extends z.ZodTypeAny> = {
 	__dual: true;
 	parse: Dec;
 	serialize: Enc;
-	optional(): ZDual<z.ZodOptional<Dec>, z.ZodOptional<Enc>>;
-	nullable(): ZDual<z.ZodNullable<Dec>, z.ZodNullable<Enc>>;
 };
 
 /**
@@ -128,8 +126,6 @@ export const zDual = <Dec extends z.ZodTypeAny, Enc extends z.ZodTypeAny>(
 		__dual: true,
 		parse,
 		serialize,
-		optional: () => zDual(parse.optional(), serialize.optional()),
-		nullable: () => zDual(parse.nullable(), serialize.nullable()),
 	};
 	return self as unknown as ZDualInShape<Dec, Enc>;
 };
