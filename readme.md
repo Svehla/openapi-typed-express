@@ -10,7 +10,7 @@ All of this is done with a single higher-order-function used in the express endp
 So you can just simply wrap your handler with the `apiDoc(...)` and initialize project via `initApiDocs()`
 
 ## ZDual schemas
-This lib also introduces ZDual schemas which merge encode and decode zod schemas. This can be useful when having a different representation of the data in the code then on the input. for example isostring - Date.
+This lib also introduces ZDual schemas which merge serialize and parse zod schemas. This can be useful when having a different representation of the data in the code then on the input. for example isostring - Date.
 The ApiDoc automatically chooses the shema based on where the ZDual is used (request/response) and infers types.
 
 ## Example usage
@@ -47,7 +47,7 @@ const zDateISO = zDual(
 
 const ztransformOneWay = z.number().transform(String).pipe(z.string());
 
-// number dual - encoded as string, decoded as number
+// number dual - serialized as string, parsed as number
 const zNumber = zDual(
 	z.string().transform(Number).pipe(z.number()),
 	z.number().transform(String).pipe(z.string()),
@@ -167,18 +167,18 @@ app.use(express.json())
 
 The library automatically injects the `transformSend()` function into `res`. This function takes data, validates it and applies transformaions with `apiDoc({ returns: ... })` and if the validation succeeds 200 and the data. The type of this function is automatically infered from the  `apiDoc({ returns: ... })` schema so you cant input data that cant be sent.
 
-Normal `res.send()` just sends the data in the encoded type also infered from `apiDoc({ returns: ... })`.
+Normal `res.send()` just sends the data in the serialized type also infered from `apiDoc({ returns: ... })`.
 
-### Custom transformation of incoming data (Encoders / decoders)
+### Custom transformation of incoming data (serializers / parsers)
 
 #### implemented with zDual()
 
 Data Transformation Flow:
-User -> HTTP -> Encoded -> Decoded -> Express Handler
-Express Handler -> Decoded -> Encoded -> HTTP -> User
+User -> HTTP -> serialized -> parsed -> Express Handler
+Express Handler -> parsed -> serialized -> HTTP -> User
 
-- Users interact exclusively with encoded types.
-- Express handlers interact solely with decoded types.
+- Users interact exclusively with serialized types.
+- Express handlers interact solely with parsed types.
 
 example usage:
 
