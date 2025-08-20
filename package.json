@@ -8,6 +8,7 @@
 		"check-code": "npm run test && npm run lint && npm run ts:check-types",
 		"clean": "tsc --build --clean",
 		"dev": "ts-node-dev --respawn example/server.ts",
+		"dev:router": "ts-node-dev --respawn example/express-router-example.ts",
 		"l": "npm run lint:fix",
 		"lint": "biome check .",
 		"lint:fix": "biome check --write .",
@@ -24,6 +25,7 @@
 	"dependencies": {
 		"supertest": "^7.1.4",
 		"tsd": "^0.33.0",
+		"uuid": "^11.1.0",
 		"yup": "^1.6.1",
 		"zod": "^4.0.17"
 	},
