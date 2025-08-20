@@ -389,10 +389,6 @@ describe("runtimeSchemaValidation", () => {
 	});
 
 	describe("nullable keys with validator function", () => {
-		const tISODate = z.string().transform((_str) => {
-			throw new Error("this should never be called");
-		});
-
 		const tObjDate = z.object({ date: z.string().nullable() });
 
 		test("1 - null root fails (expects object)", async () => {

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { getZodValidator, zDual } from "../src/runtimeSchemaValidation";
-import { validateDataAgainstSchema, validateSimpleDataAgainstSchema } from "./shared";
+import { validateDataAgainstSchema } from "./shared";
 
 // TODO: this file tests encoders & decoders (for casting and converting)
 // TODO: may be async validations on the transform type?
