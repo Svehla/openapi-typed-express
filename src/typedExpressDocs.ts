@@ -73,54 +73,35 @@ type Config = {
 
 type Present<T> = Exclude<T, undefined>;
 
-type BodyType<C extends Config> =
-  [Present<C["body"]>] extends [never]
-    ? unknown
-    : MaterializeType<Present<C["body"]>, "parse", "output">;
+type BodyType<C extends Config> = [Present<C["body"]>] extends [never]
+	? unknown
+	: MaterializeType<Present<C["body"]>, "parse", "output">;
 
-type ParamsType<C extends Config> =
-  [Present<C["params"]>] extends [never]
-    ? Record<string, never>
-    : MaterializeTypeShape<Present<C["params"]>, "parse", "output">;
+type ParamsType<C extends Config> = [Present<C["params"]>] extends [never]
+	? Record<string, never>
+	: MaterializeTypeShape<Present<C["params"]>, "parse", "output">;
 
-type QueryType<C extends Config> =
-  [Present<C["query"]>] extends [never]
-    ? Record<string, never>
-    : MaterializeTypeShape<Present<C["query"]>, "parse", "output">;
+type QueryType<C extends Config> = [Present<C["query"]>] extends [never]
+	? Record<string, never>
+	: MaterializeTypeShape<Present<C["query"]>, "parse", "output">;
 
-type HeadersType<C extends Config> =
-  [Present<C["headers"]>] extends [never]
-    ? {}
-    : { headers: MaterializeType<Present<C["headers"]>, "parse", "output"> };
+type HeadersType<C extends Config> = [Present<C["headers"]>] extends [never]
+	? {}
+	: { headers: MaterializeType<Present<C["headers"]>, "parse", "output"> };
 
-type ReturnsType<C extends Config> =
-  [Present<C["returns"]>] extends [never]
-    ? unknown
-    : MaterializeType<Present<C["returns"]>, "serialize", "output">;
+type ReturnsType<C extends Config> = [Present<C["returns"]>] extends [never]
+	? unknown
+	: MaterializeType<Present<C["returns"]>, "serialize", "output">;
 
-type ReturnsTransformType<C extends Config> =
-  [Present<C["returns"]>] extends [never]
-    ? unknown
-    : MaterializeType<Present<C["returns"]>, "serialize", "input">;
+type ReturnsTransformType<C extends Config> = [Present<C["returns"]>] extends [never]
+	? unknown
+	: MaterializeType<Present<C["returns"]>, "serialize", "input">;
 
 type TypedHandleDual<C extends Config> = (
-	req: Omit<
-		Request<
-			ParamsType<C>,
-			any,
-			BodyType<C>,
-			QueryType<C>
-		>,
-		"headers"
-	> &
-		HeadersType<C>,
+	req: Omit<Request<ParamsType<C>, any, BodyType<C>, QueryType<C>>, "headers"> & HeadersType<C>,
 	res: Omit<Response, "send"> & {
-		send: (
-			data: ReturnsType<C>,
-		) => void;
-		transformSend: (
-			data: ReturnsTransformType<C>,
-		) => void;
+		send: (data: ReturnsType<C>) => void;
+		transformSend: (data: ReturnsTransformType<C>) => void;
 	},
 	next: NextFunction,
 ) => void;
@@ -226,12 +207,12 @@ export const getApiDocInstance =
 					}
 				};
 
-        // @ts-expect-error
-        res.transformSend = transformSend
-        // TODO: apply encoder (serializer) for transform types like `Date -> string`
-        // @ts-ignore
-        return handle(req, res, next)
-      }
+				// @ts-expect-error
+				res.transformSend = transformSend;
+				// TODO: apply encoder (serializer) for transform types like `Date -> string`
+				// @ts-ignore
+				return handle(req, res, next);
+			};
 
 			return {
 				apiRouteSchema: {

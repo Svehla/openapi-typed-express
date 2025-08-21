@@ -9,6 +9,11 @@ openapi-zodtyped-express keeps your endpoints documented using OPENAPI with just
 All of this is done with a single higher-order-function used in the express endpoints.
 So you can just simply wrap your handler with the `apiDoc(...)` and initialize project via `initApiDocs()`
 
+## Important info
+
+- every transform in a zod schema has to be piped with z.pipe() into a output validator like this: pipe(z.number()) as zods toJSONSchema cant get the output type of a transform.
+- at the moment it is not possible to chain more zod on the zDual type (everything has to be done in the two internal schemas of ZDual)
+
 ## ZDual schemas
 This lib also introduces ZDual schemas which merge serialize and parse zod schemas. This can be useful when having a different representation of the data in the code then on the input. for example isostring - Date.
 The ApiDoc automatically chooses the shema based on where the ZDual is used (request/response) and infers types.
@@ -153,7 +158,7 @@ app.post("/users/:id", apiDoc({
 );
 ```
 
-## Setup environments
+## Setup environment
 
 ### Express body parsing
 

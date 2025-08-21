@@ -12,8 +12,6 @@ describe("discriminated unions", () => {
 	});
 
 	test("missing discriminator", async () => {
-		await validateAndExpectErrors("parse", Shape, { r: 1 }, [
-			{ path: "" },
-		]);
+		await validateAndExpectErrors("parse", Shape, { r: 1 }, [{ path: "" }]);
 	});
 });

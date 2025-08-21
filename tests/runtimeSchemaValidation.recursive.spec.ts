@@ -52,10 +52,10 @@ describe("recursive schema", () => {
 			},
 			[
 				{
-				  path: 'x.x.x.x.x.x.type',
-				  errors: [ 'Invalid input: expected "x"' ]
-				}
-			  ],
+					path: "x.x.x.x.x.x.type",
+					errors: ['Invalid input: expected "x"'],
+				},
+			],
 		);
 	});
 

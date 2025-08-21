@@ -59,7 +59,11 @@ export type MaterializeType<
 	S,
 	M extends Mode,
 	T extends "input" | "output" = "output",
-> = S extends { __dual: true; __dec__: infer D extends z.ZodTypeAny; __enc__: infer E extends z.ZodTypeAny }
+> = S extends {
+	__dual: true;
+	__dec__: infer D extends z.ZodTypeAny;
+	__enc__: infer E extends z.ZodTypeAny;
+}
 	? MaterializeType<M extends "parse" ? D : E, M, T>
 	: S extends z.ZodObject<infer Sh, any>
 		? { [K in keyof Sh]: MaterializeType<Sh[K], M, T> }
@@ -101,12 +105,11 @@ export type MaterializeTypeShape<Sh, M extends Mode, T extends "input" | "output
 /**
  * A dual schema type in a shape.
  */
-type ZDualInShape<Dec extends z.ZodTypeAny, Enc extends z.ZodTypeAny> =
-  ZDual<Dec, Enc> &
-  z.ZodTypeAny & {
-    /** phantom types that survive ZodObject shape inference */
-    readonly __dec__: Dec;
-    readonly __enc__: Enc;
+type ZDualInShape<Dec extends z.ZodTypeAny, Enc extends z.ZodTypeAny> = ZDual<Dec, Enc> &
+	z.ZodTypeAny & {
+		/** phantom types that survive ZodObject shape inference */
+		readonly __dec__: Dec;
+		readonly __enc__: Enc;
 	};
 
 // highligh the text

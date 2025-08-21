@@ -20,11 +20,13 @@ const zDateISO = zDual(
 		.pipe(z.date())
 		.meta({
 			description: "Date in ISO string format",
-		}).optional(),
+		})
+		.optional(),
 	z
 		.date()
 		.transform((d) => d.toISOString())
-		.pipe(z.string()).optional(),
+		.pipe(z.string())
+		.optional(),
 );
 
 const ztransformOneWay = z.number().transform(String).pipe(z.string());
@@ -35,7 +37,9 @@ const zNumber = zDual(
 	z.number().transform(String).pipe(z.string()),
 );
 
-app.post("/users/:id", apiDoc({
+app.post(
+	"/users/:id",
+	apiDoc({
 		params: {
 			id: zNumber,
 		},

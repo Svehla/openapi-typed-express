@@ -23,7 +23,7 @@ describe("recursive schema (fixed)", () => {
 				type: "x",
 				x: { type: "x", x: { type: "x", x: { type: "x", x: { type: "xx" } } } },
 			},
-			[ { path: 'x.x.x.x.type', errors: [ 'Invalid input: expected "x"' ] } ],
+			[{ path: "x.x.x.x.type", errors: ['Invalid input: expected "x"'] }],
 		);
 	});
 });

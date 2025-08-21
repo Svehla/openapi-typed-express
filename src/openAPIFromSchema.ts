@@ -15,42 +15,41 @@ export const generateOpenAPIPath = (schemas: GenerateOpenAPIPathArg) => {
 	// console.log(!(schemas.querySchema?.shape["id"].def?.type === 'optional'))
 
 	const materializedZodSchemas = {
-		path: schemas.pathSchema?.shape ? mapEntries(
-			([k, v]) => [k, materialize(v, "parse")],
-			schemas.pathSchema?.shape
-		) : {},
-		query: schemas.querySchema?.shape ? mapEntries(
-			([k, v]) => [k, materialize(v, "parse")],
-			schemas.querySchema?.shape
-		) : {},
-		headers: schemas.headersSchema?.shape ? mapEntries(
-			([k, v]) => [k, materialize(v, "parse")],
-			schemas.headersSchema?.shape
-		) : {},
+		path: schemas.pathSchema?.shape
+			? mapEntries(([k, v]) => [k, materialize(v, "parse")], schemas.pathSchema?.shape)
+			: {},
+		query: schemas.querySchema?.shape
+			? mapEntries(([k, v]) => [k, materialize(v, "parse")], schemas.querySchema?.shape)
+			: {},
+		headers: schemas.headersSchema?.shape
+			? mapEntries(([k, v]) => [k, materialize(v, "parse")], schemas.headersSchema?.shape)
+			: {},
 		body: schemas.bodySchema?.shape ? materialize(schemas.bodySchema!, "parse") : undefined,
-		returns: schemas.returnsSchema?.shape ? materialize(schemas.returnsSchema!, "serialize") : undefined,
-	}
+		returns: schemas.returnsSchema?.shape
+			? materialize(schemas.returnsSchema!, "serialize")
+			: undefined,
+	};
 
 	const endpointSchema = {
 		parameters: [
 			...Object.entries(materializedZodSchemas.path).map(([k, v]) => ({
 				in: "path",
 				name: k,
-				required: v.def?.type !== 'optional',
+				required: v.def?.type !== "optional",
 				schema: toJSONSchema(materialize(v, "parse"), { io: "input" }),
 			})),
 
 			...Object.entries(materializedZodSchemas.query).map(([k, v]) => ({
 				in: "query",
 				name: k,
-				required: v.def?.type !== 'optional',
+				required: v.def?.type !== "optional",
 				schema: toJSONSchema(materialize(v, "parse"), { io: "input" }),
 			})),
 
 			...Object.entries(materializedZodSchemas.headers).map(([k, v]) => ({
 				in: "header",
 				name: k,
-				required: v.def?.type !== 'optional',
+				required: v.def?.type !== "optional",
 				schema: toJSONSchema(materialize(v, "parse"), { io: "input" }),
 			})),
 		].filter(Boolean),
