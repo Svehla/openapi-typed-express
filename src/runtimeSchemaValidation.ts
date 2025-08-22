@@ -36,6 +36,8 @@ type ZDual<Dec extends z.ZodTypeAny, Enc extends z.ZodTypeAny> = {
 	__dual: true;
 	parse: Dec;
 	serialize: Enc;
+	_optional: boolean;
+	_nullable: boolean;
 };
 
 /**
@@ -59,37 +61,42 @@ export type MaterializeType<
 	S,
 	M extends Mode,
 	T extends "input" | "output" = "output",
-> = S extends {
-	__dual: true;
-	__dec__: infer D extends z.ZodTypeAny;
-	__enc__: infer E extends z.ZodTypeAny;
-}
-	? MaterializeType<M extends "parse" ? D : E, M, T>
-	: S extends z.ZodObject<infer Sh, any>
-		? { [K in keyof Sh]: MaterializeType<Sh[K], M, T> }
-		: S extends z.ZodArray<infer Elem>
-			? MaterializeType<Elem, M, T>[]
-			: S extends z.ZodRecord<any, infer V>
-				? Record<string, MaterializeType<V, M, T>>
-				: S extends z.ZodUnion<infer Opts>
-					? MaterializeType<Opts[number], M, T>
-					: S extends z.ZodDiscriminatedUnion<any, infer Opts>
+	Out1_DualOutputZSchema = S extends {
+		__dual: true;
+		__dec__: infer D extends z.ZodTypeAny;
+		__enc__: infer E extends z.ZodTypeAny;
+	}
+		? MaterializeType<M extends "parse" ? D : E, M, T>
+		: S extends z.ZodObject<infer Sh, any>
+			? { [K in keyof Sh]: MaterializeType<Sh[K], M, T> }
+			: S extends z.ZodArray<infer Elem>
+				? MaterializeType<Elem, M, T>[]
+				: S extends z.ZodRecord<any, infer V>
+					? Record<string, MaterializeType<V, M, T>>
+					: S extends z.ZodUnion<infer Opts>
 						? MaterializeType<Opts[number], M, T>
-						: S extends z.ZodOptional<infer Inner>
-							? MaterializeType<Inner, M, T> | undefined
-							: S extends z.ZodNullable<infer Inner>
-								? MaterializeType<Inner, M, T> | null
-								: S extends z.ZodTuple<infer Items>
-									? {
-											[I in keyof Items]: Items[I] extends z.ZodTypeAny
-												? MaterializeType<Items[I], M, T>
-												: never;
-										}
-									: S extends z.ZodLazy<infer Inner>
-										? MaterializeType<Inner, M, T>
-										: T extends "input"
-											? z.input<S>
-											: z.output<S>;
+						: S extends z.ZodDiscriminatedUnion<any, infer Opts>
+							? MaterializeType<Opts[number], M, T>
+							: S extends z.ZodOptional<infer Inner>
+								? MaterializeType<Inner, M, T> | undefined
+								: S extends z.ZodNullable<infer Inner>
+									? MaterializeType<Inner, M, T> | null
+									: S extends z.ZodTuple<infer Items>
+										? {
+												[I in keyof Items]: Items[I] extends z.ZodTypeAny
+													? MaterializeType<Items[I], M, T>
+													: never;
+											}
+										: S extends z.ZodLazy<infer Inner>
+											? MaterializeType<Inner, M, T>
+											: T extends "input"
+												? z.input<S>
+												: z.output<S>,
+	IsOptional = S extends { __dual: true; _optional: true } ? true : false,
+	IsNullable = S extends { __dual: true; _nullable: true } ? true : false,
+	Out1 = IsOptional extends true ? Out1_DualOutputZSchema | undefined : Out1_DualOutputZSchema,
+	Out2 = IsNullable extends true ? Out1 | null : Out1,
+> = Out2;
 
 /**
  * Materialize a shape to a Zod type.
@@ -102,16 +109,6 @@ export type MaterializeTypeShape<Sh, M extends Mode, T extends "input" | "output
 	[K in keyof Sh]: MaterializeType<Sh[K], M, T>;
 };
 
-/**
- * A dual schema type in a shape.
- */
-type ZDualInShape<Dec extends z.ZodTypeAny, Enc extends z.ZodTypeAny> = ZDual<Dec, Enc> &
-	z.ZodTypeAny & {
-		/** phantom types that survive ZodObject shape inference */
-		readonly __dec__: Dec;
-		readonly __enc__: Enc;
-	};
-
 // highligh the text
 /**
  * Create a dual schema.
@@ -121,16 +118,44 @@ type ZDualInShape<Dec extends z.ZodTypeAny, Enc extends z.ZodTypeAny> = ZDual<De
  * @param serialize - The serialize schema.
  * @returns The dual schema.
  */
-export const zDual = <Dec extends z.ZodTypeAny, Enc extends z.ZodTypeAny>(
+export const zDual = <
+	Dec extends z.ZodTypeAny,
+	Enc extends z.ZodTypeAny,
+	IsNullable = false,
+	IsOptional = false,
+>(
 	parse: Dec,
 	serialize: Enc,
-): ZDualInShape<Dec, Enc> => {
-	const self: ZDual<Dec, Enc> = {
-		__dual: true,
+	partialConf?: {
+		isNullable?: IsNullable;
+		isOptional?: IsOptional;
+	},
+) => {
+	const self = {
+		__dual: true as const,
 		parse,
 		serialize,
+		nullable: () => {
+			return zDual<Dec, Enc, true, IsOptional>(parse, serialize, {
+				isOptional: partialConf?.isOptional,
+				isNullable: true,
+			});
+		},
+		optional: () => {
+			return zDual<Dec, Enc, IsNullable, true>(parse, serialize, {
+				isOptional: true,
+				isNullable: partialConf?.isNullable,
+			});
+		},
+		_nullable: (partialConf?.isNullable ?? false) as IsNullable,
+		_optional: (partialConf?.isOptional ?? false) as IsOptional,
 	};
-	return self as unknown as ZDualInShape<Dec, Enc>;
+
+	return self as typeof self &
+		z.ZodTypeAny & {
+			readonly __dec__: Dec;
+			readonly __enc__: Enc;
+		};
 };
 
 /**
@@ -184,8 +209,14 @@ const isDual = (s: unknown): s is ZDual<z.ZodTypeAny, z.ZodTypeAny> =>
  */
 export const materialize = (s: z.ZodTypeAny | ZDual<any, any>, mode: Mode): z.ZodTypeAny => {
 	if (isDual(s)) {
-		const out = mode === "parse" ? s.parse : s.serialize;
-		return materialize(out as any, mode);
+		let zOut = materialize(mode === "parse" ? s.parse : s.serialize, mode);
+		if (s._optional) {
+			zOut = zOut.optional();
+		}
+		if (s._nullable) {
+			zOut = zOut.nullable();
+		}
+		return zOut;
 	}
 
 	if (s instanceof z.ZodObject) {

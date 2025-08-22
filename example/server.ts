@@ -35,7 +35,9 @@ const ztransformOneWay = z.number().transform(String).pipe(z.string());
 const zNumber = zDual(
 	z.string().transform(Number).pipe(z.number()),
 	z.number().transform(String).pipe(z.string()),
-);
+)
+	.nullable()
+	.optional();
 
 app.post(
 	"/users/:id",
@@ -45,6 +47,7 @@ app.post(
 		},
 		body: z.object({
 			name: z.string(),
+			age: zNumber,
 		}),
 	})((req, res) => {
 		res.send({ id: req.params.id, name: req.body.name });
