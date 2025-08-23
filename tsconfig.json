@@ -1,42 +1,49 @@
 {
-	"compilerOptions": {
-		"target": "es5",
-		"lib": ["esnext", "es2018.promise", "es2017", "dom", "esnext.asynciterable", "es2021"],
-		"allowJs": true,
-		"downlevelIteration": true,
-		"skipLibCheck": true,
-		"allowSyntheticDefaultImports": true,
-		"strict": true,
-		"forceConsistentCasingInFileNames": true,
-		"module": "commonjs",
-		"moduleResolution": "node",
-		"resolveJsonModule": true,
-		"isolatedModules": false,
-		"emitDecoratorMetadata": true,
-		"strictPropertyInitialization": false,
-		"experimentalDecorators": true,
-		"esModuleInterop": true,
-		"noImplicitReturns": true,
-		"noImplicitThis": true,
-		"strictNullChecks": true,
-		"noImplicitAny": true,
-		"noUnusedParameters": false,
-		"noUnusedLocals": false,
+  "compilerOptions": {
+    "target": "es5",
+    "lib": [
+      "esnext",
+      "es2018.promise",
+      "es2017",
+      "dom",
+      "esnext.asynciterable",
+      "es2021"
+    ],
+    "allowJs": true,
+    "downlevelIteration": true,
+    "skipLibCheck": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "isolatedModules": false,
+    "emitDecoratorMetadata": true,
+    "strictPropertyInitialization": false,
+    "experimentalDecorators": true,
+    "esModuleInterop": true,
+    "noImplicitReturns": true,
+    "noImplicitThis": true,
+    "strictNullChecks": true,
+    "noImplicitAny": true,
+    "noUnusedParameters": false,
+    "noUnusedLocals": false,
 
-		// lib settings
-		"removeComments": true,
-		"sourceMap": false,
-		"outDir": "dist",
-		"noEmit": false,
-		"declaration": true
-	},
-	"include": [
-		// we have to change path when we build lib and when we test lib in the /example directory...
-		// TODO: resolve it somehow
-		"src/**/*"
-		// tests and example should not be included in dist, but we want to check the types while
-		// developing the library
-		// "tests/**/*",
-		// "example/**/*",
-	]
+    // lib settings
+    "removeComments": true,
+    "sourceMap": false,
+    "outDir": "dist",
+    "noEmit": false,
+    "declaration": true
+  },
+  "include": [
+    // we have to change path when we build lib and when we test lib in the /example directory...
+    // TODO: resolve it somehow
+    "src/**/*"
+    // tests and example should not be included in dist, but we want to check the types while
+    // developing the library
+    // "tests/**/*",
+    // "example/**/*",
+  ]
 }

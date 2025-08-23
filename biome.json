@@ -1,42 +1,80 @@
 {
-	"$schema": "https://biomejs.dev/schemas/2.2.0/schema.json",
-	"vcs": {
-		"enabled": false,
-		"clientKind": "git",
-		"useIgnoreFile": false
-	},
+  "$schema": "https://biomejs.dev/schemas/2.2.0/schema.json",
 
-	"files": {
-		"ignoreUnknown": false,
-		"includes": ["**", "!**/dist", "!**/*.generated.ts"]
-	},
-	"formatter": {
-		"enabled": true,
-		"indentStyle": "tab",
-		"indentWidth": 2,
-		"lineWidth": 100
-	},
-	"linter": {
-		"enabled": true,
-		"rules": {
-			"suspicious": {
-				"noExplicitAny": "off"
-			},
-			"recommended": true
-		},
-		"includes": ["**", "!**/*.test.ts"]
-	},
-	"javascript": {
-		"formatter": {
-			"quoteStyle": "double"
-		}
-	},
-	"assist": {
-		"enabled": true,
-		"actions": {
-			"source": {
-				"organizeImports": "on"
-			}
-		}
-	}
+  "formatter": {
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "formatWithErrors": true
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "single",
+      "semicolons": "asNeeded",
+      "jsxQuoteStyle": "single",
+      "arrowParentheses": "asNeeded",
+      "quoteProperties": "asNeeded",
+      "lineWidth": 110,
+      "trailingCommas": "es5"
+    },
+    "globals": ["React", "JSX"]
+  },
+
+  "linter": {
+    "rules": {
+      "suspicious": {
+        "noArrayIndexKey": "off",
+        "noPrototypeBuiltins": "off",
+        "noExplicitAny": "off",
+        "noAssignInExpressions": "off",
+        "noImplicitAnyLet": "off",
+        "noConfusingVoidType": "off",
+        "noDocumentCookie": "off",
+        "noGlobalIsNan": "off",
+        "noAsyncPromiseExecutor": "off"
+      },
+      "correctness": {
+        "noUnusedVariables": "off",
+        "noChildrenProp": "off",
+        "noUnusedImports": "off",
+        "noUnusedLabels": "off",
+        "useExhaustiveDependencies": "off",
+        "noUnusedFunctionParameters": "off",
+        "noUnsafeOptionalChaining": "off",
+        "noUnreachable": "off",
+        "useJsxKeyInIterable": "off",
+        "useHookAtTopLevel": "off"
+      },
+      "performance": {
+        "noAccumulatingSpread": "off"
+      },
+      "complexity": {
+        "noUselessFragments": "off",
+        "noUselessCatch": "off",
+        "useLiteralKeys": "off",
+        "noBannedTypes": "off",
+        "useDateNow": "off",
+        "noUselessTernary": "off"
+      },
+      "style": {
+        "useNodejsImportProtocol": "off",
+        "noDescendingSpecificity": "off",
+        "useTemplate": "off",
+        "noNonNullAssertion": "off"
+      },
+      "security": {
+        "noDangerouslySetInnerHtml": "off"
+      },
+      "a11y": {
+        "useKeyWithClickEvents": "off",
+        "noStaticElementInteractions": "off",
+        "useValidAnchor": "off",
+        "useButtonType": "off",
+        "noLabelWithoutControl": "off",
+        "useAltText": "off"
+      }
+    }
+  },
+  "files": {
+    "includes": ["**", "!**/build"]
+  }
 }

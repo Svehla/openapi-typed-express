@@ -27,47 +27,44 @@
  * if you pass regex into express path, this function stops to work
  */
 const replacers = {
-	prefixUrlSlash: "/^",
-	slashBetweenRoutes: "/",
-	urlParamString: "(?:([^\\/]+?))",
-	endOfRegExpString: "/i",
-	endUrlQueryString: "(?=\\/|$)",
-	optionalSlash: "\\/?",
-	requiredSlash: "\\/",
-} as const;
+  prefixUrlSlash: '/^',
+  slashBetweenRoutes: '/',
+  urlParamString: '(?:([^\\/]+?))',
+  endOfRegExpString: '/i',
+  endUrlQueryString: '(?=\\/|$)',
+  optionalSlash: '\\/?',
+  requiredSlash: '\\/',
+} as const
 
 type ExpressRouterParam = {
-	name: string;
-	// we don't use this attribute to get the url for the express analysis
-	optional?: boolean;
-	// we don't use this attribute to get the url for the express analysis
-	offset?: number;
-}[];
+  name: string
+  // we don't use this attribute to get the url for the express analysis
+  optional?: boolean
+  // we don't use this attribute to get the url for the express analysis
+  offset?: number
+}[]
 
-export const parseUrlFromExpressRegexp = (
-	regexpString: string,
-	params: ExpressRouterParam = [],
-) => {
-	const parsedRegExPath = regexpString
-		.substr(replacers.prefixUrlSlash.length)
-		.slice(0, -replacers.endOfRegExpString.length)
-		.slice(0, -replacers.endUrlQueryString.length)
-		.split(replacers.urlParamString)
-		// map parameters from `params` into the regexp string
-		.flatMap((item, index) => {
-			// TODO: add runtime validation of invalid param arguments
-			// which does not match with the url template provided by express API
-			const isLastItem = params.length > index;
-			if (!isLastItem) {
-				return [item];
-			}
-			return [item, `:${params[index]?.name}`];
-		})
-		.join("")
-		.split(replacers.optionalSlash)
-		.join("/")
-		.split(replacers.requiredSlash)
-		.join("/");
+export const parseUrlFromExpressRegexp = (regexpString: string, params: ExpressRouterParam = []) => {
+  const parsedRegExPath = regexpString
+    .substr(replacers.prefixUrlSlash.length)
+    .slice(0, -replacers.endOfRegExpString.length)
+    .slice(0, -replacers.endUrlQueryString.length)
+    .split(replacers.urlParamString)
+    // map parameters from `params` into the regexp string
+    .flatMap((item, index) => {
+      // TODO: add runtime validation of invalid param arguments
+      // which does not match with the url template provided by express API
+      const isLastItem = params.length > index
+      if (!isLastItem) {
+        return [item]
+      }
+      return [item, `:${params[index]?.name}`]
+    })
+    .join('')
+    .split(replacers.optionalSlash)
+    .join('/')
+    .split(replacers.requiredSlash)
+    .join('/')
 
-	return parsedRegExPath;
-};
+  return parsedRegExPath
+}

@@ -1,98 +1,96 @@
-import { toJSONSchema, type z } from "zod";
-import { materialize } from "./runtimeSchemaValidation";
-import { isObject, mapEntries } from "./utils";
+import { toJSONSchema, type z } from 'zod'
+import { materialize } from './runtimeSchemaValidation'
+import { isObject, mapEntries } from './utils'
 
 type GenerateOpenAPIPathArg = {
-	headersSchema: z.ZodObject | null | undefined;
-	querySchema: z.ZodObject | null | undefined;
-	pathSchema: z.ZodObject | null | undefined;
-	bodySchema: z.ZodObject | null | undefined;
-	returnsSchema: z.ZodObject | null | undefined;
-};
+  headersSchema: z.ZodObject | null | undefined
+  querySchema: z.ZodObject | null | undefined
+  pathSchema: z.ZodObject | null | undefined
+  bodySchema: z.ZodObject | null | undefined
+  returnsSchema: z.ZodObject | null | undefined
+}
 
 export const generateOpenAPIPath = (schemas: GenerateOpenAPIPathArg) => {
-	// console.log(schemas.querySchema?.shape);
-	// console.log(!(schemas.querySchema?.shape["id"].def?.type === 'optional'))
+  // console.log(schemas.querySchema?.shape);
+  // console.log(!(schemas.querySchema?.shape["id"].def?.type === 'optional'))
 
-	const materializedZodSchemas = {
-		path: schemas.pathSchema?.shape
-			? mapEntries(([k, v]) => [k, materialize(v, "parse")], schemas.pathSchema?.shape)
-			: {},
-		query: schemas.querySchema?.shape
-			? mapEntries(([k, v]) => [k, materialize(v, "parse")], schemas.querySchema?.shape)
-			: {},
-		headers: schemas.headersSchema?.shape
-			? mapEntries(([k, v]) => [k, materialize(v, "parse")], schemas.headersSchema?.shape)
-			: {},
-		body: schemas.bodySchema?.shape ? materialize(schemas.bodySchema!, "parse") : undefined,
-		returns: schemas.returnsSchema?.shape
-			? materialize(schemas.returnsSchema!, "serialize")
-			: undefined,
-	};
+  const materializedZodSchemas = {
+    path: schemas.pathSchema?.shape
+      ? mapEntries(([k, v]) => [k, materialize(v, 'parse')], schemas.pathSchema?.shape)
+      : {},
+    query: schemas.querySchema?.shape
+      ? mapEntries(([k, v]) => [k, materialize(v, 'parse')], schemas.querySchema?.shape)
+      : {},
+    headers: schemas.headersSchema?.shape
+      ? mapEntries(([k, v]) => [k, materialize(v, 'parse')], schemas.headersSchema?.shape)
+      : {},
+    body: schemas.bodySchema?.shape ? materialize(schemas.bodySchema!, 'parse') : undefined,
+    returns: schemas.returnsSchema?.shape ? materialize(schemas.returnsSchema!, 'serialize') : undefined,
+  }
 
-	const endpointSchema = {
-		parameters: [
-			...Object.entries(materializedZodSchemas.path).map(([k, v]) => ({
-				in: "path",
-				name: k,
-				required: v.def?.type !== "optional",
-				schema: toJSONSchema(materialize(v, "parse"), { io: "input" }),
-			})),
+  const endpointSchema = {
+    parameters: [
+      ...Object.entries(materializedZodSchemas.path).map(([k, v]) => ({
+        in: 'path',
+        name: k,
+        required: v.def?.type !== 'optional',
+        schema: toJSONSchema(materialize(v, 'parse'), { io: 'input' }),
+      })),
 
-			...Object.entries(materializedZodSchemas.query).map(([k, v]) => ({
-				in: "query",
-				name: k,
-				required: v.def?.type !== "optional",
-				schema: toJSONSchema(materialize(v, "parse"), { io: "input" }),
-			})),
+      ...Object.entries(materializedZodSchemas.query).map(([k, v]) => ({
+        in: 'query',
+        name: k,
+        required: v.def?.type !== 'optional',
+        schema: toJSONSchema(materialize(v, 'parse'), { io: 'input' }),
+      })),
 
-			...Object.entries(materializedZodSchemas.headers).map(([k, v]) => ({
-				in: "header",
-				name: k,
-				required: v.def?.type !== "optional",
-				schema: toJSONSchema(materialize(v, "parse"), { io: "input" }),
-			})),
-		].filter(Boolean),
+      ...Object.entries(materializedZodSchemas.headers).map(([k, v]) => ({
+        in: 'header',
+        name: k,
+        required: v.def?.type !== 'optional',
+        schema: toJSONSchema(materialize(v, 'parse'), { io: 'input' }),
+      })),
+    ].filter(Boolean),
 
-		...(materializedZodSchemas.body
-			? {
-					requestBody: {
-						required: true,
-						content: {
-							"application/json": {
-								schema: toJSONSchema(materializedZodSchemas.body, { io: "input" }),
-							},
-						},
-					},
-				}
-			: ({} as any)),
+    ...(materializedZodSchemas.body
+      ? {
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: toJSONSchema(materializedZodSchemas.body, { io: 'input' }),
+              },
+            },
+          },
+        }
+      : ({} as any)),
 
-		responses: {
-			200: {
-				description: "200 response",
-				...(isObject(schemas.returnsSchema)
-					? {
-							content: {
-								"application/json": {
-									// description: '',
-									schema: toJSONSchema(materialize(schemas.returnsSchema!, "serialize"), {
-										io: "output",
-									}),
-								},
-							},
-						}
-					: ({} as any)),
-			},
-		},
-	};
+    responses: {
+      200: {
+        description: '200 response',
+        ...(isObject(schemas.returnsSchema)
+          ? {
+              content: {
+                'application/json': {
+                  // description: '',
+                  schema: toJSONSchema(materialize(schemas.returnsSchema!, 'serialize'), {
+                    io: 'output',
+                  }),
+                },
+              },
+            }
+          : ({} as any)),
+      },
+    },
+  }
 
-	return endpointSchema;
-};
+  return endpointSchema
+}
 
-type Method = string; // 'post' | 'get' | 'option' | ...,
-type EndpointPath = string;
+type Method = string // 'post' | 'get' | 'option' | ...,
+type EndpointPath = string
 
-export type UrlsMethodDocs = Record<EndpointPath, Record<Method, GenerateOpenAPIPathArg>>;
+export type UrlsMethodDocs = Record<EndpointPath, Record<Method, GenerateOpenAPIPathArg>>
 
 /**
  *  make regex with javascript replaceAll that replace all variables in url like :id with {id}
@@ -102,21 +100,21 @@ export type UrlsMethodDocs = Record<EndpointPath, Record<Method, GenerateOpenAPI
  * returns:
  * /userId/{userId}/xxx
  */
-const colonUrlVariableReplaceWithBrackets = (url: string) => url.replaceAll(/:(\w+)/g, "{$1}");
+const colonUrlVariableReplaceWithBrackets = (url: string) => url.replaceAll(/:(\w+)/g, '{$1}')
 
 export const convertUrlsMethodsSchemaToOpenAPI = (obj: UrlsMethodDocs) => {
-	return mapEntries(
-		([url, methods]) => [
-			colonUrlVariableReplaceWithBrackets(url),
-			mapEntries(
-				([method, schema]) => [
-					//
-					method,
-					generateOpenAPIPath(schema),
-				],
-				methods,
-			),
-		],
-		obj,
-	);
-};
+  return mapEntries(
+    ([url, methods]) => [
+      colonUrlVariableReplaceWithBrackets(url),
+      mapEntries(
+        ([method, schema]) => [
+          //
+          method,
+          generateOpenAPIPath(schema),
+        ],
+        methods
+      ),
+    ],
+    obj
+  )
+}

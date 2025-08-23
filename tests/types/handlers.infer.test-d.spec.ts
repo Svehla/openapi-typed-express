@@ -1,87 +1,88 @@
-import { expectType, expectError } from "tsd";
-import { z } from "zod";
-import { apiDoc, zDual } from "../../src";
-describe("apiDoc type inference", () => {
-	test("1 - simple case", () => {
-		const r = apiDoc({
-			params: { id: z.coerce.number().int() },
-			query: { include: z.boolean().optional() },
-			headers: z.object({ "x-id": z.string().uuid() }),
-			body: z.object({ name: z.string() }),
-			returns: z.object({ id: z.number().int(), name: z.string() }),
-		})((req, res) => {
-			// req.* types
-			expectType<number>(req.params.id);
-			expectType<boolean | undefined>(req.query.include);
-			expectType<string>(req.headers["x-id"] as any);
-			expectType<{ name: string }>(req.body);
+import { expectError, expectType } from 'tsd'
+import { z } from 'zod'
+import { apiDoc, zDual } from '../../src'
 
-			// res.send typed
-			type Args = Parameters<typeof res.send>;
-			expectType<{ id: number; name: string }>(null as any as Args[0]);
+describe('apiDoc type inference', () => {
+  test('1 - simple case', () => {
+    const r = apiDoc({
+      params: { id: z.coerce.number().int() },
+      query: { include: z.boolean().optional() },
+      headers: z.object({ 'x-id': z.string().uuid() }),
+      body: z.object({ name: z.string() }),
+      returns: z.object({ id: z.number().int(), name: z.string() }),
+    })((req, res) => {
+      // req.* types
+      expectType<number>(req.params.id)
+      expectType<boolean | undefined>(req.query.include)
+      expectType<string>(req.headers['x-id'] as any)
+      expectType<{ name: string }>(req.body)
 
-			// res.transformSend typed
-			type Args2 = Parameters<typeof res.transformSend>;
-			expectType<{ id: number; name: string }>(null as any as Args2[0]);
+      // res.send typed
+      type Args = Parameters<typeof res.send>
+      expectType<{ id: number; name: string }>(null as any as Args[0])
 
-			// @ts-ignore
-			res.send({ id: "1", name: "A" });
-		});
-	});
+      // res.transformSend typed
+      type Args2 = Parameters<typeof res.transformSend>
+      expectType<{ id: number; name: string }>(null as any as Args2[0])
 
-	test("2 - zDual", () => {
-		const zNumber = zDual(
-			z
-				.number()
-				.transform((n) => String(n * 2))
-				.pipe(z.string()),
-			z
-				.string()
-				.transform((s) => Number(s) / 2)
-				.pipe(z.number().int()),
-		);
+      // @ts-expect-error
+      res.send({ id: '1', name: 'A' })
+    })
+  })
 
-		const zDateISO = zDual(
-			z
-				.string()
-				.datetime()
-				.transform((s) => new Date(s))
-				.pipe(z.date()),
-			z
-				.date()
-				.transform((d) => d.toISOString())
-				.pipe(z.string()),
-		);
+  test('2 - zDual', () => {
+    const zNumber = zDual(
+      z
+        .number()
+        .transform(n => String(n * 2))
+        .pipe(z.string()),
+      z
+        .string()
+        .transform(s => Number(s) / 2)
+        .pipe(z.number().int())
+    )
 
-		const zUUID = zDual(
-			z
-				.string()
-				.transform((s) => s.toUpperCase())
-				.pipe(z.string()),
-			z
-				.string()
-				.transform((s) => s.toLowerCase())
-				.pipe(z.string()),
-		);
+    const zDateISO = zDual(
+      z
+        .string()
+        .datetime()
+        .transform(s => new Date(s))
+        .pipe(z.date()),
+      z
+        .date()
+        .transform(d => d.toISOString())
+        .pipe(z.string())
+    )
 
-		const r = apiDoc({
-			params: { id: zNumber },
-			query: { date: zDateISO },
-			body: z.object({ name: z.string(), uuid: zUUID }),
-			returns: z.object({ id: zNumber, name: z.string(), date: zDateISO }),
-		})((req, res) => {
-			// req.* types
-			expectType<string>(req.params.id);
-			expectType<Date>(req.query.date);
-			expectType<{ name: string; uuid: string }>(req.body);
+    const zUUID = zDual(
+      z
+        .string()
+        .transform(s => s.toUpperCase())
+        .pipe(z.string()),
+      z
+        .string()
+        .transform(s => s.toLowerCase())
+        .pipe(z.string())
+    )
 
-			// res.send typed
-			type Args = Parameters<typeof res.send>;
-			expectType<{ id: number; name: string; date: string }>(null as any as Args[0]);
+    const r = apiDoc({
+      params: { id: zNumber },
+      query: { date: zDateISO },
+      body: z.object({ name: z.string(), uuid: zUUID }),
+      returns: z.object({ id: zNumber, name: z.string(), date: zDateISO }),
+    })((req, res) => {
+      // req.* types
+      expectType<string>(req.params.id)
+      expectType<Date>(req.query.date)
+      expectType<{ name: string; uuid: string }>(req.body)
 
-			// res.transformSend typed
-			type Args2 = Parameters<typeof res.transformSend>;
-			expectType<{ id: string; name: string; date: Date }>(null as any as Args2[0]);
-		});
-	});
-});
+      // res.send typed
+      type Args = Parameters<typeof res.send>
+      expectType<{ id: number; name: string; date: string }>(null as any as Args[0])
+
+      // res.transformSend typed
+      type Args2 = Parameters<typeof res.transformSend>
+      expectType<{ id: string; name: string; date: Date }>(null as any as Args2[0])
+    })
+  })
+})
