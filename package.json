@@ -60,7 +60,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/Svehla/openapi-typed-express-docs"
+    "url": "git+https://github.com/lukdmine/openapi-zodtyped-express.git"
   },
   "license": "MIT",
   "author": "Lukas Dadak",
