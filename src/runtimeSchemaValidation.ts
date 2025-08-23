@@ -123,32 +123,34 @@ export const zDual = <
   Enc extends z.ZodTypeAny,
   IsNullable = false,
   IsOptional = false,
->(
-  parse: Dec,
-  serialize: Enc,
-  partialConf?: {
-    isNullable?: IsNullable
-    isOptional?: IsOptional
-  }
-) => {
+>(a: {
+  parse: Dec
+  serialize: Enc
+  isNullable?: IsNullable
+  isOptional?: IsOptional
+}) => {
   const self = {
     __dual: true as const,
-    parse,
-    serialize,
+    parse: a.parse,
+    serialize: a.serialize,
     nullable: () => {
-      return zDual<Dec, Enc, true, IsOptional>(parse, serialize, {
-        isOptional: partialConf?.isOptional,
+      return zDual<Dec, Enc, true, IsOptional>({
+        parse: a.parse,
+        serialize: a.serialize,
+        isOptional: a.isOptional,
         isNullable: true,
       })
     },
     optional: () => {
-      return zDual<Dec, Enc, IsNullable, true>(parse, serialize, {
+      return zDual<Dec, Enc, IsNullable, true>({
+        parse: a.parse,
+        serialize: a.serialize,
         isOptional: true,
-        isNullable: partialConf?.isNullable,
+        isNullable: a.isNullable,
       })
     },
-    _nullable: (partialConf?.isNullable ?? false) as IsNullable,
-    _optional: (partialConf?.isOptional ?? false) as IsOptional,
+    _nullable: (a.isNullable ?? false) as IsNullable,
+    _optional: (a.isOptional ?? false) as IsOptional,
   }
 
   return self as typeof self &

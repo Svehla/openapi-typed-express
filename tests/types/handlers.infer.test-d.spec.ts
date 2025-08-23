@@ -31,39 +31,39 @@ describe('apiDoc type inference', () => {
   })
 
   test('2 - zDual', () => {
-    const zNumber = zDual(
-      z
+    const zNumber = zDual({
+      parse: z
         .number()
         .transform(n => String(n * 2))
         .pipe(z.string()),
-      z
+      serialize: z
         .string()
         .transform(s => Number(s) / 2)
-        .pipe(z.number().int())
-    )
+        .pipe(z.number().int()),
+    })
 
-    const zDateISO = zDual(
-      z
+    const zDateISO = zDual({
+      parse: z
         .string()
         .datetime()
         .transform(s => new Date(s))
         .pipe(z.date()),
-      z
+      serialize: z
         .date()
         .transform(d => d.toISOString())
-        .pipe(z.string())
-    )
+        .pipe(z.string()),
+    })
 
-    const zUUID = zDual(
-      z
+    const zUUID = zDual({
+      parse: z
         .string()
         .transform(s => s.toUpperCase())
         .pipe(z.string()),
-      z
+      serialize: z
         .string()
         .transform(s => s.toLowerCase())
-        .pipe(z.string())
-    )
+        .pipe(z.string()),
+    })
 
     const r = apiDoc({
       params: { id: zNumber },

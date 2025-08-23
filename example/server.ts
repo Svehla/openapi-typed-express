@@ -10,8 +10,8 @@ const port = 5656
 app.use(express.json())
 
 // zDual: decode (incoming) = ISO string -> Date, encode (outgoing) = Date -> ISO string
-const zDateISO = zDual(
-  z
+const zDateISO = zDual({
+  parse: z
     .string()
     .datetime()
     .transform((s: string) => new Date(s))
@@ -20,20 +20,20 @@ const zDateISO = zDual(
       description: 'Date in ISO string format',
     })
     .optional(),
-  z
+  serialize: z
     .date()
     .transform(d => d.toISOString())
     .pipe(z.string())
-    .optional()
-)
+    .optional(),
+})
 
 const ztransformOneWay = z.number().transform(String).pipe(z.string())
 
 // number dual - encoded as string, decoded as number
-const zNumber = zDual(
-  z.string().transform(Number).pipe(z.number()),
-  z.number().transform(String).pipe(z.string())
-)
+const zNumber = zDual({
+  parse: z.string().transform(Number).pipe(z.number()),
+  serialize: z.number().transform(String).pipe(z.string()),
+})
   .nullable()
   .optional()
 

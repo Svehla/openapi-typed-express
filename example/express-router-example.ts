@@ -51,42 +51,42 @@ const db = new Map<string, User>()
 // ----------------------------- Schemas -----------------------------
 
 // Duals (decode incoming -> runtime types; encode outgoing -> JSON-friendly)
-const zDateISORequired = zDual(
-  z
+const zDateISORequired = zDual({
+  parse: z
     .string()
     .datetime()
     .transform((s: string) => new Date(s))
     .pipe(z.date()),
-  z
+  serialize: z
     .date()
     .transform(d => d.toISOString())
-    .pipe(z.string())
-)
+    .pipe(z.string()),
+})
 
-const zDateISO = zDual(
-  z
+const zDateISO = zDual({
+  parse: z
     .string()
     .datetime()
     .transform((s: string) => new Date(s))
     .pipe(z.date())
     .optional(),
-  z
+  serialize: z
     .date()
     .transform(d => d.toISOString())
     .pipe(z.string())
-    .optional()
-)
+    .optional(),
+})
 
 // number dual - encoded as string, decoded as number
-const zNumber = zDual(
-  z.string().transform(Number).pipe(z.number()),
-  z.number().transform(String).pipe(z.string())
-)
+const zNumber = zDual({
+  parse: z.string().transform(Number).pipe(z.number()),
+  serialize: z.number().transform(String).pipe(z.string()),
+})
 
-const zNumberOptional = zDual(
-  z.string().transform(Number).pipe(z.number()).optional(),
-  z.number().transform(String).pipe(z.string()).optional()
-)
+const zNumberOptional = zDual({
+  parse: z.string().transform(Number).pipe(z.number()).optional(),
+  serialize: z.number().transform(String).pipe(z.string()).optional(),
+})
 
 // Body schemas
 const CreateUserBody = z.object({

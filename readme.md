@@ -37,26 +37,27 @@ const port = 5656;
 app.use(express.json());
 
 // zDual: parse (incoming) = ISO string -> Date, serialize (outgoing) = Date -> ISO string
-const zDateISO = zDual(
-	z.string()
+const zDateISO = zDual({
+
+	parse: z.string()
 		.datetime()
 		.transform((s: string) => new Date(s))
 		.pipe(z.date())
 		.meta({
 			description: "Date in ISO string format",
 		}).optional(),
-	z.date()
+	serialize z.date()
 		.transform((d) => d.toISOString())
 		.pipe(z.string()).optional(),
-);
+});
 
 const ztransformOneWay = z.number().transform(String).pipe(z.string());
 
 // number dual - serialized as string, parsed as number
-const zNumber = zDual(
-	z.string().transform(Number).pipe(z.number()),
-	z.number().transform(String).pipe(z.string()),
-);
+const zNumber = zDual({
+	parse: z.string().transform(Number).pipe(z.number()),
+	serialize: z.number().transform(String).pipe(z.string()),
+});
 
 app.post("/users/:id", apiDoc({
 		params: {
@@ -189,13 +190,12 @@ example usage:
 
 ```typescript
 // zDual: parse (incoming) = ISO string -> Date, serialize (outgoing) = Date -> ISO string
-const zDateISO = zDual(
-	z.string()
+const zDateISO = zDual({
+	parse: z.string()
 		.datetime()
 		.transform((s: string) => new Date(s))
-		.pipe(z.date()).optional(),
-	z.date()
+		.pipe(z.date()),
+	serialize: z.date()
 		.transform((d) => d.toISOString())
-		.pipe(z.string()).optional(),
-);
-```
+		.pipe(z.string()),
+});

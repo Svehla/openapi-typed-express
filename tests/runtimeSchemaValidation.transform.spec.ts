@@ -220,16 +220,16 @@ describe('experimental transform types (using zDual)', () => {
       // parse: number -> boolean (p > 10)
       // serialize: boolean -> number (true -> 10, false -> 20)
       const x = z.object({
-        x: zDual(
-          z
+        x: zDual({
+          parse: z
             .number()
             .transform(p => p > 10)
             .pipe(z.boolean()),
-          z
+          serialize: z
             .boolean()
             .transform<number>(p => (p === true ? 10 : 20))
-            .pipe(z.number())
-        ),
+            .pipe(z.number()),
+        }),
       })
 
       const parseValidator = getZodValidator(x, { transformTypeMode: 'parse' })
@@ -244,16 +244,16 @@ describe('experimental transform types (using zDual)', () => {
 
     test('1 - string transforms (in: first char / out: last char)', async () => {
       const x = z.object({
-        x: zDual(
-          z
+        x: zDual({
+          parse: z
             .string()
             .transform<string>(p => `in: ${p[0]}` as `in: ${string}`)
             .pipe(z.string()),
-          z
+          serialize: z
             .string()
             .transform(p => `out: ${p[p.length - 1]}`)
-            .pipe(z.string())
-        ),
+            .pipe(z.string()),
+        }),
       })
 
       const parseValidator = getZodValidator(x, { transformTypeMode: 'parse' })
@@ -270,16 +270,16 @@ describe('experimental transform types (using zDual)', () => {
       const x = z.object({
         x: z.union([
           z.boolean(),
-          zDual(
-            z
+          zDual({
+            parse: z
               .string()
               .transform<string>(p => `in: ${p[0]}` as `in: ${string}`)
               .pipe(z.string()),
-            z
+            serialize: z
               .string()
               .transform(p => `out: ${p[p.length - 1]}`)
-              .pipe(z.string())
-          ),
+              .pipe(z.string()),
+          }),
           z.number(),
         ] as const),
       })
