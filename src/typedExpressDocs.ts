@@ -13,8 +13,8 @@ import {
 import { DeepPartial, deepMerge, mergePaths } from './utils'
 
 // symbol as a key is not sent via express down to the _routes
-export const __expressTypedHack_key__ = '__expressTypedHack_key__'
-export const __expressOpenAPIHack__ = Symbol('__expressOpenAPIHack__')
+export const __expressTypedHack_key__ = '__openapi-zod-typed-hack_key__'
+export const __expressOpenAPIHack__ = Symbol('__openapi-zod-typed-hack__')
 
 // --------------------------------------------------------------------------
 // ------------- express handlers runtime validation HOF wrapper ------------
@@ -154,12 +154,10 @@ export const getApiDocInstance =
         // --- this function include runtime validations which are triggered each request ---
 
         // TODO: add formBody? i think its not needed in the modern rest-api
-        const [headersValidationRes, paramValidationRes, queryValidationRes, bodyValidationRes] = [
-          headersValidator?.validate(req.headers),
-          paramsValidator?.validate(req.params),
-          queryValidator?.validate(req.query),
-          bodyValidator?.validate(req.body),
-        ]
+        const headersValidationRes = headersValidator?.validate(req.headers)
+        const paramValidationRes = paramsValidator?.validate(req.params)
+        const queryValidationRes = queryValidator?.validate(req.query)
+        const bodyValidationRes = bodyValidator?.validate(req.body)
 
         // if there are errors, we need to format them and send them to the client
         if (

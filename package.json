@@ -1,6 +1,6 @@
 {
   "name": "openapi-zod-typed-express",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Simple express runtime parser and documentation swagger generator with 100% support of Typescript static types",
   "types": "dist/index.d.ts",
   "scripts": {
