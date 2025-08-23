@@ -12,7 +12,7 @@ describe('initApiDocs over real express app', () => {
     params: { id: z.coerce.number().int() },
     query: { includePosts: z.boolean().optional() },
     returns: z.object({ id: z.number().int(), name: z.string() }),
-  })((req: any, res: any) => {
+  })((req, res) => {
     res.send({ id: req.params.id, name: req.query.includePosts ? 'With' : 'No' })
   })
 

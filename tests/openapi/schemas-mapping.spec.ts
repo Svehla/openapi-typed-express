@@ -15,7 +15,7 @@ describe('OpenAPI mapping (generateOpenAPIPath)', () => {
       querySchema: Query,
       bodySchema: Body,
       returnsSchema: Returns,
-    } as any)
+    })
 
     // basic shape checks
     expect(Array.isArray(oasPathItem.parameters)).toBe(true)

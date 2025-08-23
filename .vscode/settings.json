@@ -20,5 +20,12 @@
   "[typescriptreact]": {
     "editor.defaultFormatter": "biomejs.biome"
   },
-  "cSpell.words": ["asynciterable", "codegen", "Jakub", "Švehla", "ztransform"]
+  "cSpell.words": [
+    "asynciterable",
+    "codegen",
+    "Dualish",
+    "Jakub",
+    "Švehla",
+    "ztransform"
+  ]
 }

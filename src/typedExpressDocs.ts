@@ -3,14 +3,14 @@ import { z } from 'zod'
 import { parseUrlFromExpressRegexp } from './expressRegExUrlParser'
 import { convertUrlsMethodsSchemaToOpenAPI, type UrlsMethodDocs } from './openAPIFromSchema'
 import {
-  type Dualish,
-  type DualRawShape,
+  Dualish,
+  DualRawShape,
   getZodValidator,
-  type MaterializeType,
-  type MaterializeTypeShape,
+  MaterializeType,
+  MaterializeTypeShape,
   normalizeZodError,
 } from './runtimeSchemaValidation'
-import { type DeepPartial, deepMerge, mergePaths } from './utils'
+import { DeepPartial, deepMerge, mergePaths } from './utils'
 
 // symbol as a key is not sent via express down to the _routes
 export const __expressTypedHack_key__ = '__expressTypedHack_key__'

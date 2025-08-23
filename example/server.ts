@@ -4,8 +4,6 @@ import { z } from 'zod'
 import { apiDoc, initApiDocs } from '../src'
 import { zDual } from '../src/runtimeSchemaValidation'
 
-// ...
-
 const app = express()
 const port = 5656
 

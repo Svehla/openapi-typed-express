@@ -113,7 +113,7 @@ export type MaterializeTypeShape<Sh, M extends Mode, T extends 'input' | 'output
 /**
  * Create a dual schema.
  * (when initializing a schema with a transform make sure to pipe the result into the end type as
- *  **transforms are not represetable in json schema**)
+ *  **transforms are not representable in json schema**)
  * @param parse - The parse schema.
  * @param serialize - The serialize schema.
  * @returns The dual schema.

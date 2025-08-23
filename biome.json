@@ -56,6 +56,7 @@
         "noUselessTernary": "off"
       },
       "style": {
+        "useImportType": "off",
         "useNodejsImportProtocol": "off",
         "noDescendingSpecificity": "off",
         "useTemplate": "off",
@@ -75,6 +76,6 @@
     }
   },
   "files": {
-    "includes": ["**", "!**/build"]
+    "includes": ["**", "!**/build", "!**/dist"]
   }
 }
