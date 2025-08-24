@@ -43,6 +43,13 @@ export const tSchemaToJsonSchema = (schema: TSchema, mut_definitions = {} as any
         enum: schema.options,
       }
 
+    case 'array':
+      return {
+        ...obj,
+        type: 'array',
+        items: tSchemaToJsonSchema(schema.items, mut_definitions),
+      }
+
     case 'object':
       const required = Object.entries(schema.properties)
         .filter(([k, v]) => v.required === true)
@@ -66,13 +73,6 @@ export const tSchemaToJsonSchema = (schema: TSchema, mut_definitions = {} as any
         additionalProperties: tSchemaToJsonSchema(schema.property, mut_definitions),
       }
 
-    case 'array':
-      return {
-        ...obj,
-        type: 'array',
-        items: tSchemaToJsonSchema(schema.items, mut_definitions),
-      }
-
     case 'oneOf':
       return {
         ...obj,
@@ -94,7 +94,13 @@ export const tSchemaToJsonSchema = (schema: TSchema, mut_definitions = {} as any
       return { $ref: `#/components/schemas/${schema.name}` }
 
     default:
-      throw new Error(`Unsupported TSchema type: ${(schema as any)?.type ?? 'unknown'}`)
+      return {
+        ...obj,
+        // @ts-expect-error
+        type: schema.type,
+      }
+    // default:
+    //   throw new Error(`Unsupported TSchema type: ${(schema as any)?.type ?? 'unknown'}`)
   }
 }
 

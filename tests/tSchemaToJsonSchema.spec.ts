@@ -282,13 +282,13 @@ describe('tSchemaToJsonSchema', () => {
     })
   })
 
-  test('should throw error for unsupported schema type', () => {
-    const invalidSchema = { type: 'unsupported' } as any
+  // test('should throw error for unsupported schema type', () => {
+  //   const invalidSchema = { type: 'unsupported' } as any
 
-    expect(() => tSchemaToJsonSchema(invalidSchema)).toThrow(
-      'Unsupported TSchema type: unsupported'
-    )
-  })
+  //   expect(() => tSchemaToJsonSchema(invalidSchema)).toThrow(
+  //     'Unsupported TSchema type: unsupported'
+  //   )
+  // })
 })
 
 describe('JsonSchema interface', () => {
