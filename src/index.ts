@@ -17,6 +17,7 @@ export {
 export { tSchemaToTypescript } from './tSchemaToTypescript'
 export { codegenSchemaToJSCode } from './codegen'
 export { tUtils } from './tUtils'
+export { tSchemaToJsonSchema } from './openAPIFromSchema'
 
 const tSchema = {
   ...rawT,
