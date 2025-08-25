@@ -14,9 +14,10 @@ So you can just simply wrap your handler with the `apiDoc(...)` and initialize p
 - every transform in a zod schema has to be piped with z.pipe() into a output validator like this: pipe(z.number()) as zods toJSONSchema cant get the output type of a transform.
 - at the moment it is not possible to chain more zod on the zDual type (everything has to be done in the two internal schemas of ZDual)
 
-## ZDual schemas
-This lib also introduces ZDual schemas which merge serialize and parse zod schemas. This can be useful when having a different representation of the data in the code then on the input. for example isostring - Date.
-The ApiDoc automatically chooses the shema based on where the ZDual is used (request/response) and infers types.
+## supporting z.codec
+
+
+<!-- 
 
 ## Example usage
 
@@ -186,16 +187,5 @@ Express Handler -> parsed -> serialized -> HTTP -> User
 - Users interact exclusively with serialized types.
 - Express handlers interact solely with parsed types.
 
-example usage:
 
-```typescript
-// zDual: parse (incoming) = ISO string -> Date, serialize (outgoing) = Date -> ISO string
-const zDateISO = zDual({
-  parse: z.string()
-    .datetime()
-    .transform((s: string) => new Date(s))
-    .pipe(z.date()),
-  serialize: z.date()
-    .transform((d) => d.toISOString())
-    .pipe(z.string()),
-});
+ -->
