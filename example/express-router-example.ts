@@ -1,5 +1,5 @@
 // Example Express server using the provided typed-express helpers
-// - Validation & transform: runtimeSchemaValidation (zDual)
+// - Validation & transform: z.codec
 // - Route docs wrapper: typedExpressDocs (apiDoc, initApiDocs)
 // - OpenAPI generation + Swagger UI: /api-docs (JSON), /swagger-ui (UI)
 
@@ -11,7 +11,6 @@ import { z } from 'zod'
 
 // Import from your local sources
 import { apiDoc, initApiDocs } from '../src'
-import { zDual } from '../src/runtimeSchemaValidation'
 
 // ----------------------- In-memory data store -----------------------
 
@@ -50,42 +49,26 @@ const db = new Map<string, User>()
 
 // ----------------------------- Schemas -----------------------------
 
-// Duals (decode incoming -> runtime types; encode outgoing -> JSON-friendly)
-const zDateISORequired = zDual({
-  parse: z
-    .string()
-    .datetime()
-    .transform((s: string) => new Date(s))
-    .pipe(z.date()),
-  serialize: z
-    .date()
-    .transform(d => d.toISOString())
-    .pipe(z.string()),
+// Codecs (decode incoming -> runtime types; encode outgoing -> JSON-friendly)
+const zDateISORequired = z.codec(z.string().datetime(), z.date(), {
+  decode: (isoString: string) => new Date(isoString),
+  encode: (date: Date) => date.toISOString(),
 })
 
-const zDateISO = zDual({
-  parse: z
-    .string()
-    .datetime()
-    .transform((s: string) => new Date(s))
-    .pipe(z.date())
-    .optional(),
-  serialize: z
-    .date()
-    .transform(d => d.toISOString())
-    .pipe(z.string())
-    .optional(),
+const zDateISO = z.codec(z.string().datetime().optional(), z.date().optional(), {
+  decode: (isoString?: string) => (isoString === undefined ? undefined : new Date(isoString)),
+  encode: (date?: Date) => (date === undefined ? undefined : date.toISOString()),
 })
 
-// number dual - encoded as string, decoded as number
-const zNumber = zDual({
-  parse: z.string().transform(Number).pipe(z.number()),
-  serialize: z.number().transform(String).pipe(z.string()),
+// number codec - encoded as string, decoded as number
+const zNumber = z.codec(z.string(), z.number(), {
+  decode: (s: string) => Number(s),
+  encode: (n: number) => String(n),
 })
 
-const zNumberOptional = zDual({
-  parse: z.string().transform(Number).pipe(z.number()).optional(),
-  serialize: z.number().transform(String).pipe(z.string()).optional(),
+const zNumberOptional = z.codec(z.string().optional(), z.number().optional(), {
+  decode: (s?: string) => (s === undefined ? undefined : Number(s)),
+  encode: (n?: number) => (n === undefined ? undefined : String(n)),
 })
 
 // Body schemas
@@ -110,7 +93,7 @@ const ListQuery = {
   q: z.string().optional(),
 } as const
 
-// Returns schemas — use duals so `res.transformSend()` outputs strings for dates
+// Returns schemas — use codecs so `res.transformSend()` outputs strings for dates
 const UserOut = z.object({
   id: z.string().uuid(),
   email: z.string().email(),
@@ -221,7 +204,7 @@ const openapi = initApiDocs(app, {
   info: {
     title: 'Example Users API',
     version: '1.0.0',
-    description: 'Express + zDual + typed-express docs demo',
+    description: 'Express + z.codec + typed-express docs demo',
   },
   servers: [{ url: `http://localhost:${port}/` }],
 })
