@@ -1,39 +1,52 @@
 import express from 'express'
+import { queryParser } from 'express-query-parser'
 import swaggerUi from 'swagger-ui-express'
 import { z } from 'zod'
 import { apiDoc, initApiDocs } from '../src'
-import { zDual } from '../src/runtimeSchemaValidation'
+import { zToArrayIfNot } from '../src/zCodecUtils'
 
 const app = express()
 const port = 5656
 
 app.use(express.json())
+app.use(queryParser({ parseBoolean: false, parseNumber: false, parseUndefined: true }))
 
-// zDual: decode (incoming) = ISO string -> Date, encode (outgoing) = Date -> ISO string
-const zDateISO = zDual({
-  parse: z
-    .string()
-    .datetime()
-    .transform((s: string) => new Date(s))
-    .pipe(z.date())
-    .meta({
-      description: 'Date in ISO string format',
-    })
-    .optional(),
-  serialize: z
-    .date()
-    .transform(d => d.toISOString())
-    .pipe(z.string())
-    .optional(),
+const zDateISO = z.codec(z.iso.datetime(), z.date(), {
+  decode: isoString => new Date(isoString),
+  encode: date => date.toISOString(),
 })
 
-const ztransformOneWay = z.number().transform(String).pipe(z.string())
+app.get(
+  '/',
+  apiDoc({
+    query: {
+      dates: zToArrayIfNot(zDateISO),
+    },
+    returns: z.object({
+      name: zDateISO,
+    }),
+  })((req, res) => {
+    const dates = req.query.dates
+    console.log(dates)
+    res.transformSend({ name: dates[0] })
+  })
+)
 
 // number dual - encoded as string, decoded as number
-const zNumber = zDual({
-  parse: z.string().transform(Number).pipe(z.number()),
-  serialize: z.number().transform(String).pipe(z.string()),
-})
+const zNumber = z
+  .codec(z.string(), z.number(), {
+    decode: isoString => {
+      console.log('decode', isoString, typeof isoString)
+      if (isoString === null) return null
+      if (isoString === undefined) return undefined
+      const num = Number(isoString)
+      if (isNaN(num)) {
+        return isoString as any
+      }
+      return num
+    },
+    encode: num => String(num),
+  })
   .nullable()
   .optional()
 
@@ -43,9 +56,11 @@ app.post(
     params: {
       id: zNumber,
     },
+    query: {
+      age: zNumber,
+    },
     body: z.object({
       name: z.string(),
-      age: zNumber,
     }),
   })((req, res) => {
     res.send({ id: req.params.id, name: req.body.name })
@@ -59,9 +74,8 @@ app.post(
       id: z.string(),
     },
     body: z.object({
-      date: zDateISO,
+      date: zDateISO.nullable().optional(),
       x: zNumber,
-      oneway: ztransformOneWay,
     }),
     query: {
       date: zDateISO,
@@ -69,17 +83,16 @@ app.post(
     },
     returns: z.object({
       date: zDateISO,
-      oneway: ztransformOneWay.nullable().optional(),
     }),
   })((req, res) => {
-    const id = req.params.id satisfies string | undefined
-    const date = req.body.date satisfies Date | undefined
+    const id = req.params.id satisfies string
+    const date = req.body.date satisfies Date | undefined | null
     const x = req.body.x satisfies number | undefined | null
-    const date2 = req.query.date satisfies Date | undefined
+    const date2 = req.query.date satisfies Date
     const x2 = req.query.x satisfies number | undefined | null
     const outDate = new Date(date?.getTime() ?? Date.now())
     outDate.setUTCDate(outDate.getUTCDate() + 1)
-    res.transformSend({ date: date, oneway: x ?? 0 })
+    res.transformSend({ date: outDate })
   })
 )
 
@@ -95,6 +108,7 @@ app.get('/api-docs', (req, res) => {
 app.use('/swagger-ui', swaggerUi.serve, swaggerUi.setup(openapi))
 
 app.listen(port, () => {
+  console.info(`--------------------------------------------`)
   console.info(`Server listening at http://localhost:${port}`)
   console.info(`OpenAPI docs at http://localhost:${port}/swagger-ui`)
 })

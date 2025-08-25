@@ -2,15 +2,8 @@ import type { NextFunction, Request, Response } from 'express'
 import { z } from 'zod'
 import { parseUrlFromExpressRegexp } from './expressRegExUrlParser'
 import { convertUrlsMethodsSchemaToOpenAPI, type UrlsMethodDocs } from './openAPIFromSchema'
-import {
-  Dualish,
-  DualRawShape,
-  getZodValidator,
-  MaterializeType,
-  MaterializeTypeShape,
-  normalizeZodError,
-} from './runtimeSchemaValidation'
 import { DeepPartial, deepMerge, mergePaths } from './utils'
+import { getZodValidator, normalizeZodError } from './zUtils'
 
 // symbol as a key is not sent via express down to the _routes
 export const __expressTypedHack_key__ = '__openapi-zod-typed-hack_key__'
@@ -21,11 +14,11 @@ export const __expressOpenAPIHack__ = Symbol('__openapi-zod-typed-hack__')
 // --------------------------------------------------------------------------
 
 type Config = {
-  headers?: Dualish
-  params?: DualRawShape
-  query?: DualRawShape
-  body?: Dualish
-  returns?: Dualish
+  headers?: z.ZodTypeAny
+  params?: Record<string, z.ZodTypeAny>
+  query?: Record<string, z.ZodTypeAny>
+  body?: z.ZodTypeAny
+  returns?: z.ZodTypeAny
 }
 
 /**
@@ -75,27 +68,27 @@ type Present<T> = Exclude<T, undefined>
 
 type BodyType<C extends Config> = [Present<C['body']>] extends [never]
   ? unknown
-  : MaterializeType<Present<C['body']>, 'parse', 'output'>
+  : z.output<Present<C['body']>>
 
 type ParamsType<C extends Config> = [Present<C['params']>] extends [never]
   ? Record<string, never>
-  : MaterializeTypeShape<Present<C['params']>, 'parse', 'output'>
+  : z.output<z.ZodObject<Present<C['params']>>>
 
 type QueryType<C extends Config> = [Present<C['query']>] extends [never]
   ? Record<string, never>
-  : MaterializeTypeShape<Present<C['query']>, 'parse', 'output'>
+  : z.output<z.ZodObject<Present<C['query']>>>
 
 type HeadersType<C extends Config> = [Present<C['headers']>] extends [never]
   ? {}
-  : { headers: MaterializeType<Present<C['headers']>, 'parse', 'output'> }
+  : { headers: z.output<Present<C['headers']>> }
 
 type ReturnsType<C extends Config> = [Present<C['returns']>] extends [never]
   ? unknown
-  : MaterializeType<Present<C['returns']>, 'serialize', 'output'>
+  : z.input<Present<C['returns']>>
 
 type ReturnsTransformType<C extends Config> = [Present<C['returns']>] extends [never]
   ? unknown
-  : MaterializeType<Present<C['returns']>, 'serialize', 'input'>
+  : z.output<Present<C['returns']>>
 
 type TypedHandleDual<C extends Config> = (
   req: Omit<Request<ParamsType<C>, any, BodyType<C>, QueryType<C>>, 'headers'> & HeadersType<C>,
@@ -299,7 +292,8 @@ const resolveRouteHandlersAndExtractAPISchema = (
       r.route.stack.forEach(s => {
         // this check if route is annotated by openapi-typed-express-docs
         const shouldInitTypedRoute =
-          // @ts-expect-error stored meta attributes of the function
+          // biome-ignore lint/suspicious/noTsIgnore: <explanation>
+          // @ts-ignore stored meta attributes of the function
           s.handle?.[__expressTypedHack_key__] === __expressOpenAPIHack__
 
         // this is used for multiple instances of the same express Router via multiple app.use('/xxx', router)

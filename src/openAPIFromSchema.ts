@@ -1,5 +1,4 @@
 import { toJSONSchema, type z } from 'zod'
-import { materialize } from './runtimeSchemaValidation'
 import { isObject, mapEntries } from './utils'
 
 type GenerateOpenAPIPathArg = {
@@ -14,18 +13,31 @@ export const generateOpenAPIPath = (schemas: GenerateOpenAPIPathArg) => {
   // console.log(schemas.querySchema?.shape);
   // console.log(!(schemas.querySchema?.shape["id"].def?.type === 'optional'))
 
+  // const materializedZodSchemas = {
+  //   path: schemas.pathSchema?.shape
+  //     ? mapEntries(([k, v]) => [k, materialize(v, 'parse')], schemas.pathSchema?.shape)
+  //     : {},
+  //   query: schemas.querySchema?.shape
+  //     ? mapEntries(([k, v]) => [k, materialize(v, 'parse')], schemas.querySchema?.shape)
+  //     : {},
+  //   headers: schemas.headersSchema?.shape
+  //     ? mapEntries(([k, v]) => [k, materialize(v, 'parse')], schemas.headersSchema?.shape)
+  //     : {},
+  //   body: schemas.bodySchema?.shape ? materialize(schemas.bodySchema!, 'parse') : undefined,
+  //   returns: schemas.returnsSchema?.shape ? materialize(schemas.returnsSchema!, 'serialize') : undefined,
+  // }
+
   const materializedZodSchemas = {
-    path: schemas.pathSchema?.shape
-      ? mapEntries(([k, v]) => [k, materialize(v, 'parse')], schemas.pathSchema?.shape)
-      : {},
-    query: schemas.querySchema?.shape
-      ? mapEntries(([k, v]) => [k, materialize(v, 'parse')], schemas.querySchema?.shape)
-      : {},
-    headers: schemas.headersSchema?.shape
-      ? mapEntries(([k, v]) => [k, materialize(v, 'parse')], schemas.headersSchema?.shape)
-      : {},
-    body: schemas.bodySchema?.shape ? materialize(schemas.bodySchema!, 'parse') : undefined,
-    returns: schemas.returnsSchema?.shape ? materialize(schemas.returnsSchema!, 'serialize') : undefined,
+    // TODO: fix encode/decode for body and returns
+    path: schemas.pathSchema?.shape ? mapEntries(([k, v]) => [k, v], schemas.pathSchema?.shape) : {},
+    // TODO: fix encode/decode for body and returns
+    query: schemas.querySchema?.shape ? mapEntries(([k, v]) => [k, v], schemas.querySchema?.shape) : {},
+    // TODO: fix encode/decode for body and returns
+    headers: schemas.headersSchema?.shape ? mapEntries(([k, v]) => [k, v], schemas.headersSchema?.shape) : {},
+    // TODO: fix encode/decode for body and returns
+    body: schemas.bodySchema?.shape ? schemas.bodySchema! : undefined,
+    // TODO: fix encode/decode for body and returns
+    returns: schemas.returnsSchema?.shape ? schemas.returnsSchema! : undefined,
   }
 
   const endpointSchema = {
@@ -34,21 +46,33 @@ export const generateOpenAPIPath = (schemas: GenerateOpenAPIPathArg) => {
         in: 'path',
         name: k,
         required: v.def?.type !== 'optional',
-        schema: toJSONSchema(materialize(v, 'parse'), { io: 'input' }),
+        schema: toJSONSchema(
+          v,
+          // materialize(v, 'parse')
+          { io: 'input' }
+        ),
       })),
 
       ...Object.entries(materializedZodSchemas.query).map(([k, v]) => ({
         in: 'query',
         name: k,
         required: v.def?.type !== 'optional',
-        schema: toJSONSchema(materialize(v, 'parse'), { io: 'input' }),
+        schema: toJSONSchema(
+          v,
+          // materialize(v, 'parse'),
+          { io: 'input' }
+        ),
       })),
 
       ...Object.entries(materializedZodSchemas.headers).map(([k, v]) => ({
         in: 'header',
         name: k,
         required: v.def?.type !== 'optional',
-        schema: toJSONSchema(materialize(v, 'parse'), { io: 'input' }),
+        schema: toJSONSchema(
+          v,
+          // materialize(v, 'parse'),
+          { io: 'input' }
+        ),
       })),
     ].filter(Boolean),
 
@@ -73,9 +97,13 @@ export const generateOpenAPIPath = (schemas: GenerateOpenAPIPathArg) => {
               content: {
                 'application/json': {
                   // description: '',
-                  schema: toJSONSchema(materialize(schemas.returnsSchema!, 'serialize'), {
-                    io: 'output',
-                  }),
+                  schema: toJSONSchema(
+                    schemas.returnsSchema!,
+                    // materialize(schemas.returnsSchema!, 'serialize'),
+                    {
+                      io: 'input',
+                    }
+                  ),
                 },
               },
             }

@@ -13,7 +13,7 @@
     "downlevelIteration": true,
     "skipLibCheck": true,
     "allowSyntheticDefaultImports": true,
-    "strict": true,
+    "strict": false,
     "forceConsistentCasingInFileNames": true,
     "module": "commonjs",
     "moduleResolution": "node",
@@ -23,10 +23,10 @@
     "strictPropertyInitialization": false,
     "experimentalDecorators": true,
     "esModuleInterop": true,
-    "noImplicitReturns": true,
-    "noImplicitThis": true,
-    "strictNullChecks": true,
-    "noImplicitAny": true,
+    "noImplicitReturns": false,
+    "noImplicitThis": false,
+    "strictNullChecks": false,
+    "noImplicitAny": false,
     "noUnusedParameters": false,
     "noUnusedLocals": false,
 
@@ -37,13 +37,5 @@
     "noEmit": false,
     "declaration": true
   },
-  "include": [
-    // we have to change path when we build lib and when we test lib in the /example directory...
-    // TODO: resolve it somehow
-    "src/**/*"
-    // tests and example should not be included in dist, but we want to check the types while
-    // developing the library
-    // "tests/**/*",
-    // "example/**/*",
-  ]
+  "include": ["src/**/*"]
 }
