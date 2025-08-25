@@ -10,33 +10,11 @@ type GenerateOpenAPIPathArg = {
 }
 
 export const generateOpenAPIPath = (schemas: GenerateOpenAPIPathArg) => {
-  // console.log(schemas.querySchema?.shape);
-  // console.log(!(schemas.querySchema?.shape["id"].def?.type === 'optional'))
-
-  // const materializedZodSchemas = {
-  //   path: schemas.pathSchema?.shape
-  //     ? mapEntries(([k, v]) => [k, materialize(v, 'parse')], schemas.pathSchema?.shape)
-  //     : {},
-  //   query: schemas.querySchema?.shape
-  //     ? mapEntries(([k, v]) => [k, materialize(v, 'parse')], schemas.querySchema?.shape)
-  //     : {},
-  //   headers: schemas.headersSchema?.shape
-  //     ? mapEntries(([k, v]) => [k, materialize(v, 'parse')], schemas.headersSchema?.shape)
-  //     : {},
-  //   body: schemas.bodySchema?.shape ? materialize(schemas.bodySchema!, 'parse') : undefined,
-  //   returns: schemas.returnsSchema?.shape ? materialize(schemas.returnsSchema!, 'serialize') : undefined,
-  // }
-
   const materializedZodSchemas = {
-    // TODO: fix encode/decode for body and returns
     path: schemas.pathSchema?.shape ? mapEntries(([k, v]) => [k, v], schemas.pathSchema?.shape) : {},
-    // TODO: fix encode/decode for body and returns
     query: schemas.querySchema?.shape ? mapEntries(([k, v]) => [k, v], schemas.querySchema?.shape) : {},
-    // TODO: fix encode/decode for body and returns
     headers: schemas.headersSchema?.shape ? mapEntries(([k, v]) => [k, v], schemas.headersSchema?.shape) : {},
-    // TODO: fix encode/decode for body and returns
     body: schemas.bodySchema?.shape ? schemas.bodySchema! : undefined,
-    // TODO: fix encode/decode for body and returns
     returns: schemas.returnsSchema?.shape ? schemas.returnsSchema! : undefined,
   }
 

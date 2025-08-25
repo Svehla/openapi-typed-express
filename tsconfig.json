@@ -13,19 +13,17 @@
     "downlevelIteration": true,
     "skipLibCheck": true,
     "allowSyntheticDefaultImports": true,
-    "strict": false,
+    "strict": true,
     "forceConsistentCasingInFileNames": true,
     "module": "commonjs",
     "moduleResolution": "node",
     "resolveJsonModule": true,
     "isolatedModules": false,
     "emitDecoratorMetadata": true,
-    "strictPropertyInitialization": false,
     "experimentalDecorators": true,
     "esModuleInterop": true,
     "noImplicitReturns": false,
     "noImplicitThis": false,
-    "strictNullChecks": false,
     "noImplicitAny": false,
     "noUnusedParameters": false,
     "noUnusedLocals": false,
@@ -35,7 +33,9 @@
     "sourceMap": false,
     "outDir": "dist",
     "noEmit": false,
-    "declaration": true
+    "declaration": true,
+    "strictNullChecks": true, // ensure strict null checks for nullable, undefined, and ?
+    "strictPropertyInitialization": true // ensure properties with ? or possibly undefined/null are checked
   },
   "include": ["src/**/*"]
 }

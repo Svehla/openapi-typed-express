@@ -36,7 +36,6 @@ app.get(
 const zNumber = z
   .codec(z.string(), z.number(), {
     decode: isoString => {
-      console.log('decode', isoString, typeof isoString)
       if (isoString === null) return null
       if (isoString === undefined) return undefined
       const num = Number(isoString)

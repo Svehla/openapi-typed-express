@@ -66,9 +66,9 @@ type Config = {
 
 type Present<T> = Exclude<T, undefined>
 
-type BodyType<C extends Config> = [Present<C['body']>] extends [never]
-  ? unknown
-  : z.output<Present<C['body']>>
+type HeadersType<C extends Config> = [Present<C['headers']>] extends [never]
+  ? {}
+  : { headers: z.output<Present<C['headers']>> }
 
 type ParamsType<C extends Config> = [Present<C['params']>] extends [never]
   ? Record<string, never>
@@ -78,9 +78,9 @@ type QueryType<C extends Config> = [Present<C['query']>] extends [never]
   ? Record<string, never>
   : z.output<z.ZodObject<Present<C['query']>>>
 
-type HeadersType<C extends Config> = [Present<C['headers']>] extends [never]
-  ? {}
-  : { headers: z.output<Present<C['headers']>> }
+type BodyType<C extends Config> = [Present<C['body']>] extends [never]
+  ? unknown
+  : z.output<Present<C['body']>>
 
 type ReturnsType<C extends Config> = [Present<C['returns']>] extends [never]
   ? unknown
@@ -117,11 +117,11 @@ export const getApiDocInstance =
     handle: TypedHandleDual<C>
   ) => {
     // --- this function is called only for initialization of handlers ---
-    const headersSchema = docs.headers ? docs.headers : null
+    const headersSchema = docs.headers
     const paramsSchema = docs.params ? z.object(docs.params) : null
     const querySchema = docs.query ? z.object(docs.query) : null
-    const bodySchema = docs.body ? docs.body : null
-    const returnsSchema = docs.returns ? docs.returns : null
+    const bodySchema = docs.body
+    const returnsSchema = docs.returns
 
     const headersValidator = getZodValidator(headersSchema, { transformTypeMode: 'parse' })
     const paramsValidator = getZodValidator(paramsSchema, { transformTypeMode: 'parse' })

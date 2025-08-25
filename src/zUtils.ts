@@ -18,7 +18,6 @@ export const normalizeZodError = (obj?: unknown): { path: string; errors: string
   const message = (obj as { message?: string } | undefined)?.message ?? 'Unknown error'
   return [{ path: '', errors: [message] }]
 }
-export type Mode = 'parse' | 'serialize'
 
 // /**
 //  * Get a validator for a Zod schema.
@@ -26,17 +25,11 @@ export type Mode = 'parse' | 'serialize'
 //  * @param extra - Extra options.
 //  * @returns A validator for the schema.
 //  */
-export const getZodValidator = <S extends z.ZodTypeAny | null | undefined, TT extends Mode = 'parse'>(
-  schema: S,
+export const getZodValidator = <S extends z.ZodTypeAny | null | undefined, TT extends 'parse' | 'serialize'>(
+  _schema: S,
   extra?: { transformTypeMode?: TT }
 ) => {
-  if (!schema) {
-    // Schema-less validator: always “valid”.
-    const validate = ((value: unknown) =>
-      ({ success: true, data: value }) as z.ZodSafeParseSuccess<unknown>) as any
-    const isValid = (() => true) as any
-    return { validate, isValid }
-  }
+  const schema = _schema ?? z.any()
 
   const validate = (value: any) =>
     extra?.transformTypeMode === 'parse' ? schema.safeDecode(value) : schema.safeEncode(value)

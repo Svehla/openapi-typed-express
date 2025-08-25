@@ -1,6 +1,6 @@
 import { expectType } from 'tsd'
 import { z } from 'zod'
-import { apiDoc, zDual } from '../../src'
+import { apiDoc } from '../../src'
 
 describe('apiDoc type inference', () => {
   test('1 - simple case', () => {
@@ -31,45 +31,21 @@ describe('apiDoc type inference', () => {
   })
 
   test('2 - zDual', () => {
-    const zNumber = zDual({
-      parse: z
-        .number()
-        .transform(n => String(n * 2))
-        .pipe(z.string()),
-      serialize: z
-        .string()
-        .transform(s => Number(s) / 2)
-        .pipe(z.number().int()),
+    const zDateISO = z.codec(z.string(), z.date(), {
+      decode: (s: string) => new Date(s),
+      encode: (d: Date) => d.toISOString(),
     })
 
-    const zDateISO = zDual({
-      parse: z
-        .string()
-        .datetime()
-        .transform(s => new Date(s))
-        .pipe(z.date()),
-      serialize: z
-        .date()
-        .transform(d => d.toISOString())
-        .pipe(z.string()),
-    })
-
-    const zUUID = zDual({
-      parse: z
-        .string()
-        .transform(s => s.toUpperCase())
-        .pipe(z.string()),
-      serialize: z
-        .string()
-        .transform(s => s.toLowerCase())
-        .pipe(z.string()),
+    const zUUID = z.codec(z.string(), z.string(), {
+      decode: (s: string) => s.toUpperCase(),
+      encode: (s: string) => s.toLowerCase(),
     })
 
     const r = apiDoc({
-      params: { id: zNumber },
+      params: { id: z.string() },
       query: { date: zDateISO },
       body: z.object({ name: z.string(), uuid: zUUID }),
-      returns: z.object({ id: zNumber, name: z.string(), date: zDateISO }),
+      returns: z.object({ id: z.string(), name: z.string(), date: zDateISO }),
     })((req, res) => {
       // req.* types
       expectType<string>(req.params.id)
@@ -78,7 +54,7 @@ describe('apiDoc type inference', () => {
 
       // res.send typed
       type Args = Parameters<typeof res.send>
-      expectType<{ id: number; name: string; date: string }>(null as any as Args[0])
+      expectType<{ id: string; name: string; date: string }>(null as any as Args[0])
 
       // res.transformSend typed
       type Args2 = Parameters<typeof res.transformSend>

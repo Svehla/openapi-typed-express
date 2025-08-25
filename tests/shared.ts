@@ -1,8 +1,7 @@
-import { getZodValidator, normalizeZodError } from '../src'
-import type { Mode } from '../src/runtimeSchemaValidation'
+import { getZodValidator, normalizeZodError } from '../src/zUtils'
 
 export const validateDataAgainstSchema = async (
-  transformTypeMode: Mode,
+  transformTypeMode: 'parse' | 'serialize',
   schema: any,
   objToValidate: any,
   output: { success: false; error?: any } | { success: true; data?: any }
@@ -25,22 +24,19 @@ export const delay = (ms: number) => new Promise(res => setTimeout(res, ms))
 export const removeWhiteSpaces = (str: string) => str.replaceAll(' ', '').replaceAll('\n', '')
 
 export const validateAndExpectData = async (
-  transformTypeMode: Mode,
+  transformTypeMode: 'parse' | 'serialize',
   schema: any,
   objToValidate: any,
   expectedData: any
 ) => {
   const zodValidator = getZodValidator(schema, { transformTypeMode })
   const res = zodValidator.validate(objToValidate)
-  if (!res.success) {
-    //console.log(normalizeZodError(res.error));
-  }
   expect(res).toMatchObject({ success: true })
   expect(res.success && (res as any).data).toEqual(expectedData)
 }
 
 export const validateAndExpectErrors = async (
-  transformTypeMode: Mode,
+  transformTypeMode: 'parse' | 'serialize',
   schema: any,
   objToValidate: any,
   expectedNormalizedErrors: any[]
