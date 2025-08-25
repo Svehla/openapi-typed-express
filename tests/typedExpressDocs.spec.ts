@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { __expressOpenAPIHack__, apiDoc, getApiDocInstance } from '../src/typedExpressDocs'
+import { __openapiZodTypedHack__, apiDoc, getApiDocInstance } from '../src/typedExpressDocs'
 
 // TODO: fix this test
 // placeholder for now
@@ -27,7 +27,7 @@ describe('typedExpressDocs', () => {
         })(req => {
           expect(req.body.date.getTime()).toStrictEqual(new Date(123).getTime())
         })
-        const metadata = lazyFn(__expressOpenAPIHack__)
+        const metadata = lazyFn(__openapiZodTypedHack__)
         metadata.handle(
           reqData as any,
           {
@@ -61,7 +61,7 @@ describe('typedExpressDocs', () => {
         }).toStrictEqual(reqData)
       })
 
-      const metadata = lazyFn(__expressOpenAPIHack__)
+      const metadata = lazyFn(__openapiZodTypedHack__)
       await metadata.handle(
         reqData as any,
         {
@@ -95,7 +95,7 @@ describe('typedExpressDocs', () => {
         }).toStrictEqual(reqData)
       })
 
-      const metadata = lazyFn(__expressOpenAPIHack__)
+      const metadata = lazyFn(__openapiZodTypedHack__)
       await metadata.handle(reqData as any, {} as any, () => null)
     })
 
@@ -146,7 +146,7 @@ describe('typedExpressDocs', () => {
         }).toStrictEqual(reqData)
       })
 
-      const metadata = lazyFn(__expressOpenAPIHack__)
+      const metadata = lazyFn(__openapiZodTypedHack__)
       metadata.handle(reqData as any, {} as any, () => null)
     })
 
@@ -166,7 +166,7 @@ describe('typedExpressDocs', () => {
         })(() => {
           expect('you shall not').toBe('pass')
         })
-        const metadata = lazyFn(__expressOpenAPIHack__)
+        const metadata = lazyFn(__openapiZodTypedHack__)
         await metadata.handle(
           reqData as any,
           {
@@ -231,7 +231,7 @@ describe('typedExpressDocs', () => {
         })(() => {
           expect('you shall not').toBe('pass')
         })
-        const metadata = lazyFn(__expressOpenAPIHack__)
+        const metadata = lazyFn(__openapiZodTypedHack__)
         await metadata.handle(
           reqData as any,
           {
