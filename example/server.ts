@@ -16,6 +16,26 @@ const zDateISO = z.codec(z.iso.datetime(), z.date(), {
   encode: date => date.toISOString(),
 })
 
+const zInNOut = {
+  date: zDateISO.nullable(),
+  age: z.coerce.number().min(1).max(100),
+}
+
+app.get(
+  '/x',
+  // TODO: rename to zApiHandler?
+  apiDoc({
+    query: zInNOut,
+    returns: z.object(zInNOut),
+  })((req, res) => {
+    console.log('req.query', req.query)
+    res.transformSend({
+      age: req.query.age,
+      date: req.query.date,
+    })
+  })
+)
+
 app.get(
   '/',
   apiDoc({

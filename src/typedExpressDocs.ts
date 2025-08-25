@@ -6,8 +6,9 @@ import { DeepPartial, deepMerge, mergePaths } from './utils'
 import { getZodValidator, normalizeZodError } from './zUtils'
 
 // symbol as a key is not sent via express down to the _routes
-export const __expressTypedHack_key__ = '__openapi-zod-typed-hack_key__'
-export const __expressOpenAPIHack__ = Symbol('__openapi-zod-typed-hack__')
+export const __openapiZodTypedHackKey__ = '__openapiZodTypedHackKey__'
+export const __openapiZodTypedHack__ = Symbol('__openapiZodTypedHack__')
+const _openapiZodTypedExpress__route_cache = '_openapiZodTypedExpress__route_cache'
 
 // --------------------------------------------------------------------------
 // ------------- express handlers runtime validation HOF wrapper ------------
@@ -135,7 +136,7 @@ export const getApiDocInstance =
       // if someone forgets to call `initApiDocs()` before server starts to listen
       // each HTTP call to apiDocs()() decorated handler should fail
       // because this fn is synchronous express should return nicely stringified error
-      if (message !== __expressOpenAPIHack__) {
+      if (message !== __openapiZodTypedHack__) {
         throw new Error('You probably forget to call `initApiDocs()` for typed-express library')
       }
 
@@ -218,7 +219,7 @@ export const getApiDocInstance =
     }
 
     // make the sign for the function metadata to be sure that resolver is enhanced by this library
-    lazyInitializeHandler[__expressTypedHack_key__] = __expressOpenAPIHack__
+    lazyInitializeHandler[__openapiZodTypedHackKey__] = __openapiZodTypedHack__
 
     return lazyInitializeHandler as any
   }
@@ -259,7 +260,7 @@ type ExpressRouteHandlerInternalStruct = {
       }
       method: string
       // custom attribute for caching docs with multiple routes instances
-      _swaggerTypedExpressDocs__route_cache?: any
+      _openapiZodTypedExpress__route_cache?: any
     }[]
     path: string
   }
@@ -294,10 +295,10 @@ const resolveRouteHandlersAndExtractAPISchema = (
         const shouldInitTypedRoute =
           // biome-ignore lint/suspicious/noTsIgnore: <explanation>
           // @ts-ignore stored meta attributes of the function
-          s.handle?.[__expressTypedHack_key__] === __expressOpenAPIHack__
+          s.handle?.[__openapiZodTypedHackKey__] === __openapiZodTypedHack__
 
         // this is used for multiple instances of the same express Router via multiple app.use('/xxx', router)
-        const isInitTypedRoute = s._swaggerTypedExpressDocs__route_cache !== undefined
+        const isInitTypedRoute = s[_openapiZodTypedExpress__route_cache] !== undefined
 
         // typed route === route wrapped by apiDoc() high order function
         if (shouldInitTypedRoute === false && isInitTypedRoute === false) return
@@ -306,12 +307,12 @@ const resolveRouteHandlersAndExtractAPISchema = (
 
         // each route needs to be initialized, but if we apply one route for multiple places via app.use() we need to persist api data
         let routeMetadataDocs: any
-        if (s._swaggerTypedExpressDocs__route_cache) {
-          routeMetadataDocs = s._swaggerTypedExpressDocs__route_cache
+        if (s[_openapiZodTypedExpress__route_cache]) {
+          routeMetadataDocs = s[_openapiZodTypedExpress__route_cache]
         } else {
-          routeMetadataDocs = s.handle(__expressOpenAPIHack__)
+          routeMetadataDocs = s.handle(__openapiZodTypedHack__)
           s.handle = routeMetadataDocs.handle
-          s._swaggerTypedExpressDocs__route_cache = routeMetadataDocs
+          s[_openapiZodTypedExpress__route_cache] = routeMetadataDocs
         }
 
         if (!urlsMethodDocsPointer[endpointPath]) {
