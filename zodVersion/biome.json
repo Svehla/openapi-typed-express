@@ -1,0 +1,81 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.2.0/schema.json",
+
+  "formatter": {
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "formatWithErrors": true
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "single",
+      "semicolons": "asNeeded",
+      "jsxQuoteStyle": "single",
+      "arrowParentheses": "asNeeded",
+      "quoteProperties": "asNeeded",
+      "lineWidth": 110,
+      "trailingCommas": "es5"
+    },
+    "globals": ["React", "JSX"]
+  },
+
+  "linter": {
+    "rules": {
+      "suspicious": {
+        "noArrayIndexKey": "off",
+        "noPrototypeBuiltins": "off",
+        "noExplicitAny": "off",
+        "noAssignInExpressions": "off",
+        "noImplicitAnyLet": "off",
+        "noConfusingVoidType": "off",
+        "noDocumentCookie": "off",
+        "noGlobalIsNan": "off",
+        "noAsyncPromiseExecutor": "off"
+      },
+      "correctness": {
+        "noUnusedVariables": "off",
+        "noChildrenProp": "off",
+        "noUnusedImports": "off",
+        "noUnusedLabels": "off",
+        "useExhaustiveDependencies": "off",
+        "noUnusedFunctionParameters": "off",
+        "noUnsafeOptionalChaining": "off",
+        "noUnreachable": "off",
+        "useJsxKeyInIterable": "off",
+        "useHookAtTopLevel": "off"
+      },
+      "performance": {
+        "noAccumulatingSpread": "off"
+      },
+      "complexity": {
+        "noUselessFragments": "off",
+        "noUselessCatch": "off",
+        "useLiteralKeys": "off",
+        "noBannedTypes": "off",
+        "useDateNow": "off",
+        "noUselessTernary": "off"
+      },
+      "style": {
+        "useImportType": "off",
+        "useNodejsImportProtocol": "off",
+        "noDescendingSpecificity": "off",
+        "useTemplate": "off",
+        "noNonNullAssertion": "off"
+      },
+      "security": {
+        "noDangerouslySetInnerHtml": "off"
+      },
+      "a11y": {
+        "useKeyWithClickEvents": "off",
+        "noStaticElementInteractions": "off",
+        "useValidAnchor": "off",
+        "useButtonType": "off",
+        "noLabelWithoutControl": "off",
+        "useAltText": "off"
+      }
+    }
+  },
+  "files": {
+    "includes": ["**", "!**/build", "!**/dist"]
+  }
+}
