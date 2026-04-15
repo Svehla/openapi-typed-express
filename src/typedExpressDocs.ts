@@ -3,7 +3,7 @@ import { NextFunction, Request, Response } from 'express'
 import { T } from './schemaBuilder'
 import { UrlsMethodDocs, convertUrlsMethodsSchemaToOpenAPI } from './openAPIFromSchema'
 import { getTSchemaValidator, normalizeYupError } from './runtimeSchemaValidation'
-import { parseUrlFromExpressRegexp } from './expressRegExUrlParser'
+import { parseUrlFromExpressV5Matcher } from './expressRegExUrlParser'
 import { InferSchemaType, TSchema } from './tsSchema'
 import { tSchemaToJSValue } from './jsValueToSchema'
 
@@ -154,7 +154,15 @@ export const getApiDocInstance =
         // ==== override casted (transformed) transformTypes into JS runtime objects ====
         if (headersValidator) req.headers = headersValidationRes.value
         if (paramsValidator) req.params = paramValidationRes.value
-        if (queryValidator) req.query = queryValidationRes.value
+        // In Express 5, req.query may be a read-only getter — redefine it as writable first
+        if (queryValidator) {
+          Object.defineProperty(req, 'query', {
+            ...Object.getOwnPropertyDescriptor(req, 'query'),
+            value: req.query,
+            writable: true,
+          })
+          req.query = queryValidationRes.value
+        }
         if (bodyValidator) req.body = bodyValidationRes.value
 
         const tSend = async (data: any) => {
@@ -202,22 +210,17 @@ export const apiDoc = getApiDocInstance()
 
 type ExpressRouterInternalStruct = {
   name: 'router'
-  regexp: RegExp
+  // Express 5 (path-to-regexp v8): no regexp, uses matcher functions instead
+  matchers: ((input: string) => any)[]
+  slash: boolean
   keys: { name: string; optional: boolean; offset: number }[]
-  // sometimes express expose handle, sometimes __handle...
-  __handle: ExpressRouteInternalStruct
   handle: ExpressRouteInternalStruct
-  route: {
-    stack: {
-      handle: (...any: any[]) => any
-      method: string
-    }[]
-    path: string
-  }
+  route: undefined
 }
 
 type ExpressRouteHandlerInternalStruct = {
-  name: 'bound dispatch'
+  // Express 5 uses 'handle', Express 4 used 'bound dispatch'
+  name: 'handle'
   route: {
     stack: {
       handle: (a?: symbol) => {
@@ -251,18 +254,12 @@ const resolveRouteHandlersAndExtractAPISchema = (
     if (r.name === 'router') {
       // === express router ===
       const stack = r as ExpressRouterInternalStruct
-      const parsedRouterRelativePath = parseUrlFromExpressRegexp(
-        stack.regexp.toString(),
-        stack.keys ?? []
-      )
+      const parsedRouterRelativePath = stack.slash
+        ? '/'
+        : parseUrlFromExpressV5Matcher(stack.matchers?.[0])
       const routerFullPath = mergePaths(path, parsedRouterRelativePath)
-      resolveRouteHandlersAndExtractAPISchema(
-        // pretty weird... sometimes express expose __handle, sometimes handle
-        stack.handle ?? stack.__handle,
-        routerFullPath,
-        urlsMethodDocsPointer
-      )
-    } else if (r.name === 'bound dispatch') {
+      resolveRouteHandlersAndExtractAPISchema(stack.handle, routerFullPath, urlsMethodDocsPointer)
+    } else if (r.name === 'handle') {
       // === final end routes ===
       r.route.stack.forEach(s => {
         // this check if route is annotated by openapi-typed-express-docs
@@ -321,7 +318,7 @@ type OpenAPIShape = DeepPartial<{
 }>
 
 export const initApiDocs = (
-  expressApp: { _router: ExpressRouteInternalStruct },
+  expressApp: { router: ExpressRouteInternalStruct },
   customOpenAPIType: OpenAPIShape = {}
 ) => {
   const mutDefinitions = {}
@@ -338,9 +335,8 @@ export const initApiDocs = (
           url: 'http://localhost/',
         },
       ],
-      // schemes: ['https', 'http'],
       paths: convertUrlsMethodsSchemaToOpenAPI(
-        resolveRouteHandlersAndExtractAPISchema(expressApp._router),
+        resolveRouteHandlersAndExtractAPISchema(expressApp.router),
         mutDefinitions
       ),
     },

@@ -44,12 +44,53 @@ type ExpressRouterParam = {
   offset?: number
 }[]
 
+/**
+ * Extract the mount path from an Express 5 router layer matcher function.
+ *
+ * Express 5 uses path-to-regexp v8 which stores the path only inside a closure.
+ * We intercept RegExp.prototype.exec to capture the compiled regexp, then parse
+ * its source to recover the original path string.
+ *
+ * The generated source format is: ^(?:\/path\/here)(?:\/$)?(?=\/|$)
+ */
+export const parseUrlFromExpressV5Matcher = (matcherFn: (input: string) => any): string => {
+  let capturedRegexp: RegExp | null = null
+  const origExec = RegExp.prototype.exec
+
+  // @ts-ignore – temporarily override to capture the internal regexp from the path-to-regexp closure
+  RegExp.prototype.exec = function exec(input: string) {
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
+    capturedRegexp = this
+    return origExec.call(this, input)
+  }
+
+  try {
+    matcherFn('/')
+  } finally {
+    RegExp.prototype.exec = origExec
+  }
+
+  if (!capturedRegexp) return ''
+
+  const source: string = (capturedRegexp as RegExp).source
+
+  // path-to-regexp v8 format: ^(?:\/path)(?:\/$)?(?=\/|$)
+  const V5_PREFIX = '^(?:'
+  const V5_SUFFIX = ')(?:\\/$)?(?=\\/|$)'
+
+  if (!source.startsWith(V5_PREFIX) || !source.endsWith(V5_SUFFIX)) return ''
+
+  const inner = source.slice(V5_PREFIX.length, source.length - V5_SUFFIX.length)
+  // Unescape escaped forward slashes
+  return inner.replace(/\\\//g, '/')
+}
+
 export const parseUrlFromExpressRegexp = (
   regexpString: string,
   params: ExpressRouterParam = []
 ) => {
   const parsedRegExPath = regexpString
-    .substr(replacers.prefixUrlSlash.length)
+    .slice(replacers.prefixUrlSlash.length)
     .slice(0, -replacers.endOfRegExpString.length)
     .slice(0, -replacers.endUrlQueryString.length)
     .split(replacers.urlParamString)
