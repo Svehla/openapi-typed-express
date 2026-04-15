@@ -56,7 +56,8 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/Svehla/openapi-typed-express-docs"
+    "url": "https://github.com/Svehla/openapi-typed-express",
+    "directory": "tSchemaVersion"
   },
   "license": "ISC",
   "author": "Jakub Švehla",

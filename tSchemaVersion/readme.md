@@ -1,5 +1,12 @@
 # swagger-typed-express-docs
 
+> **This library is part of a monorepo at [github.com/Svehla/openapi-typed-express](https://github.com/Svehla/openapi-typed-express)**
+>
+> | Package | Validation | npm |
+> |---------|-----------|-----|
+> | [`tSchemaVersion`](https://github.com/Svehla/openapi-typed-express/tree/main/tSchemaVersion) *(this package)* | built-in `T.*` schema builder | `swagger-typed-express-docs` |
+> | [`zodVersion`](https://github.com/Svehla/openapi-typed-express/tree/main/zodVersion) | [Zod](https://zod.dev) | `openapi-zod-typed-express` |
+
 swagger-typed-express-docs keep you simple document your endpoints with just one single source of truth which
 
 this project generates OpenAPI 3.0.0, not swagger!
