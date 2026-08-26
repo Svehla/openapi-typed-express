@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.2.0 — 2026-08-25
+## 2.0.0 — 2026-08-25
 
 ### Added
 - `zToArrayIfNot(item, wireType?)` (was internal; now a codec so it also encodes inside `returns`) and `zMockValue(schema)`
@@ -59,6 +59,9 @@
   `initApiDocs()` now fails fast naming the route, and without `initApiDocs()` the request answers 500 with the hint.
 - `normalizeZodError` recognises `zod/mini` errors and errors of a second installed zod copy (`$ZodError` trait);
   an async-refinement error thrown by a second zod copy is still treated as a server error.
+- Boot: the OpenAPI post-processing walkers use plain loops, the definitions hoisting has a fast path for the common
+  case and the shapes are no longer copied (initApiDocs ~13-15 % faster on top of the single toJSONSchema pass;
+  documents byte-identical).
 - Decoded headers are merged in place (declared keys only, no per-request copy of every incoming header); the query
   string is parsed once per request instead of twice.
 - Generated documents load in swagger-parser / openapi-typescript again: recursive schemas and `.meta({ id })` schemas

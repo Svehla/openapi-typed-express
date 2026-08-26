@@ -80,13 +80,28 @@ const UNSAFE_PROPERTY_NAMES = new Set(['__proto__', 'constructor', 'prototype'])
  * The walk is schema-aware and never mutates its input. Exported for its unit test only (not part of the package API).
  */
 export const toOpenApi30Keywords = (node: any, isSchemaMap = false): any => {
-  if (Array.isArray(node)) return node.map(item => toOpenApi30Keywords(item))
+  if (Array.isArray(node)) {
+    const out = new Array(node.length)
+    for (let i = 0; i < node.length; i++) out[i] = toOpenApi30Keywords(node[i])
+    return out
+  }
   if (!isObject(node)) return node
   if (isSchemaMap) {
-    return Object.fromEntries(Object.entries(node).map(([k, v]) => [k, toOpenApi30Keywords(v)]))
+    // keys are property names (user data): defined as own properties, never assigned (a `__proto__` name)
+    const out: any = {}
+    for (const k of Object.keys(node)) {
+      Object.defineProperty(out, k, {
+        value: toOpenApi30Keywords(node[k]),
+        enumerable: true,
+        writable: true,
+        configurable: true,
+      })
+    }
+    return out
   }
   const out: any = {}
-  for (const [k, v] of Object.entries(node)) {
+  for (const k of Object.keys(node)) {
+    const v = node[k]
     if (k === 'propertyNames' || k === 'contentEncoding') continue
     if (k === 'examples') {
       if (!('example' in node) && Array.isArray(v) && v.length > 0) out.example = v[0]
@@ -122,11 +137,19 @@ export const toOpenApi30Keywords = (node: any, isSchemaMap = false): any => {
 }
 
 const containsRef = (node: any, ref: string): boolean => {
-  if (Array.isArray(node)) return node.some(item => containsRef(item, ref))
+  if (Array.isArray(node)) {
+    for (const item of node) if (containsRef(item, ref)) return true
+    return false
+  }
   if (!isObject(node)) return false
-  return Object.entries(node).some(([k, v]) =>
-    k === '$ref' ? v === ref : VERBATIM_KEYS.has(k) ? false : containsRef(v, ref)
-  )
+  for (const k of Object.keys(node)) {
+    if (k === '$ref') {
+      if (node[k] === ref) return true
+    } else if (!VERBATIM_KEYS.has(k) && containsRef(node[k], ref)) {
+      return true
+    }
+  }
+  return false
 }
 
 const rewriteRefs = (node: any, map: Record<string, string>): any => {
@@ -158,8 +181,11 @@ const registerComponent = (components: ComponentSchemas, name: string, schema: a
  * `components.schemas` (the model of swagger-typed-express-docs): user ids keep their name, anonymous `__schemaN`
  * definitions and a recursive root are named after the route position.
  */
-const hoistDefinitions = (schema: any, baseName: string, components: ComponentSchemas) => {
+const hoistDefinitions = (schema: any, baseNameOf: () => string, components: ComponentSchemas) => {
   if (!isObject(schema)) return schema
+  // the common case (no definitions, no self reference) returns the schema untouched: no copy, no name building
+  if (!isObject(schema.definitions) && !containsRef(schema, ROOT_REF)) return schema
+  const baseName = baseNameOf()
   const { definitions, ...rest } = schema
   const defs: Record<string, any> = isObject(definitions) ? definitions : {}
   const map: Record<string, string> = {}
@@ -170,7 +196,6 @@ const hoistDefinitions = (schema: any, baseName: string, components: ComponentSc
   const rootIsRecursive =
     containsRef(rest, ROOT_REF) || Object.values(defs).some(def => containsRef(def, ROOT_REF))
   if (rootIsRecursive) map[ROOT_REF] = `${COMPONENT_PREFIX}${baseName}`
-  if (Object.keys(map).length === 0) return schema
 
   for (const [key, def] of Object.entries(defs)) {
     registerComponent(
@@ -202,14 +227,15 @@ export const generateOpenAPIPath = (
   const document = (schema: z.ZodTypeAny, position: string, kind: 'request' | 'response' = 'request') =>
     hoistDefinitions(
       toOpenApi3Schema(schema, `${label} ${position}`, kind),
-      componentBaseName(label, position),
+      () => componentBaseName(label, position),
       components
     )
 
   const materializedZodSchemas = {
-    path: schemas.pathSchema?.shape ? mapEntries(([k, v]) => [k, v], schemas.pathSchema?.shape) : {},
-    query: schemas.querySchema?.shape ? mapEntries(([k, v]) => [k, v], schemas.querySchema?.shape) : {},
-    headers: schemas.headersSchema?.shape ? mapEntries(([k, v]) => [k, v], schemas.headersSchema?.shape) : {},
+    // the shapes are only read, no copy needed
+    path: (schemas.pathSchema?.shape ?? {}) as Record<string, z.ZodTypeAny>,
+    query: (schemas.querySchema?.shape ?? {}) as Record<string, z.ZodTypeAny>,
+    headers: (schemas.headersSchema?.shape ?? {}) as Record<string, z.ZodTypeAny>,
     body: schemas.bodySchema ?? undefined,
   }
 
