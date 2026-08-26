@@ -464,6 +464,5 @@ describe('lifecycle', () => {
         bodyError([{ path: 'd', errors: ['Invalid input: expected date, received string'] }])
       )
     })
-
   })
 })

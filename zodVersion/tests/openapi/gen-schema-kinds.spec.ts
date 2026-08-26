@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { generateOpenAPIPath } from '../../src/openAPIFromSchema'
-import { bodySchemaOf, docOf, emptyArg, returnsDocOf } from './gen-helpers'
+import { bodySchemaOf, docOf, docWithComponents, emptyArg, returnsDocOf } from './gen-helpers'
 
 /**
  * Pins what the library emits (zod `toJSONSchema` with `{ io: 'input', target: 'openapi-3.0' }` +
@@ -43,7 +43,11 @@ describe('schema kinds -> emitted OpenAPI schema (request body position)', () =>
       { type: 'string', format: 'date-time', pattern: expect.any(String) },
     ],
     ['z.iso.date()', z.iso.date(), { type: 'string', format: 'date', pattern: expect.any(String) }],
-    ['z.iso.time()', z.iso.time(), { type: 'string', format: 'time', pattern: expect.any(String) }],
+    [
+      'z.iso.time() (no `format: time` since zod 4.4)',
+      z.iso.time(),
+      { type: 'string', pattern: expect.any(String) },
+    ],
     [
       'z.iso.duration()',
       z.iso.duration(),
@@ -57,11 +61,7 @@ describe('schema kinds -> emitted OpenAPI schema (request body position)', () =>
     ['z.ulid()', z.ulid(), { type: 'string', format: 'ulid', pattern: expect.any(String) }],
     ['z.e164()', z.e164(), { type: 'string', format: 'e164', pattern: expect.any(String) }],
     ['z.jwt()', z.jwt(), { type: 'string', format: 'jwt' }],
-    [
-      'z.base64()',
-      z.base64(),
-      { type: 'string', format: 'base64', contentEncoding: 'base64', pattern: expect.any(String) },
-    ],
+    ['z.base64()', z.base64(), { type: 'string', format: 'base64', pattern: expect.any(String) }],
     [
       'startsWith/endsWith/includes -> allOf of patterns',
       z.string().startsWith('a').endsWith('z').includes('m'),
@@ -82,13 +82,21 @@ describe('schema kinds -> emitted OpenAPI schema (request body position)', () =>
       { type: 'string', pattern: '^a-?\\d+(?:\\.\\d+)?$' },
     ],
     ['z.stringbool() documents the wire (string) side', z.stringbool(), { type: 'string' }],
-    ['z.file()', z.file(), { type: 'string', format: 'binary', contentEncoding: 'binary' }],
+    [
+      'z.file() (contentEncoding is dropped, not a 3.0 keyword)',
+      z.file(),
+      { type: 'string', format: 'binary' },
+    ],
 
     // ----- numbers -----
     ['number', z.number(), { type: 'number' }],
     ['number min/max', z.number().min(1).max(5), { type: 'number', minimum: 1, maximum: 5 }],
-    ['number gt/lt', z.number().gt(1).lt(5), { type: 'number', exclusiveMinimum: 1, exclusiveMaximum: 5 }],
-    ['number positive', z.number().positive(), { type: 'number', exclusiveMinimum: 0 }],
+    [
+      'number gt/lt -> OAS 3.0 boolean exclusive bounds (zod 4.4)',
+      z.number().gt(1).lt(5),
+      { type: 'number', minimum: 1, exclusiveMinimum: true, maximum: 5, exclusiveMaximum: true },
+    ],
+    ['number positive', z.number().positive(), { type: 'number', minimum: 0, exclusiveMinimum: true }],
     ['number nonnegative', z.number().nonnegative(), { type: 'number', minimum: 0 }],
     ['number multipleOf', z.number().multipleOf(2), { type: 'number', multipleOf: 2 }],
     ['number finite (no keyword)', z.number().finite(), { type: 'number' }],
@@ -117,7 +125,11 @@ describe('schema kinds -> emitted OpenAPI schema (request body position)', () =>
     ['literal boolean', z.literal(true), { type: 'boolean', enum: [true] }],
     ['literal multi (same type)', z.literal(['a', 'b']), { type: 'string', enum: ['a', 'b'] }],
     ['literal multi (mixed types) -> enum without type', z.literal(['a', 1]), { enum: ['a', 1] }],
-    ['literal null', z.literal(null), { type: 'null', enum: [null] }],
+    [
+      'literal null -> nullable workaround (library rewrite of type: null)',
+      z.literal(null),
+      { type: 'string', enum: [null], nullable: true },
+    ],
     ['literal multi with null -> enum without type', z.literal(['a', null]), { enum: ['a', null] }],
     ['enum', z.enum(['a', 'b']), { type: 'string', enum: ['a', 'b'] }],
     ['enum (empty)', z.enum([]), { type: 'string', enum: [] }],
@@ -137,15 +149,14 @@ describe('schema kinds -> emitted OpenAPI schema (request body position)', () =>
       { type: 'array', items: { type: 'string' }, minItems: 2, maxItems: 2 },
     ],
     [
-      'tuple -> draft-4 array-form items',
+      'tuple -> single items object (anyOf of the members) + minItems/maxItems (OAS 3.0 form, zod 4.4)',
       z.tuple([z.string(), z.number()]),
-      { type: 'array', items: [{ type: 'string' }, { type: 'number' }] },
+      { type: 'array', items: { anyOf: [{ type: 'string' }, { type: 'number' }] }, minItems: 2, maxItems: 2 },
     ],
     [
-      // zod bug: for non-2020-12 targets the rest schema overwrites `items`, so the prefix items are LOST
-      'tuple with rest -> prefix items lost (zod upstream bug)',
+      'tuple with rest -> items anyOf(prefix + rest), minItems only (zod 4.4)',
       z.tuple([z.string()], z.number()),
-      { type: 'array', items: { type: 'number' }, additionalItems: { type: 'number' } },
+      { type: 'array', items: { anyOf: [{ type: 'string' }, { type: 'number' }] }, minItems: 2 },
     ],
 
     // ----- objects -----
@@ -208,10 +219,15 @@ describe('schema kinds -> emitted OpenAPI schema (request body position)', () =>
       { type: 'object', additionalProperties: { type: 'number' } },
     ],
     [
-      // the enum-key constraint is only expressible via `propertyNames`, which the library strips
-      'record with enum keys -> key constraint lost',
+      // zod 4.4 documents the enum keys as `required` (4.1 used `propertyNames`, which the library strips)
+      'record with enum keys -> keys documented as required AND materialised as properties (a required key must exist)',
       z.record(z.enum(['x', 'y']), z.number()),
-      { type: 'object', additionalProperties: { type: 'number' } },
+      {
+        type: 'object',
+        additionalProperties: { type: 'number' },
+        required: ['x', 'y'],
+        properties: { x: { type: 'number' }, y: { type: 'number' } },
+      },
     ],
     [
       'partialRecord -> same as record',
@@ -226,23 +242,23 @@ describe('schema kinds -> emitted OpenAPI schema (request body position)', () =>
       { anyOf: [{ type: 'string' }, { type: 'number' }] },
     ],
     [
-      'union with z.null() member -> nullable',
+      'union with z.null() member -> the null member stays its own nullable branch (zod 4.4)',
       z.union([z.string(), z.null()]),
-      { type: 'string', nullable: true },
+      { anyOf: [{ type: 'string' }, { type: 'string', nullable: true, enum: [null] }] },
     ],
     [
-      'union of 3 with z.null() -> anyOf of non-null + nullable',
+      'union of 3 with z.null() -> anyOf incl. the nullable null branch (zod 4.4)',
       z.union([z.string(), z.number(), z.null()]),
-      { anyOf: [{ type: 'string' }, { type: 'number' }], nullable: true },
+      { anyOf: [{ type: 'string' }, { type: 'number' }, { type: 'string', nullable: true, enum: [null] }] },
     ],
     [
-      'discriminatedUnion -> plain anyOf (no discriminator object, no oneOf)',
+      'discriminatedUnion -> oneOf (no discriminator object, zod 4.4)',
       z.discriminatedUnion('t', [
         z.object({ t: z.literal('a'), x: z.string() }),
         z.object({ t: z.literal('b'), y: z.number() }),
       ]),
       {
-        anyOf: [
+        oneOf: [
           {
             type: 'object',
             properties: { t: { type: 'string', enum: ['a'] }, x: { type: 'string' } },
@@ -297,7 +313,7 @@ describe('schema kinds -> emitted OpenAPI schema (request body position)', () =>
       { type: 'string', default: 'x' },
     ],
     ['nullable any', z.any().nullable(), { nullable: true }],
-    ['nullable null', z.null().nullable(), { type: 'null', nullable: true }],
+    ['nullable null', z.null().nullable(), { type: 'string', nullable: true, enum: [null] }],
     ['nullable enum', z.enum(['a', 'b']).nullable(), { type: 'string', enum: ['a', 'b'], nullable: true }],
     ['nullable literal', z.literal('a').nullable(), { type: 'string', enum: ['a'], nullable: true }],
     [
@@ -368,20 +384,15 @@ describe('schema kinds -> emitted OpenAPI schema (request body position)', () =>
     ['any -> {}', z.any(), {}],
     ['unknown -> {}', z.unknown(), {}],
     ['never -> not: {}', z.never(), { not: {} }],
-    ['null -> type: null', z.null(), { type: 'null' }],
     [
-      'z.json() -> anyOf + nullable + self $ref',
+      'null -> OAS 3.0 workaround shape (zod 4.4)',
+      z.null(),
+      { type: 'string', nullable: true, enum: [null] },
+    ],
+    [
+      'z.json() -> hoisted into components.schemas (self-referencing)',
       z.json(),
-      {
-        anyOf: [
-          { type: 'string' },
-          { type: 'number' },
-          { type: 'boolean' },
-          { type: 'array', items: { $ref: '#' } },
-          { type: 'object', additionalProperties: { $ref: '#' } },
-        ],
-        nullable: true,
-      },
+      { $ref: '#/components/schemas/a_route_body' },
     ],
 
     // ----- metadata -----
@@ -401,7 +412,7 @@ describe('schema kinds -> emitted OpenAPI schema (request body position)', () =>
     [
       'meta title/description/examples/deprecated',
       z.string().meta({ title: 'T', description: 'D', examples: ['a'], deprecated: true }),
-      { type: 'string', title: 'T', description: 'D', examples: ['a'], deprecated: true },
+      { type: 'string', title: 'T', description: 'D', example: 'a', deprecated: true },
     ],
     [
       'meta example (singular) is copied verbatim',
@@ -409,14 +420,14 @@ describe('schema kinds -> emitted OpenAPI schema (request body position)', () =>
       { type: 'string', example: 'a' },
     ],
     [
-      'meta example + examples both copied',
+      'meta example + examples -> only the 3.0 `example` survives',
       z.string().meta({ example: 'e', examples: ['a', 'b'] }),
-      { type: 'string', example: 'e', examples: ['a', 'b'] },
+      { type: 'string', example: 'e' },
     ],
     [
-      'meta id at root -> emitted as `id` keyword',
+      'meta id at root -> no `id` keyword (zod 4.4)',
       z.string().meta({ id: 'GenKindsRootId' }),
-      { type: 'string', id: 'GenKindsRootId' },
+      { type: 'string' },
     ],
     [
       'meta on object + nested meta',
@@ -424,14 +435,14 @@ describe('schema kinds -> emitted OpenAPI schema (request body position)', () =>
       {
         type: 'object',
         title: 'Obj',
-        properties: { a: { type: 'string', description: 'a desc', examples: ['x'] } },
+        properties: { a: { type: 'string', description: 'a desc', example: 'x' } },
         required: ['a'],
       },
     ],
     [
-      'meta examples on a codec are KEPT (a codec is not a "transforming" pipe for zod)',
+      'meta on a codec: description KEPT, examples DROPPED (input mode, zod 4.4)',
       zDateCodec.meta({ description: 'kept', examples: ['2020-01-01T00:00:00.000Z'] }),
-      { type: 'string', description: 'kept', examples: ['2020-01-01T00:00:00.000Z'] },
+      { type: 'string', description: 'kept' },
     ],
     [
       // zod: "examples/defaults only apply to output type of pipe" -> dropped in input mode
@@ -455,13 +466,20 @@ describe('schema kinds -> emitted OpenAPI schema (request body position)', () =>
   })
 })
 
-describe('recursive schemas (lazy / getters)', () => {
-  test('recursive z.lazy at the root -> `$ref: "#"` (root-relative, see dialect spec)', () => {
+describe('recursive schemas (lazy / getters) -> hoisted into components.schemas', () => {
+  const REF = '#/components/schemas/a_route_body'
+  const NESTED_REF = '#/components/schemas/a_route_body_schema0'
+
+  test('recursive z.lazy at the root -> $ref to a route-scoped component', () => {
     const Tree: z.ZodTypeAny = z.lazy(() => z.object({ v: z.string(), kids: z.array(Tree) }))
-    expect(docOf(Tree)).toEqual({
-      type: 'object',
-      properties: { v: { type: 'string' }, kids: { type: 'array', items: { $ref: '#' } } },
-      required: ['v', 'kids'],
+    const { schema, components } = docWithComponents(Tree)
+    expect(schema).toEqual({ $ref: REF })
+    expect(components).toEqual({
+      a_route_body: {
+        type: 'object',
+        properties: { v: { type: 'string' }, kids: { type: 'array', items: { $ref: REF } } },
+        required: ['v', 'kids'],
+      },
     })
   })
 
@@ -472,33 +490,25 @@ describe('recursive schemas (lazy / getters)', () => {
         return z.array(Node)
       },
     })
-    expect(docOf(Node)).toEqual({
-      type: 'object',
-      properties: { v: { type: 'string' }, kids: { type: 'array', items: { $ref: '#' } } },
-      required: ['v', 'kids'],
-    })
+    const { schema, components } = docWithComponents(Node)
+    expect(schema).toEqual({ $ref: REF })
+    expect(components.a_route_body.properties.kids).toEqual({ type: 'array', items: { $ref: REF } })
   })
 
-  test('recursive schema nested in a property -> extracted to inline `definitions` + `#/definitions/__schema0`', () => {
+  test('recursive schema nested in a property -> anonymous component named after the route, no inline definitions', () => {
     const Node = z.object({
       v: z.string(),
       get kids() {
         return z.array(Node)
       },
     })
-    expect(docOf(z.object({ root: Node }))).toEqual({
-      type: 'object',
-      properties: { root: { $ref: '#/definitions/__schema0' } },
-      required: ['root'],
-      definitions: {
-        __schema0: {
-          type: 'object',
-          properties: {
-            v: { type: 'string' },
-            kids: { type: 'array', items: { $ref: '#/definitions/__schema0' } },
-          },
-          required: ['v', 'kids'],
-        },
+    const { schema, components } = docWithComponents(z.object({ root: Node }))
+    expect(schema).toEqual({ type: 'object', properties: { root: { $ref: NESTED_REF } }, required: ['root'] })
+    expect(components).toEqual({
+      a_route_body_schema0: {
+        type: 'object',
+        properties: { v: { type: 'string' }, kids: { type: 'array', items: { $ref: NESTED_REF } } },
+        required: ['v', 'kids'],
       },
     })
   })
@@ -509,13 +519,10 @@ describe('recursive schemas (lazy / getters)', () => {
         return A.optional()
       },
     })
-    expect(docOf(z.object({ x: A }))).toEqual({
-      type: 'object',
-      properties: { x: { $ref: '#/definitions/__schema0' } },
-      required: ['x'],
-      definitions: {
-        __schema0: { type: 'object', properties: { a: { allOf: [{ $ref: '#/definitions/__schema0' }] } } },
-      },
+    const { schema, components } = docWithComponents(z.object({ x: A }))
+    expect(schema).toEqual({ type: 'object', properties: { x: { $ref: NESTED_REF } }, required: ['x'] })
+    expect(components).toEqual({
+      a_route_body_schema0: { type: 'object', properties: { a: { allOf: [{ $ref: NESTED_REF }] } } },
     })
   })
 
@@ -531,23 +538,19 @@ describe('recursive schemas (lazy / getters)', () => {
     })
   })
 
-  test('schema with meta id reused twice -> `#/definitions/<id>` + `id` keyword inside the definition', () => {
+  test('schema with meta id reused twice -> one component named by the id', () => {
     const Shared = z.object({ x: z.string() }).meta({ id: 'GenKindsSharedTwice' })
-    expect(docOf(z.object({ a: Shared, b: Shared }))).toEqual({
+    const { schema, components } = docWithComponents(z.object({ a: Shared, b: Shared }))
+    expect(schema).toEqual({
       type: 'object',
       properties: {
-        a: { $ref: '#/definitions/GenKindsSharedTwice' },
-        b: { $ref: '#/definitions/GenKindsSharedTwice' },
+        a: { $ref: '#/components/schemas/GenKindsSharedTwice' },
+        b: { $ref: '#/components/schemas/GenKindsSharedTwice' },
       },
       required: ['a', 'b'],
-      definitions: {
-        GenKindsSharedTwice: {
-          id: 'GenKindsSharedTwice',
-          type: 'object',
-          properties: { x: { type: 'string' } },
-          required: ['x'],
-        },
-      },
+    })
+    expect(components).toEqual({
+      GenKindsSharedTwice: { type: 'object', properties: { x: { type: 'string' } }, required: ['x'] },
     })
   })
 })

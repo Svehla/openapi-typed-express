@@ -157,7 +157,7 @@ describe('request validation error responses', () => {
       [
         'discriminatedUnion bad discriminator -> path points at the discriminator',
         { du: { kind: 'z' } },
-        [{ path: 'du.kind', errors: ['Invalid input'] }],
+        [{ path: 'du.kind', errors: ["Invalid discriminator value. Expected 'x' | 'y'"] }],
       ],
       [
         'discriminatedUnion matched branch -> branch-specific path',
@@ -291,7 +291,14 @@ describe('request validation error responses', () => {
       ['codec decode throws', 'get', '/throwing-codec?n=abc', undefined, 'query', 'decoder exploded'],
       ['.transform() throws in a query', 'get', '/throwing-transform?json={bad', undefined, 'query', 'JSON'],
       ['.transform() throws in a body', 'post', '/throwing-body', { json: '{bad' }, 'body', 'JSON'],
-      ['a thrown non-Error value', 'get', '/throwing-string?n=1', undefined, 'query', 'Unknown error'],
+      [
+        'a thrown string keeps its content (sibling parity)',
+        'get',
+        '/throwing-string?n=1',
+        undefined,
+        'query',
+        'not an Error instance',
+      ],
     ])(
       '%s -> 400 in the normal { errors } shape, handler not called',
       async (_name, method, url, payload, section, fragment) => {

@@ -186,7 +186,7 @@ describe('adversarial: initApiDocs on apps without typed routes', () => {
 })
 
 describe('adversarial: boot-time robustness of initApiDocs', () => {
-  test('unrepresentable zod types (z.date(), z.bigint(), z.map()) are documented as {} instead of crashing', () => {
+  test('unrepresentable zod types (z.bigint(), z.map()) are documented as {} instead of crashing; a Date in returns is the wire string', () => {
     const app = express()
     app.get(
       '/dates',
@@ -203,7 +203,7 @@ describe('adversarial: boot-time robustness of initApiDocs', () => {
     ])
     expect(openapi.paths['/dates'].get.responses[200].content['application/json'].schema).toEqual({
       type: 'object',
-      properties: { at: {}, m: {} },
+      properties: { at: { type: 'string', format: 'date-time' }, m: {} },
       required: ['at', 'm'],
     })
   })

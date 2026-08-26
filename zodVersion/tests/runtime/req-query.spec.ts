@@ -135,16 +135,15 @@ describe('request query', () => {
       )
     })
 
-    test('no query schema: raw strings, but req.query is pinned as a stable, enumerable, configurable own property', async () => {
+    test("no query schema: req.query is left as express' own prototype getter (nothing is read, nothing is pinned)", async () => {
       const res = await request(app).get('/no-schema?a=1&b=x')
       expect(res.status).toBe(200)
       expect(res.body).toEqual({
         query: { a: '1', b: 'x' },
-        sameIdentity: true,
-        ownDataProperty: true,
-        enumerable: true,
-        configurable: true,
-        inKeys: true,
+        // express 5 re-parses the query string on every access, so two reads are two objects
+        sameIdentity: false,
+        ownDataProperty: false,
+        inKeys: false,
       })
     })
 

@@ -108,3 +108,26 @@ describe('utils', () => {
     // })
   })
 })
+
+describe('deepMerge hardening', () => {
+  test('an own __proto__ key in a source is ignored (no prototype pollution)', () => {
+    const target: any = { info: { title: 'a' } }
+    deepMerge(target, JSON.parse('{"__proto__":{"POLLUTED":"yes"},"info":{"version":"1"}}'))
+    expect(({} as any).POLLUTED).toBeUndefined()
+    expect(target).toEqual({ info: { title: 'a', version: '1' } })
+  })
+
+  test('constructor / prototype keys are ignored too', () => {
+    const target: any = {}
+    deepMerge(target, { constructor: { prototype: { POLLUTED: 'yes' } } })
+    expect(({} as any).POLLUTED).toBeUndefined()
+    expect(Object.keys(target)).toEqual([])
+  })
+
+  test('an explicit undefined in a source keeps the target value', () => {
+    expect(deepMerge({ a: { x: 1 }, b: 2 }, { a: undefined, b: undefined, c: undefined })).toEqual({
+      a: { x: 1 },
+      b: 2,
+    })
+  })
+})

@@ -52,8 +52,14 @@ type ExpressRouterParam = {
  * its source to recover the original path string.
  *
  * The generated source format is: ^(?:\/path\/here)(?:\/$)?(?=\/|$)
+ *
+ * Returns `null` when the mount path cannot be recovered (a RegExp mount path, an optional segment, an
+ * unknown express internals shape): the caller must not document that subtree at a guessed path.
  */
-export const parseUrlFromExpressV5Matcher = (matcherFn: (input: string) => any): string => {
+export const parseUrlFromExpressV5Matcher = (
+  matcherFn: ((input: string) => any) | undefined
+): string | null => {
+  if (typeof matcherFn !== 'function') return null
   let capturedRegexp: RegExp | null = null
   const origExec = RegExp.prototype.exec
 
@@ -67,11 +73,13 @@ export const parseUrlFromExpressV5Matcher = (matcherFn: (input: string) => any):
 
   try {
     matcherFn('/')
+  } catch {
+    return null
   } finally {
     RegExp.prototype.exec = origExec
   }
 
-  if (!capturedRegexp) return ''
+  if (!capturedRegexp) return null
 
   const source: string = (capturedRegexp as RegExp).source
 
@@ -79,11 +87,11 @@ export const parseUrlFromExpressV5Matcher = (matcherFn: (input: string) => any):
   const V5_PREFIX = '^(?:'
   const V5_SUFFIX = ')(?:\\/$)?(?=\\/|$)'
 
-  if (!source.startsWith(V5_PREFIX) || !source.endsWith(V5_SUFFIX)) return ''
+  if (!source.startsWith(V5_PREFIX) || !source.endsWith(V5_SUFFIX)) return null
 
   const inner = source.slice(V5_PREFIX.length, source.length - V5_SUFFIX.length)
-  // Unescape escaped forward slashes
-  return inner.replace(/\\\//g, '/')
+  // path-to-regexp escapes every regex-special character of the mount path (`/v1.0` -> `\/v1\.0`), undo all of them
+  return inner.replace(/\\(.)/g, '$1')
 }
 
 export const parseUrlFromExpressRegexp = (regexpString: string, params: ExpressRouterParam = []) => {

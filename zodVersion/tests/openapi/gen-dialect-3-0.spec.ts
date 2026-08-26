@@ -1,6 +1,15 @@
 import { z } from 'zod'
-import { generateOpenAPIPath } from '../../src/openAPIFromSchema'
-import { collectKeys, docOf, emptyArg, findNodes } from './gen-helpers'
+import { generateOpenAPIPath, toOpenApi30Keywords } from '../../src/openAPIFromSchema'
+import {
+  bodySchemaOf,
+  collectKeys,
+  docOf,
+  docWithComponents,
+  emptyArg,
+  findNodes,
+  returnsSchemaOf,
+  walkSchemaNodes,
+} from './gen-helpers'
 
 /**
  * The document declares `openapi: 3.0.0`. OpenAPI 3.0 Schema Objects are a subset of JSON Schema
@@ -133,9 +142,12 @@ describe('OpenAPI 3.0 dialect — guaranteed today', () => {
       n => Array.isArray(n.anyOf) && n.anyOf.some((x: any) => x?.type === 'null')
     )
     expect(nullBranches).toEqual([])
-    expect(findNodes(doc, n => 'oneOf' in n)).toEqual([])
+    expect(findNodes(doc, n => n.type === 'null')).toEqual([])
     expect(findNodes(doc, n => n.nullable === true).length).toBe(9)
-    expect(doc.properties.c).toEqual({ anyOf: [{ type: 'string' }, { type: 'number' }], nullable: true })
+    // zod 4.4 keeps a z.null() union member as its own branch (4.1 collapsed it into `nullable: true` on the union)
+    expect(doc.properties.c).toEqual({
+      anyOf: [{ type: 'string' }, { type: 'number' }, { type: 'string', nullable: true, enum: [null] }],
+    })
   })
 
   test('literals use `enum`, never `const`', () => {
@@ -159,7 +171,6 @@ describe('OpenAPI 3.0 dialect — guaranteed today', () => {
         'allOf',
         'anyOf',
         'default',
-        'definitions',
         'deprecated',
         'description',
         'enum',
@@ -173,6 +184,7 @@ describe('OpenAPI 3.0 dialect — guaranteed today', () => {
         'minimum',
         'not',
         'nullable',
+        'oneOf',
         'pattern',
         'properties',
         'readOnly',
@@ -191,79 +203,72 @@ describe('OpenAPI 3.0 dialect — guaranteed today', () => {
     expect(keys.has('example')).toBe(true)
   })
 
-  test('z.json() at the root -> `$ref: "#"`; nested -> extracted into `definitions.__schema0` (pinned)', () => {
-    expect(findNodes(docOf(z.json()), n => n.$ref === '#')).toEqual([
-      '$.anyOf[3].items',
-      '$.anyOf[4].additionalProperties',
-    ])
-    const nested = docOf(kitchenSink)
-    expect(findNodes(nested, n => n.$ref === '#')).toEqual([])
-    expect(nested.properties.json).toEqual({ $ref: '#/definitions/__schema0' })
-    expect(Object.keys(nested.definitions)).toEqual(['__schema0'])
+  test('z.json() is hoisted into components.schemas: the root becomes a $ref, nested gets a route-scoped name', () => {
+    const root = docWithComponents(z.json())
+    expect(root.schema).toEqual({ $ref: '#/components/schemas/a_route_body' })
+    expect(
+      findNodes(root.components.a_route_body, n => n.$ref === '#/components/schemas/a_route_body')
+    ).toEqual(['$.anyOf[4].items', '$.anyOf[5].additionalProperties'])
+    const nested = docWithComponents(kitchenSink)
+    expect(findNodes(nested.schema, n => n.$ref === '#')).toEqual([])
+    expect(nested.schema.properties.json).toEqual({ $ref: '#/components/schemas/a_route_body_schema0' })
+    expect(nested.schema).not.toHaveProperty('definitions')
+    expect(Object.keys(nested.components)).toEqual(['a_route_body_schema0'])
   })
 })
 
-describe('OpenAPI 3.0 dialect — violations zod emits even with target openapi-3.0 (pinned)', () => {
-  const violations: [string, z.ZodTypeAny, string[]][] = [
-    ['z.null() -> type: null', z.null(), ['type']],
-    ['z.literal(null) -> type: null', z.literal(null), ['type']],
-    ['tuple -> array-form items (draft-4 style)', z.tuple([z.string(), z.number()]), ['items']],
-    ['tuple with rest -> additionalItems', z.tuple([z.string()], z.number()), ['additionalItems']],
-    [
-      'gt/lt -> numeric exclusiveMinimum/exclusiveMaximum (booleans in 3.0)',
-      z.number().gt(1).lt(5),
-      ['exclusiveMinimum', 'exclusiveMaximum'],
-    ],
-    ['z.file() -> contentEncoding', z.file(), ['contentEncoding']],
-    ['z.base64() -> contentEncoding', z.base64(), ['contentEncoding']],
-    [
-      'meta examples -> examples (3.0 only has `example`)',
-      z.string().meta({ examples: ['a'] }),
-      ['examples'],
-    ],
-    ['meta id at root -> id', z.string().meta({ id: 'GenDialectRootId' }), ['id']],
-    [
-      'meta id nested -> definitions + $ref #/definitions/...',
-      z.object({ a: z.string().meta({ id: 'GenDialectNestedId' }) }),
-      ['definitions', '$ref', 'id'],
-    ],
-  ]
-
-  test.each(violations)('%s', (_name, schema, keywords) => {
-    const keys = collectKeys(docOf(schema))
-    for (const k of keywords) expect(keys.has(k)).toBe(true)
+describe('OpenAPI 3.0 dialect — keywords zod emits that the library rewrites (toOpenApi30Keywords)', () => {
+  test('z.literal(null) -> the same nullable workaround zod itself uses for z.null()', () => {
+    expect(docOf(z.literal(null))).toEqual({ type: 'string', enum: [null], nullable: true })
+    expect(docOf(z.null())).toEqual({ type: 'string', nullable: true, enum: [null] })
   })
 
-  test('numeric exclusive bounds — exact shape', () => {
-    expect(docOf(z.number().gt(1).lt(5))).toEqual({
-      type: 'number',
-      exclusiveMinimum: 1,
-      exclusiveMaximum: 5,
+  test('z.file() / z.base64(): contentEncoding dropped, format kept', () => {
+    expect(docOf(z.file())).toEqual({ type: 'string', format: 'binary' })
+    expect(docOf(z.base64())).toEqual({ type: 'string', format: 'base64', pattern: expect.any(String) })
+  })
+
+  test('meta examples -> the single 3.0 `example` (an explicit `example` wins)', () => {
+    expect(docOf(z.string().meta({ examples: ['a', 'b'] }))).toEqual({ type: 'string', example: 'a' })
+    expect(docOf(z.string().meta({ example: 'e', examples: ['a'] }))).toEqual({
+      type: 'string',
+      example: 'e',
     })
   })
+
+  test('meta id nested -> hoisted into components, no `definitions` / `#/definitions/` left behind', () => {
+    const { schema, components } = docWithComponents(
+      z.object({ a: z.string().meta({ id: 'GenDialectNestedId' }) })
+    )
+    expect(schema).toEqual({
+      type: 'object',
+      properties: { a: { $ref: '#/components/schemas/GenDialectNestedId' } },
+      required: ['a'],
+    })
+    expect(components).toEqual({ GenDialectNestedId: { type: 'string' } })
+  })
 })
 
-describe('OpenAPI 3.0 dialect — expected fixes (currently failing)', () => {
+describe('OpenAPI 3.0 dialect — formerly failing, now guaranteed (zod 4.4 upstream fixes + library rewrites)', () => {
   // Expected: no node with `type: 'null'` in an OpenAPI 3.0 document. `z.null()` should become
   // `{ nullable: true, enum: [null] }` (or at least `{ nullable: true }`), and a `{ type: 'null' }`
   // anyOf member should collapse into `nullable: true` on the siblings.
-  // Proposed fix: post-process in `stripUnsupportedKeywords` (rename it to `toOpenApi30Keywords`).
-  test.failing('no `{ type: "null" }` node anywhere', () => {
+  // Proposed fix: post-process in `toOpenApi30Keywords` (rename it to `toOpenApi30Keywords`).
+  test('no `{ type: "null" }` node anywhere', () => {
     const doc = docOf(z.object({ a: z.null(), b: z.literal(null), c: z.null().nullable() }))
     expect(findNodes(doc, n => n.type === 'null')).toEqual([])
   })
 
   // Expected: OpenAPI 3.0 `items` MUST be a single Schema Object. A tuple is best rendered as
   // `{ type: 'array', items: { anyOf: [...prefix] }, minItems: n, maxItems: n }`.
-  test.failing('tuple `items` is a single schema object, not an array', () => {
+  test('tuple `items` is a single schema object, not an array (fixed in zod 4.4)', () => {
     const doc = docOf(z.tuple([z.string(), z.number()]))
     expect(Array.isArray(doc.items)).toBe(false)
     expect(doc).not.toHaveProperty('additionalItems')
   })
 
   // Expected (draft-4 / OAS 3.0 form): `{ minimum: 1, exclusiveMinimum: true, maximum: 5, exclusiveMaximum: true }`.
-  // zod does this for `target: 'draft-4'` but not for `target: 'openapi-3.0'`.
-  test.failing('exclusive bounds use the boolean form', () => {
+  test('exclusive bounds use the boolean form (fixed in zod 4.4)', () => {
     expect(docOf(z.number().gt(1).lt(5))).toEqual({
       type: 'number',
       minimum: 1,
@@ -274,22 +279,22 @@ describe('OpenAPI 3.0 dialect — expected fixes (currently failing)', () => {
   })
 
   // Expected: draft-7+ `contentEncoding` dropped; `format: 'binary'` / `format: 'byte'` carry the meaning in 3.0.
-  test.failing('no `contentEncoding` keyword', () => {
+  test('no `contentEncoding` keyword', () => {
     expect(collectKeys(docOf(z.object({ f: z.file(), b: z.base64() }))).has('contentEncoding')).toBe(false)
   })
 
   // Expected: `examples: [x, ...]` (draft 2019-09+) mapped to `example: x` for OpenAPI 3.0.
-  test.failing('`examples` is converted to `example`', () => {
+  test('`examples` is converted to `example`', () => {
     expect(docOf(z.string().meta({ examples: ['a', 'b'] }))).toEqual({ type: 'string', example: 'a' })
   })
 
   // Expected: `.meta({ id })` should not leak the `id` keyword into the schema object.
-  test.failing('no `id` keyword from `.meta({ id })`', () => {
+  test('no `id` keyword from `.meta({ id })` (fixed in zod 4.4)', () => {
     expect(collectKeys(docOf(z.string().meta({ id: 'GenDialectExpectedNoId' }))).has('id')).toBe(false)
   })
 
   // Expected: nothing in the emitted document should be an unknown keyword for OpenAPI 3.0
-  test.failing('kitchen sink + violations contain no non-OAS-3.0 keyword at all', () => {
+  test('kitchen sink + former violations contain no non-OAS-3.0 keyword at all', () => {
     const everything = z.object({
       k: kitchenSink,
       n: z.null(),
@@ -303,58 +308,84 @@ describe('OpenAPI 3.0 dialect — expected fixes (currently failing)', () => {
   })
 })
 
-describe('$ref handling once schemas are inlined into a path item', () => {
+describe('$ref handling: recursive / named schemas are hoisted into components.schemas', () => {
   const Tree: z.ZodTypeAny = z.lazy(() => z.object({ v: z.string(), kids: z.array(Tree) }))
-
-  test('recursive root schema -> `$ref: "#"` which, inside a path item, points at the whole OpenAPI document (pinned)', () => {
-    const pathItem = generateOpenAPIPath({ ...emptyArg, bodySchema: Tree, returnsSchema: Tree })
-    expect(findNodes(pathItem, n => n.$ref === '#')).toEqual([
-      '$.requestBody.content.application/json.schema.properties.kids.items',
-      '$.responses.200.content.application/json.schema.properties.kids.items',
-    ])
-  })
-
-  test('nested recursive schema -> inline `definitions` + `#/definitions/__schema0` (pinned)', () => {
-    const pathItem = generateOpenAPIPath({ ...emptyArg, bodySchema: z.object({ root: Tree }) })
-    expect(
-      findNodes(pathItem, n => typeof n.$ref === 'string' && n.$ref.startsWith('#/definitions/'))
-    ).toHaveLength(2)
-    expect(findNodes(pathItem, n => 'definitions' in n)).toEqual([
-      '$.requestBody.content.application/json.schema',
-    ])
-  })
-
-  // Expected: in an OpenAPI document `$ref` must resolve. `#` resolves to the root OpenAPI object and
-  // `#/definitions/...` to nothing. Recursive / `meta({ id })` schemas should be hoisted into
-  // `components.schemas` (the document already reserves `components: { schemas: {} }`) and referenced
-  // as `#/components/schemas/<id>`. zod supports this via `toJSONSchema(schema, { external: { registry, uri, defs } })`
-  // or by post-processing `definitions` in `openAPIFromSchema.ts`.
-  test.failing('recursive schemas produce only resolvable `#/components/schemas/...` refs', () => {
-    const pathItem = generateOpenAPIPath({
-      ...emptyArg,
-      bodySchema: Tree,
-      returnsSchema: z.object({ root: Tree }),
+  const allRefs = (node: any) => {
+    const refs: string[] = []
+    walkSchemaNodes(node, n => {
+      if (typeof n.$ref === 'string') refs.push(n.$ref)
     })
-    const refs = findNodes(pathItem, n => typeof n.$ref === 'string')
-    expect(refs.length).toBeGreaterThan(0)
+    return refs
+  }
+
+  test('a recursive ROOT schema becomes a $ref to a route-scoped component (never `$ref: "#"`)', () => {
+    const components: Record<string, any> = {}
+    const pathItem = generateOpenAPIPath(
+      { ...emptyArg, bodySchema: Tree, returnsSchema: Tree },
+      'POST /tree',
+      components
+    )
+    expect(bodySchemaOf(pathItem)).toEqual({ $ref: '#/components/schemas/POST_tree_body' })
+    expect(returnsSchemaOf(pathItem)).toEqual({ $ref: '#/components/schemas/POST_tree_returns' })
+    expect(components.POST_tree_body.properties.kids.items).toEqual({
+      $ref: '#/components/schemas/POST_tree_body',
+    })
     expect(findNodes(pathItem, n => n.$ref === '#')).toEqual([])
-    expect(
-      findNodes(pathItem, n => typeof n.$ref === 'string' && !n.$ref.startsWith('#/components/schemas/'))
-    ).toEqual([])
-    expect(findNodes(pathItem, n => 'definitions' in n)).toEqual([])
+    expect(findNodes(components, n => n.$ref === '#')).toEqual([])
   })
 
-  test.failing('`.meta({ id })` schemas are referenced as `#/components/schemas/<id>`', () => {
-    const Shared = z.object({ x: z.string() }).meta({ id: 'GenDialectSharedComponent' })
-    const pathItem = generateOpenAPIPath({ ...emptyArg, bodySchema: z.object({ a: Shared, b: Shared }) })
-    expect(
-      findNodes(pathItem, n => n.$ref === '#/components/schemas/GenDialectSharedComponent')
-    ).toHaveLength(2)
+  test('a recursive schema nested in a property -> anonymous route-scoped component, no inline `definitions`', () => {
+    const components: Record<string, any> = {}
+    const pathItem = generateOpenAPIPath(
+      { ...emptyArg, bodySchema: z.object({ root: Tree }) },
+      'POST /tree',
+      components
+    )
+    expect(bodySchemaOf(pathItem).properties.root).toEqual({
+      $ref: '#/components/schemas/POST_tree_body_schema0',
+    })
     expect(findNodes(pathItem, n => 'definitions' in n)).toEqual([])
+    expect(components.POST_tree_body_schema0.properties.kids.items).toEqual({
+      $ref: '#/components/schemas/POST_tree_body_schema0',
+    })
+  })
+
+  test('every $ref of a path item and of the components resolves to components.schemas', () => {
+    const components: Record<string, any> = {}
+    const pathItem = generateOpenAPIPath(
+      { ...emptyArg, bodySchema: Tree, returnsSchema: z.object({ root: Tree, j: z.json() }) },
+      'POST /tree',
+      components
+    )
+    const refs = [...allRefs(pathItem), ...allRefs(components)]
+    expect(refs.length).toBeGreaterThan(0)
+    for (const ref of refs) {
+      expect(ref.startsWith('#/components/schemas/')).toBe(true)
+      expect(components[ref.slice('#/components/schemas/'.length)]).toBeDefined()
+    }
+  })
+
+  test('`.meta({ id })` schemas are referenced as `#/components/schemas/<id>` and shared across routes', () => {
+    const Shared = z.object({ x: z.string() }).meta({ id: 'GenDialectSharedComponent' })
+    const components: Record<string, any> = {}
+    const a = generateOpenAPIPath(
+      { ...emptyArg, bodySchema: z.object({ a: Shared, b: Shared }) },
+      'POST /a',
+      components
+    )
+    const b = generateOpenAPIPath(
+      { ...emptyArg, returnsSchema: z.object({ s: Shared }) },
+      'GET /b',
+      components
+    )
+    expect(findNodes(a, n => n.$ref === '#/components/schemas/GenDialectSharedComponent')).toHaveLength(2)
+    expect(findNodes(b, n => n.$ref === '#/components/schemas/GenDialectSharedComponent')).toHaveLength(1)
+    expect(Object.keys(components)).toEqual(['GenDialectSharedComponent'])
+    expect(findNodes(a, n => 'definitions' in n)).toEqual([])
   })
 })
 
-describe('stripUnsupportedKeywords is schema-aware', () => {
+describe('toOpenApi30Keywords is schema-aware', () => {
   test('a user property named `propertyNames` survives (and stays in `required`)', () => {
     const doc = docOf(z.object({ propertyNames: z.array(z.string()), other: z.string() }))
     expect(doc).toEqual({
@@ -364,7 +395,7 @@ describe('stripUnsupportedKeywords is schema-aware', () => {
     })
   })
 
-  test('a `propertyNames` key inside `default` / `example` / `examples` values is copied verbatim', () => {
+  test('a `propertyNames` key inside `default` / `example` values is copied verbatim (`examples` yields to `example`)', () => {
     const doc = docOf(
       z.object({
         cfg: z.record(z.string(), z.number()).default({ propertyNames: 1 }),
@@ -383,27 +414,57 @@ describe('stripUnsupportedKeywords is schema-aware', () => {
       properties: { propertyNames: { type: 'number' } },
       required: ['propertyNames'],
       example: { propertyNames: 2 },
-      examples: [{ propertyNames: 3 }],
     })
   })
 
-  test('a definition whose id is `propertyNames` survives in `definitions`', () => {
+  test('a component whose id is `propertyNames` survives the hoisting', () => {
     const Shared = z.object({ x: z.string() }).meta({ id: 'propertyNames' })
-    const doc = docOf(z.object({ a: Shared, b: Shared }))
-    expect(doc.definitions.propertyNames).toEqual({
-      id: 'propertyNames',
+    const { schema, components } = docWithComponents(z.object({ a: Shared, b: Shared }))
+    expect(components.propertyNames).toEqual({
       type: 'object',
       properties: { x: { type: 'string' } },
       required: ['x'],
     })
-    expect(doc.properties.a).toEqual({ $ref: '#/definitions/propertyNames' })
+    expect(schema.properties.a).toEqual({ $ref: '#/components/schemas/propertyNames' })
   })
 
-  test('the real `propertyNames` keyword is still removed at every depth, including inside `properties` maps', () => {
+  test('an enum-key record under a property named `propertyNames` (zod 4.4 documents the keys as `required`)', () => {
     const doc = docOf(z.object({ propertyNames: z.record(z.enum(['k']), z.record(z.string(), z.number())) }))
     expect(doc.properties.propertyNames).toEqual({
       type: 'object',
       additionalProperties: { type: 'object', additionalProperties: { type: 'number' } },
+      required: ['k'],
+      properties: { k: { type: 'object', additionalProperties: { type: 'number' } } },
+    })
+  })
+
+  // zod 4.4 no longer emits `propertyNames` for enum-key records, but older 4.1.x (still in the peer range)
+  // does, so the walker is pinned directly on a hand-written schema
+  test('direct: the real keyword is removed at every depth, user data and property names are untouched', () => {
+    const input = {
+      type: 'object',
+      propertyNames: { enum: ['k'] },
+      properties: {
+        propertyNames: {
+          type: 'object',
+          propertyNames: { enum: ['x'] },
+          additionalProperties: { type: 'number' },
+        },
+        cfg: { type: 'object', default: { propertyNames: 1 }, enum: [{ propertyNames: 2 }] },
+      },
+      items: [{ propertyNames: {} }, { type: 'string' }],
+      allOf: [{ propertyNames: {} }],
+      definitions: { propertyNames: { type: 'string', propertyNames: {} } },
+    }
+    expect(toOpenApi30Keywords(input)).toEqual({
+      type: 'object',
+      properties: {
+        propertyNames: { type: 'object', additionalProperties: { type: 'number' } },
+        cfg: { type: 'object', default: { propertyNames: 1 }, enum: [{ propertyNames: 2 }] },
+      },
+      items: [{}, { type: 'string' }],
+      allOf: [{}],
+      definitions: { propertyNames: { type: 'string' } },
     })
   })
 })

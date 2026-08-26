@@ -3,10 +3,10 @@
 // - Route docs wrapper: typedExpressDocs (apiDoc, initApiDocs)
 // - OpenAPI generation + Swagger UI: /api-docs (JSON), /swagger-ui (UI)
 
+import { randomUUID } from 'node:crypto'
 import type { Request, Response } from 'express'
 import express from 'express'
 import swaggerUi from 'swagger-ui-express'
-import { v4 as uuidv4 } from 'uuid'
 import { z } from 'zod'
 
 // Import from your local sources
@@ -29,14 +29,14 @@ const db = new Map<string, User>()
 ;(() => {
   const now = new Date()
   const u1: User = {
-    id: uuidv4(),
+    id: randomUUID(),
     email: 'ada@example.com',
     name: 'Ada',
     createdAt: now,
     updatedAt: now,
   }
   const u2: User = {
-    id: uuidv4(),
+    id: randomUUID(),
     email: 'grace@example.com',
     name: 'Grace',
     birthday: new Date('1906-12-09'),
@@ -151,7 +151,7 @@ users.post(
   apiDoc({ body: CreateUserBody, returns: UserOut })((req, res) => {
     const now = new Date()
     const user: User = {
-      id: uuidv4(),
+      id: randomUUID(),
       email: req.body.email,
       name: req.body.name,
       birthday: req.body.birthday,

@@ -22,10 +22,10 @@ describe('request body documentation for any zod schema', () => {
       },
     ],
     [
-      'discriminated union',
+      'discriminated union (oneOf since zod 4.4)',
       z.discriminatedUnion('t', [z.object({ t: z.literal('a') }), z.object({ t: z.literal('b') })]),
       {
-        anyOf: [
+        oneOf: [
           { type: 'object', properties: { t: { type: 'string', enum: ['a'] } }, required: ['t'] },
           { type: 'object', properties: { t: { type: 'string', enum: ['b'] } }, required: ['t'] },
         ],
@@ -73,9 +73,9 @@ describe('request body documentation for any zod schema', () => {
       },
     ],
     [
-      'tuple',
+      'tuple (single items object since zod 4.4)',
       z.tuple([z.string(), z.number()]),
-      { type: 'array', items: [{ type: 'string' }, { type: 'number' }] },
+      { type: 'array', items: { anyOf: [{ type: 'string' }, { type: 'number' }] }, minItems: 2, maxItems: 2 },
     ],
     ['codec (input side)', zDateCodec, { type: 'string' }],
     [
@@ -87,7 +87,11 @@ describe('request body documentation for any zod schema', () => {
         required: ['when', 'n'],
       },
     ],
-    ['null', z.null(), { type: 'null' }],
+    [
+      'null (OAS 3.0 workaround shape since zod 4.4)',
+      z.null(),
+      { type: 'string', nullable: true, enum: [null] },
+    ],
     ['never', z.never(), { not: {} }],
   ]
 

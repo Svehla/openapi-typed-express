@@ -3,7 +3,7 @@
  * misuse of `res.tSend` never takes a real server process down (jest intercepts unhandled
  * rejections in-process, so "does the server die?" can only be answered out-of-process).
  *
- * Usage: node -r ts-node/register/transpile-only tests/runtime/res-double-send.child.ts <scenario>
+ * Usage: npx tsx tests/runtime/res-double-send.child.ts <scenario>
  * Exit code 0 = the process survived the request, anything else = it crashed.
  */
 import '../helpers/supertestLoopback'

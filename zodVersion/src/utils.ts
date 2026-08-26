@@ -38,9 +38,15 @@ export type DeepPartial<T> = T extends (infer Item)[]
 const merge = (a: any, b: any): any =>
   isObject(a) && isObject(b) ? deepMerge(a, b) : isObject(a) && !isObject(b) ? a : b
 
+// an own `__proto__` key (JSON.parse, object spread) would make `acc[key]` read Object.prototype and merge INTO it
+const UNSAFE_KEYS = new Set(['__proto__', 'constructor', 'prototype'])
+
 const coalesceByKey =
   (source: any) =>
   (acc: any, key: any): any => {
+    if (UNSAFE_KEYS.has(key)) return acc
+    // an explicit `undefined` in a source keeps the target value (a half-filled config must not wipe a default)
+    if (source[key] === undefined) return acc
     acc[key] = acc[key] && source[key] ? merge(acc[key], source[key]) : source[key]
     return acc
   }

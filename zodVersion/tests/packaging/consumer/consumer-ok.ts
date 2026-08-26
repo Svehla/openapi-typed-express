@@ -3,7 +3,7 @@
 import express from 'express'
 import type { IncomingHttpHeaders } from 'http'
 import { z } from 'zod'
-import { apiDoc, getApiDocInstance, initApiDocs, normalizeZodError } from '../../../dist'
+import { apiDoc, getApiDocInstance, initApiDocs, normalizeZodError, zCast, zNull } from '../../../dist'
 
 const app = express()
 
@@ -59,6 +59,22 @@ app.get(
   })
 )
 
+app.get(
+  '/cast',
+  apiDoc({
+    query: { since: zCast.date, limit: zCast.null_number, tag: zNull(z.string()) },
+    returns: z.object({ since: zCast.date, active: zCast.boolean }),
+  })((req, res) => {
+    const since: Date = req.query.since
+    const limit: number | null | undefined = req.query.limit
+    const tag: string | null | undefined = req.query.tag
+    res.tSend({ since, active: true })
+    // @ts-expect-error the wire type of a cast is a string
+    res.send({ since, active: true })
+    void [limit, tag]
+  })
+)
+
 const customApiDoc = getApiDocInstance({
   errorFormatter: e => ({ wrapped: e.errors, returns: e.errors.returns }),
 })
@@ -78,4 +94,4 @@ const openapi: { openapi?: string; paths?: Record<string, unknown> } = initApiDo
 
 const normalized: { path: string; errors: string[] }[] | undefined = normalizeZodError(new Error('x'))
 
-export { openapi, normalized }
+export { normalized, openapi }

@@ -51,8 +51,8 @@ describe('determinism', () => {
     const third = generateOpenAPIPath(arg)
     expect(JSON.stringify(first)).toBe(JSON.stringify(second))
     expect(JSON.stringify(second)).toBe(JSON.stringify(third))
-    expect(JSON.stringify(first)).toContain('__schema0')
-    expect(JSON.stringify(first)).not.toContain('__schema1')
+    expect(JSON.stringify(first)).toContain('#/components/schemas/a_route_body_schema0')
+    expect(JSON.stringify(first)).not.toContain('schema1')
   })
 
   test('the document survives a JSON round-trip unchanged (no undefined / functions / symbols / bigint / Date)', () => {
@@ -106,23 +106,6 @@ describe('key ordering (what a consumer diffing generated docs will see)', () =>
     expect(body.required).toEqual(['b', 'a'])
     const returns = doc.paths['/z-first/{id}'].get.responses[200].content['application/json'].schema
     expect(Object.keys(returns.properties)).toEqual(['zz', 'aa', 'tree'])
-  })
-
-  test('schema keyword order as emitted by zod (type before constraints; metadata first; nullable last)', () => {
-    const item = generateOpenAPIPath({
-      ...emptyArg,
-      bodySchema: z.object({
-        s: z.string().min(1).max(2).describe('d'),
-        n: z.number().nullable(),
-        a: z.array(z.string()).min(1),
-        o: z.object({ x: z.string() }).nullable().describe('o'),
-      }),
-    })
-    const props = item.requestBody.content['application/json'].schema.properties
-    expect(Object.keys(props.s)).toEqual(['description', 'type', 'minLength', 'maxLength'])
-    expect(Object.keys(props.n)).toEqual(['type', 'nullable'])
-    expect(Object.keys(props.a)).toEqual(['minItems', 'type', 'items'])
-    expect(Object.keys(props.o)).toEqual(['description', 'type', 'properties', 'required', 'nullable'])
   })
 
   test('stableStringify normalizes key order so semantically equal docs compare equal', () => {

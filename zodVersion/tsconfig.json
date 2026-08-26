@@ -1,41 +1,24 @@
 {
   "compilerOptions": {
-    "target": "es5",
-    "lib": [
-      "esnext",
-      "es2018.promise",
-      "es2017",
-      "dom",
-      "esnext.asynciterable",
-      "es2021"
-    ],
-    "allowJs": true,
-    "downlevelIteration": true,
-    "skipLibCheck": true,
-    "allowSyntheticDefaultImports": true,
-    "strict": true,
-    "forceConsistentCasingInFileNames": true,
+    "target": "es2022",
+    "lib": ["es2022"],
     "module": "commonjs",
-    "moduleResolution": "node",
-    "resolveJsonModule": true,
-    "isolatedModules": false,
-    "emitDecoratorMetadata": true,
-    "experimentalDecorators": true,
+    "moduleResolution": "node10",
+
+    "strict": true,
     "esModuleInterop": true,
-    "noImplicitReturns": false,
-    "noImplicitThis": false,
-    "noImplicitAny": false,
-    "noUnusedParameters": false,
-    "noUnusedLocals": false,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
 
     // lib settings
-    "removeComments": true,
-    "sourceMap": false,
+    "rootDir": "src",
     "outDir": "dist",
-    "noEmit": false,
     "declaration": true,
-    "strictNullChecks": true, // ensure strict null checks for nullable, undefined, and ?
-    "strictPropertyInitialization": true // ensure properties with ? or possibly undefined/null are checked
+    "noEmit": false,
+    "sourceMap": false,
+    // keep JSDoc (e.g. the @deprecated on `res.transformSend`) in dist/*.d.ts
+    "removeComments": false
   },
   "include": ["src/**/*"]
 }

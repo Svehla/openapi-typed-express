@@ -40,10 +40,10 @@ describe('query / header parameter `required` flag', () => {
     ['.optional().default()', z.string().optional().default('x'), false, true],
     ['.default().optional()', z.string().default('x').optional(), false, true],
     ['.prefault()', z.string().prefault('x'), false, true],
-    ['.catch() (optin undefined although undefined is accepted)', z.string().catch('x'), true, true],
+    ['.catch() (optin optional since zod 4.4)', z.string().catch('x'), false, true],
     ['z.any() (optin undefined although undefined is accepted)', z.any(), true, true],
     ['z.unknown() (optin undefined although undefined is accepted)', z.unknown(), true, true],
-    ['z.undefined()', z.undefined(), false, true],
+    ['z.undefined() (optin NOT optional since zod 4.4)', z.undefined(), true, true],
     ['z.void() (optin undefined although undefined is accepted)', z.void(), true, true],
     ['codec', zDateCodec, true, false],
     ['codec.optional()', zDateCodec.optional(), false, true],
@@ -73,11 +73,16 @@ describe('query / header parameter `required` flag', () => {
     ],
     ['z.lazy(() => x.optional())', z.lazy(() => z.string().optional()), false, true],
     ['z.union([x.optional(), y])', z.union([z.string().optional(), z.number()]), false, true],
-    ['z.union([x, z.undefined()])', z.union([z.string(), z.undefined()]), false, true],
     [
-      'z.preprocess(fn, x.optional()) (only optout is set)',
-      z.preprocess(v => v, z.string().optional()),
+      'z.union([x, z.undefined()]) (optin NOT optional since zod 4.4)',
+      z.union([z.string(), z.undefined()]),
       true,
+      true,
+    ],
+    [
+      'z.preprocess(fn, x.optional()) (optin optional since zod 4.4)',
+      z.preprocess(v => v, z.string().optional()),
+      false,
       true,
     ],
     ['z.coerce.number()', z.coerce.number(), true, false],
@@ -131,7 +136,6 @@ describe('path parameters are always required: true (OpenAPI 3.0 rule)', () => {
     ['.nullish()', z.string().nullish()],
     ['.default()', z.string().default('x')],
     ['z.any()', z.any()],
-    ['z.undefined()', z.undefined()],
   ] as [string, z.ZodTypeAny][])('%s', (_name, schema) => {
     expect(pathParamOf(schema)).toMatchObject({ in: 'path', name: 'p', required: true })
   })
@@ -159,7 +163,7 @@ describe('parameters object shape', () => {
       bodySchema: null,
       returnsSchema: null,
     })
-    expect(pathItem.parameters.map(p => `${p.in}:${p.name}`)).toEqual([
+    expect(pathItem.parameters.map((p: { in: string; name: string }) => `${p.in}:${p.name}`)).toEqual([
       'path:p2',
       'path:p1',
       'query:q2',

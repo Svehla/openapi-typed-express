@@ -431,11 +431,11 @@ describe('schemas zod cannot represent in JSON Schema (z.date(), z.bigint())', (
     return app
   }
 
-  test('initApiDocs() does not throw – the unrepresentable parts of the docs degrade to {}', () => {
+  test('initApiDocs() does not throw – the unrepresentable parts of the docs degrade to {} (a Date in returns is the wire string)', () => {
     const openapi = initApiDocs(buildDateApp())
     expect(openapi.paths['/date'].get.responses[200].content['application/json'].schema).toEqual({
       type: 'object',
-      properties: { at: {}, n: {} },
+      properties: { at: { type: 'string', format: 'date-time' }, n: {} },
       required: ['at', 'n'],
     })
   })

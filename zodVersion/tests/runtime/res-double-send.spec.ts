@@ -232,8 +232,8 @@ describe('res.send itself throwing inside tSend (no double send involved)', () =
 describe('process survival (child node process)', () => {
   const runChild = (scenario: string) => {
     const r = spawnSync(
-      process.execPath,
-      ['-r', 'ts-node/register/transpile-only', path.join(__dirname, 'res-double-send.child.ts'), scenario],
+      path.join(__dirname, '..', '..', 'node_modules/.bin/tsx'),
+      [path.join(__dirname, 'res-double-send.child.ts'), scenario],
       { cwd: path.join(__dirname, '..', '..'), encoding: 'utf8', timeout: 60_000 }
     )
     return { status: r.status, stdout: r.stdout, stderr: r.stderr }

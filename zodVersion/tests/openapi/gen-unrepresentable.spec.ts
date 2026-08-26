@@ -14,13 +14,15 @@ import { docOf, emptyArg, queryParamOf, returnsDocOf } from './gen-helpers'
 
 const zDateCodec = z.codec(z.string(), z.date(), { decode: s => new Date(s), encode: d => d.toISOString() })
 
-describe('schema kinds zod cannot represent -> `{}` at that node', () => {
-  const rows: [string, z.ZodTypeAny, any][] = [
+describe('schema kinds zod cannot represent -> `{}` at that node (a Date in a RESPONSE is the ISO string on the wire)', () => {
+  const DATE_STRING = { type: 'string', format: 'date-time' }
+  // [name, schema, expected in a request / parameter, expected in the returns schema (defaults to the same)]
+  const rows: [string, z.ZodTypeAny, any, any?][] = [
     ['z.bigint()', z.bigint(), {}],
     ['z.int64()', z.int64(), {}],
     ['z.literal(undefined)', z.literal(undefined), {}],
-    ['z.date()', z.date(), {}],
-    ['z.coerce.date()', z.coerce.date(), {}],
+    ['z.date()', z.date(), {}, DATE_STRING],
+    ['z.coerce.date()', z.coerce.date(), {}, DATE_STRING],
     ['z.map()', z.map(z.string(), z.number()), {}],
     ['z.set()', z.set(z.string()), {}],
     ['z.undefined()', z.undefined(), {}],
@@ -30,16 +32,27 @@ describe('schema kinds zod cannot represent -> `{}` at that node', () => {
     ['z.function()', z.function() as any, {}],
     ['z.custom()', z.custom(() => true), {}],
     ['z.instanceof(Date)', z.instanceof(Date), {}],
-    ['z.lazy(() => z.date())', z.lazy(() => z.date()), {}],
+    ['z.lazy(() => z.date())', z.lazy(() => z.date()), {}, DATE_STRING],
     ['z.bigint().optional()', z.bigint().optional(), {}],
     [
       'codec whose INPUT (wire) side is a Date',
       z.codec(z.date(), z.string(), { decode: d => d.toISOString(), encode: s => new Date(s) }),
       {},
+      DATE_STRING,
     ],
     // metadata on an unrepresentable node survives
-    ['z.date().describe()', z.date().describe('when'), { description: 'when' }],
-    ['z.date().nullable() -> only the nullable marker', z.date().nullable(), { nullable: true }],
+    [
+      'z.date().describe()',
+      z.date().describe('when'),
+      { description: 'when' },
+      { description: 'when', ...DATE_STRING },
+    ],
+    [
+      'z.date().nullable() -> only the nullable marker',
+      z.date().nullable(),
+      { nullable: true },
+      { nullable: true, ...DATE_STRING },
+    ],
     ['z.map().nullable()', z.map(z.string(), z.number()).nullable(), { nullable: true }],
     // conversions rather than `{}`
     ['z.literal(BigInt(10)) -> number enum', z.literal(BigInt(10)), { type: 'number', enum: [10] }],
@@ -50,19 +63,22 @@ describe('schema kinds zod cannot represent -> `{}` at that node', () => {
     ],
   ]
 
-  test.each(rows)('%s', (_name, schema, expected) => {
+  // rows are normalised to 4-tuples: with a shorter row jest would pass its `done` callback as the 4th argument
+  test.each(
+    rows.map(([name, schema, expected, inResponse]) => [name, schema, expected, inResponse ?? expected])
+  )('%s', (_name, schema, expected, inResponse) => {
     expect(docOf(schema)).toEqual(expected)
-    expect(returnsDocOf(schema)).toEqual(expected)
     expect(queryParamOf(schema).schema).toEqual(expected)
+    expect(returnsDocOf(schema)).toEqual(inResponse ?? expected)
   })
 
   test('z.date().default(new Date(0)) -> `default` is JSON-round-tripped by zod (ISO string, never a Date instance)', () => {
     expect(docOf(z.date().default(new Date(0)))).toEqual({ default: '1970-01-01T00:00:00.000Z' })
   })
 
-  test('a `{}` query param is still `required` according to optin (z.coerce.date(): true, z.undefined(): false, z.void(): true)', () => {
+  test('a `{}` query param is still `required` according to optin (z.coerce.date(): true, z.undefined(): true since zod 4.4, z.void(): true)', () => {
     expect(queryParamOf(z.coerce.date())).toEqual({ in: 'query', name: 'p', required: true, schema: {} })
-    expect(queryParamOf(z.undefined())).toEqual({ in: 'query', name: 'p', required: false, schema: {} })
+    expect(queryParamOf(z.undefined())).toEqual({ in: 'query', name: 'p', required: true, schema: {} })
     expect(queryParamOf(z.void())).toEqual({ in: 'query', name: 'p', required: true, schema: {} })
   })
 })
@@ -77,9 +93,9 @@ describe('containers keep their structure around the `{}` node', () => {
     ],
     ['optional object property', z.object({ d: d.optional() }), { type: 'object', properties: { d: {} } }],
     [
-      'z.object({ a: z.undefined() }) -> property present, not required',
+      'z.object({ a: z.undefined() }) -> property present and (since zod 4.4.0) required',
       z.object({ a: z.undefined() }),
-      { type: 'object', properties: { a: {} } },
+      { type: 'object', properties: { a: {} }, required: ['a'] },
     ],
     ['array items', z.array(d), { type: 'array', items: {} }],
     [
@@ -93,7 +109,7 @@ describe('containers keep their structure around the `{}` node', () => {
       { anyOf: [{ type: 'string' }, {}] },
     ],
     ['record value', z.record(z.string(), d), { type: 'object', additionalProperties: {} }],
-    ['tuple item', z.tuple([d]), { type: 'array', items: [{}] }],
+    ['tuple item', z.tuple([d]), { type: 'array', items: { anyOf: [{}] }, minItems: 1, maxItems: 1 }],
     [
       'intersection side',
       z.intersection(z.object({ a: z.string() }), z.object({ d })),
@@ -122,9 +138,13 @@ describe('containers keep their structure around the `{}` node', () => {
       },
     ],
     [
-      'discriminated union branch (single branch collapses to the object)',
+      'discriminated union branch (oneOf)',
       z.discriminatedUnion('t', [z.object({ t: z.literal('a'), d })]),
-      { type: 'object', properties: { t: { type: 'string', enum: ['a'] }, d: {} }, required: ['t', 'd'] },
+      {
+        oneOf: [
+          { type: 'object', properties: { t: { type: 'string', enum: ['a'] }, d: {} }, required: ['t', 'd'] },
+        ],
+      },
     ],
     [
       'codec inside object (Date is the OUTPUT side -> documented as string)',

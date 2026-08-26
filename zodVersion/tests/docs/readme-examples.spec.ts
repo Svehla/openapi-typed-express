@@ -6,7 +6,15 @@ import express from 'express'
 import request from 'supertest'
 import swaggerUi from 'swagger-ui-express'
 import { z } from 'zod'
-import { apiDoc, getApiDocInstance, initApiDocs, normalizeZodError } from '../../src'
+import {
+  apiDoc,
+  getApiDocInstance,
+  initApiDocs,
+  mock_apiDoc,
+  normalizeZodError,
+  zCast,
+  zNull,
+} from '../../src'
 
 // codec: decode (incoming) = ISO string -> Date, encode (outgoing) = Date -> ISO string
 const zDateISO = z.codec(z.iso.datetime(), z.date(), {
@@ -607,7 +615,7 @@ describe('readme: Generated OpenAPI', () => {
     await request(app).get('/b').expect(200, { ok: true })
   })
 
-  test('unrepresentable zod types are documented as {}, the codec documents the wire type', () => {
+  test('unrepresentable zod types are documented as {}; a bare z.date() in returns is the ISO string on the wire', () => {
     const app = express()
     app.get(
       '/d',
@@ -617,7 +625,7 @@ describe('readme: Generated OpenAPI', () => {
     )
     const openapi = initApiDocs(app)
     const schema = openapi.paths['/d'].get.responses[200].content['application/json'].schema
-    expect(schema.properties.bare).toEqual({})
+    expect(schema.properties.bare).toEqual({ type: 'string', format: 'date-time' })
     expect(schema.properties.codec).toMatchObject({ type: 'string', format: 'date-time' })
   })
 })
@@ -688,5 +696,78 @@ describe('readme: Limitations & gotchas', () => {
       '/opt{/{id}}',
       '/p/([^/]+)/items/{id}',
     ])
+  })
+})
+
+describe('readme: Ready-made codecs zCast / zNull', () => {
+  const app = express()
+
+  app.get(
+    '/cast',
+    apiDoc({
+      query: { since: zCast.date, limit: zCast.null_number, active: zCast.boolean },
+      returns: z.object({
+        since: zCast.date,
+        limit: zCast.null_number,
+        active: zCast.boolean,
+        tag: zNull(z.string()),
+      }),
+    })((req, res) => {
+      const since = req.query.since satisfies Date
+      const limit = req.query.limit satisfies number | null | undefined
+      res.tSend({ since, limit, active: req.query.active, tag: undefined })
+    })
+  )
+  const openapi = initApiDocs(app)
+
+  test('documented outputs', async () => {
+    await request(app)
+      .get('/cast?since=2020-01-01&active=true')
+      .expect(200, { since: '2020-01-01T00:00:00.000Z', active: 'true' })
+    await request(app)
+      .get('/cast?since=2020-01-01&active=true&limit=5')
+      .expect(200, { since: '2020-01-01T00:00:00.000Z', active: 'true', limit: '5' })
+    await request(app)
+      .get('/cast?since=nope&active=true')
+      .expect(400, { errors: { query: [{ path: 'since', errors: ['invalid Date'] }] } })
+  })
+
+  test('the wire type is documented as string, null_* as nullable + not required', () => {
+    expect(openapi.paths['/cast'].get.parameters).toEqual([
+      { in: 'query', name: 'since', required: true, schema: { type: 'string' } },
+      { in: 'query', name: 'limit', required: false, schema: { type: 'string', nullable: true } },
+      { in: 'query', name: 'active', required: true, schema: { type: 'string', enum: ['true', 'false'] } },
+    ])
+  })
+})
+
+describe('readme: mock_apiDoc', () => {
+  const app = express()
+  app.get(
+    '/mocked/:id',
+    mock_apiDoc({
+      params: { id: zNumber },
+      returns: z.object({
+        id: z.number().int().positive(),
+        email: z.email(),
+        createdAt: zDateISO,
+        tags: z.array(z.enum(['a', 'b'])),
+      }),
+    })((req, res) => {
+      // never called
+      res.tSend({ id: req.params.id, email: 'real@example.com', createdAt: new Date(), tags: ['a'] })
+    })
+  )
+  initApiDocs(app)
+
+  test('documented outputs', async () => {
+    await request(app)
+      .get('/mocked/1')
+      .expect(200, { id: 1, email: 'user@example.com', createdAt: '1970-01-01T00:00:00.000Z', tags: ['a'] })
+    await request(app)
+      .get('/mocked/abc')
+      .expect(400, {
+        errors: { params: [{ path: 'id', errors: ['Invalid input: expected number, received NaN'] }] },
+      })
   })
 })

@@ -16,6 +16,13 @@ export const returnsSchemaOf = (pathItem: any) => pathItem.responses[200].conten
 export const docOf = (schema: z.ZodTypeAny) =>
   bodySchemaOf(generateOpenAPIPath({ ...emptyArg, bodySchema: schema }))
 
+/** the emitted request-body schema plus the components.schemas it hoisted (recursive / .meta({ id }) schemas) */
+export const docWithComponents = (schema: z.ZodTypeAny, label = 'a route') => {
+  const components: Record<string, any> = {}
+  const pathItem = generateOpenAPIPath({ ...emptyArg, bodySchema: schema }, label, components)
+  return { schema: bodySchemaOf(pathItem), components }
+}
+
 /** the emitted OpenAPI schema for `schema` when it is used as the returns schema */
 export const returnsDocOf = (schema: z.ZodTypeAny) =>
   returnsSchemaOf(generateOpenAPIPath({ ...emptyArg, returnsSchema: schema }))

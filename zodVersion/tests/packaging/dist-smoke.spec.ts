@@ -37,6 +37,22 @@ describe('package.json & tarball', () => {
     expect(fs.existsSync(path.join(pkgRoot, pkg.types))).toBe(true)
   })
 
+  test('the `exports` map is the entry point modern resolvers see, and only dist is publishable', () => {
+    // `main`/`types` stay for node10 resolvers; `exports` is what node >=12 and bundlers read
+    expect(pkg.exports).toEqual({
+      '.': { types: './dist/index.d.ts', default: './dist/index.js' },
+      './package.json': './package.json',
+    })
+    // an explicit allow-list replaces .npmignore; nothing else may be added by accident
+    expect(pkg.files).toEqual(['dist'])
+    expect(fs.existsSync(path.join(pkgRoot, '.npmignore'))).toBe(false)
+    // `fs` is never imported, so the bundler hint that stubbed it is gone
+    expect(pkg.browser).toBeUndefined()
+    // publishing must always rebuild: `prepare` ran on every `npm install`, `prepublishOnly` does not
+    expect(pkg.scripts.prepare).toBeUndefined()
+    expect(pkg.scripts.prepublishOnly).toBe('npm run clean && npm run build')
+  })
+
   test('npm pack ships exactly dist/** (js + d.ts per src module), LICENSE, package.json and readme.md', () => {
     const pack = spawnSync('npm', ['pack', '--dry-run', '--json', '--ignore-scripts'], {
       cwd: pkgRoot,
@@ -56,7 +72,8 @@ describe('package.json & tarball', () => {
   }, 60_000)
 
   test('peerDependencies match what the code imports and the installed versions', () => {
-    expect(pkg.peerDependencies).toEqual({ express: '>=5.0.0 <6.0.0', zod: '^4.1.1' })
+    expect(pkg.peerDependencies).toEqual({ express: '>=5.0.0 <6.0.0', zod: '^4.4.0' })
+    expect(pkg.engines).toEqual({ node: '>=20' })
     expect(pkg.dependencies).toBeUndefined()
 
     const expressVersion: string = require('express/package.json').version
@@ -64,7 +81,7 @@ describe('package.json & tarball', () => {
     expect(expressVersion.split('.')[0]).toBe('5')
     const [zodMajor, zodMinor] = zodVersion.split('.').map(Number)
     expect(zodMajor).toBe(4)
-    expect(zodMinor).toBeGreaterThanOrEqual(1)
+    expect(zodMinor).toBeGreaterThanOrEqual(4)
 
     // features that appeared in zod 4.1 and that the library relies on at runtime
     expect(typeof z.codec).toBe('function')
@@ -86,21 +103,58 @@ describe('package.json & tarball', () => {
     expect(external).toEqual(['zod'])
   })
 
-  test('node APIs used by dist exist on this runtime (no `engines` field is declared)', () => {
+  test('node APIs used by dist exist on this runtime (engines.node >= 20)', () => {
     expect(typeof String.prototype.replaceAll).toBe('function')
     expect(typeof Object.fromEntries).toBe('function')
+  })
+
+  test('dist is emitted for a modern runtime: no downlevel helpers, no `var` in the bodies', () => {
+    // target es2022 (was es5): tsc must not inject __assign / __spreadArray / __awaiter shims
+    for (const m of srcModuleNames) {
+      const js = fs.readFileSync(path.join(pkgRoot, `dist/${m}.js`), 'utf8')
+      expect(js).not.toMatch(/__assign|__spreadArray|__awaiter|__generator|__extends/)
+    }
+    // `var` may only survive in tsc's own CommonJS preamble (`var mod_1 = require(..)`, __importDefault
+    // & co). Anything else would mean the emit was downleveled below es2015.
+    const preamble = /= require\(|__import|__createBinding|__setModuleDefault|__esModule/
+    for (const m of srcModuleNames) {
+      const stray = fs
+        .readFileSync(path.join(pkgRoot, `dist/${m}.js`), 'utf8')
+        .split('\n')
+        .filter(l => /\bvar /.test(l) && !preamble.test(l))
+      expect(stray).toEqual([])
+    }
+  })
+
+  test('JSDoc survives into dist/*.d.ts (removeComments must stay false)', () => {
+    const dts = fs.readFileSync(path.join(pkgRoot, 'dist/typedExpressDocs.d.ts'), 'utf8')
+    expect(dts).toContain('@deprecated')
   })
 })
 
 describe('dist/index.js public surface', () => {
-  const dist = require(distIndex)
-  const publicNames = ['apiDoc', 'getApiDocInstance', 'initApiDocs', 'normalizeZodError']
+  // required lazily: the top-level beforeAll rebuilds dist first; a describe-scope require runs at
+  // collection time and would load the STALE build (exports added in src would be missing)
+  let dist: any
+  beforeAll(() => {
+    dist = require(distIndex)
+  })
+  const publicNames = [
+    'apiDoc',
+    'getApiDocInstance',
+    'getMock_apiDocInstance',
+    'initApiDocs',
+    'mock_apiDoc',
+    'normalizeZodError',
+    'zCast',
+    'zNull',
+  ]
 
   test('runtime exports equal the src/index.ts exports', () => {
     const src = require('../../src')
     expect(Object.keys(dist).sort()).toEqual(publicNames)
     expect(Object.keys(src).sort()).toEqual(publicNames)
-    for (const name of publicNames) expect(typeof dist[name]).toBe('function')
+    for (const name of publicNames) expect(typeof dist[name]).toBe(name === 'zCast' ? 'object' : 'function')
   })
 
   test('dist/index.d.ts re-exports the same names', () => {
@@ -121,40 +175,48 @@ describe('dist/index.js public surface', () => {
 })
 
 describe('dist/index.js end-to-end smoke', () => {
-  const { apiDoc, getApiDocInstance, initApiDocs, normalizeZodError } = require(distIndex)
+  let app: express.Express
+  let openapi: any
+  let normalizeZodError: (e: unknown) => unknown
+  beforeAll(() => {
+    // same reason as above: require + app construction must run after the rebuild
+    const dist = require(distIndex)
+    const { apiDoc, getApiDocInstance, initApiDocs } = dist
+    normalizeZodError = dist.normalizeZodError
 
-  const zDateISO = z.codec(z.iso.datetime(), z.date(), {
-    decode: (s: string) => new Date(s),
-    encode: (d: Date) => d.toISOString(),
+    const zDateISO = z.codec(z.iso.datetime(), z.date(), {
+      decode: (s: string) => new Date(s),
+      encode: (d: Date) => d.toISOString(),
+    })
+
+    app = express()
+    app.use(express.json())
+    app.post(
+      '/items/:id',
+      apiDoc({
+        params: { id: z.coerce.number() },
+        query: { at: zDateISO.optional() },
+        body: z.object({ name: z.string(), tags: z.record(z.string(), z.string().nullable()).optional() }),
+        returns: z.object({ id: z.number(), name: z.string(), at: zDateISO.nullable() }),
+      })((req: any, res: any) => {
+        res.tSend({ id: req.params.id, name: req.body.name, at: req.query.at ?? null })
+      })
+    )
+    app.get(
+      '/contract-violation',
+      apiDoc({ returns: z.object({ id: z.number() }) })((_req: any, res: any) => {
+        res.tSend({ id: 'x' })
+      })
+    )
+    const custom = getApiDocInstance({ errorFormatter: (e: any) => ({ custom: true, errors: e.errors }) })
+    app.get(
+      '/custom',
+      custom({ query: { n: z.coerce.number() } })((req: any, res: any) => {
+        res.send({ n: req.query.n })
+      })
+    )
+    openapi = initApiDocs(app, { info: { title: 'dist smoke' } })
   })
-
-  const app = express()
-  app.use(express.json())
-  app.post(
-    '/items/:id',
-    apiDoc({
-      params: { id: z.coerce.number() },
-      query: { at: zDateISO.optional() },
-      body: z.object({ name: z.string(), tags: z.record(z.string(), z.string().nullable()).optional() }),
-      returns: z.object({ id: z.number(), name: z.string(), at: zDateISO.nullable() }),
-    })((req: any, res: any) => {
-      res.tSend({ id: req.params.id, name: req.body.name, at: req.query.at ?? null })
-    })
-  )
-  app.get(
-    '/contract-violation',
-    apiDoc({ returns: z.object({ id: z.number() }) })((_req: any, res: any) => {
-      res.tSend({ id: 'x' })
-    })
-  )
-  const custom = getApiDocInstance({ errorFormatter: (e: any) => ({ custom: true, errors: e.errors }) })
-  app.get(
-    '/custom',
-    custom({ query: { n: z.coerce.number() } })((req: any, res: any) => {
-      res.send({ n: req.query.n })
-    })
-  )
-  const openapi = initApiDocs(app, { info: { title: 'dist smoke' } })
 
   test('runtime validation, codecs and error formatting work from the built package', async () => {
     await request(app)

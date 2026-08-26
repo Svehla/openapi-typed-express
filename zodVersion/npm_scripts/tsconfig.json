@@ -1,26 +1,15 @@
 {
   "compilerOptions": {
-    "target": "es5",
-    "lib": ["dom", "dom.iterable", "esnext"],
-    "allowJs": true,
+    "target": "es2022",
+    "lib": ["es2022"],
     "skipLibCheck": true,
-    "allowSyntheticDefaultImports": true,
     "strict": true,
     "forceConsistentCasingInFileNames": true,
-    "module": "commonjs",
-    "moduleResolution": "node",
-    "resolveJsonModule": true,
-    "isolatedModules": false,
-    "experimentalDecorators": true,
-    "noEmit": true,
-    "jsx": "preserve",
+    "module": "node16",
+    "moduleResolution": "node16",
     "esModuleInterop": true,
-    "noImplicitReturns": false,
-    "noImplicitThis": true,
-    "strictNullChecks": true,
-    "noImplicitAny": true,
-    "noUnusedParameters": false,
-    "noUnusedLocals": false
+    "noEmit": true,
+    "types": ["node"]
   },
-  "include": ["npm_scripts"]
+  "include": ["./**/*.ts"]
 }

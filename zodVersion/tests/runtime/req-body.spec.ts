@@ -264,14 +264,14 @@ describe('request body', () => {
         '/du',
         { kind: 'c' },
         400,
-        bodyError([{ path: 'kind', errors: ['Invalid input'] }]),
+        bodyError([{ path: 'kind', errors: ["Invalid discriminator value. Expected 'a' | 'b'"] }]),
       ],
       [
         'discriminatedUnion: missing discriminator',
         '/du',
         { x: 'a' },
         400,
-        bodyError([{ path: 'kind', errors: ['Invalid input'] }]),
+        bodyError([{ path: 'kind', errors: ["Invalid discriminator value. Expected 'a' | 'b'"] }]),
       ],
       [
         'discriminatedUnion: branch matched, field missing',

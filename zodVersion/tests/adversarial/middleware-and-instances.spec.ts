@@ -26,8 +26,8 @@ describe('adversarial: apiDoc placement in the middleware / route stack', () => 
       })
     )
     app.use('/outer', router)
-    // the message names the enclosing router's mount path (the middleware's own '/inner' sub-path is not resolved)
-    expect(() => initApiDocs(app)).toThrow(/app\.use\(\).*"\/outer"/)
+    // the message names the full mount path of the offending layer
+    expect(() => initApiDocs(app)).toThrow(/app\.use\(\).*"\/outer\/inner"/)
   })
 
   test('apiDoc(...) placed after a plain middleware in the same route stack works and is documented', async () => {
