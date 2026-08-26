@@ -7,192 +7,339 @@
 > | [`tSchemaVersion`](https://github.com/Svehla/openapi-typed-express/tree/main/tSchemaVersion) | built-in `T.*` schema builder | `swagger-typed-express-docs` |
 > | [`zodVersion`](https://github.com/Svehla/openapi-typed-express/tree/main/zodVersion) *(this package)* | [Zod](https://zod.dev) | `openapi-zod-typed-express` |
 
-openapi-zodtyped-express keeps your endpoints documented using OPENAPI with just one single source of truth defined in the endpoints with zod schemas
+`openapi-zod-typed-express` keeps your Express endpoints documented with OpenAPI 3.0 from one single source of truth: the zod schemas declared next to each handler.
 
-- **Generate OpenAPI API documentation**
-- **Compile time validations - Infer Typescript static types out of the box**
-- **Runtime validate each of your HTTP request with user-friendly error messages**
+- **Generate OpenAPI 3.0 documentation** (`nullable: true` dialect, ready for Swagger UI or `openapi-typescript`)
+- **Compile-time safety** – `req.params`, `req.query`, `req.body`, `req.headers` and `res.send()` are inferred from the schemas
+- **Runtime validation** of every HTTP request with user-friendly error messages, plus zod codecs that transform the wire types (`Date <-> ISO string`, `number <-> string`, ...)
 
-All of this is done with a single higher-order-function used in the express endpoints.
-So you can just simply wrap your handler with the `apiDoc(...)` and initialize project via `initApiDocs()`
+All of this is done with a single higher-order function around your Express handlers: wrap the handler with `apiDoc(...)` and initialize the app with `initApiDocs(app)`.
 
-## Important info
+Every code block in this readme is executed by `tests/docs/readme-examples.spec.ts`.
 
-- every transform in a zod schema has to be piped with z.pipe() into a output validator like this: pipe(z.number()) as zods toJSONSchema cant get the output type of a transform.
-- at the moment it is not possible to chain more zod on the zDual type (everything has to be done in the two internal schemas of ZDual)
+## Installation
 
-## supporting z.codec
+```bash
+npm install openapi-zod-typed-express zod express
+```
 
-
-<!-- 
+`express` (`>=5 <6`) and `zod` (`>=4.1`) are peer dependencies: `z.codec`, `safeDecode` / `safeEncode` and the `openapi-3.0` JSON-schema target used by this library appeared in zod 4.1. TypeScript users also need `@types/express` (v5).
 
 ## Example usage
 
-[example usage](https://github.com/lukdmine/openapi-zodtyped-express/blob/main/example/)
+[Full runnable examples](https://github.com/Svehla/openapi-typed-express/tree/main/zodVersion/example)
 
 ```typescript
-import express from "express";
-import swaggerUi from "swagger-ui-express";
-import { z } from "zod";
-import { apiDoc, initApiDocs } from "../src";
-import { zDual } from "../src/runtimeSchemaValidation";
+import express from 'express'
+import swaggerUi from 'swagger-ui-express'
+import { z } from 'zod'
+import { apiDoc, initApiDocs } from 'openapi-zod-typed-express'
 
-// ...
+const app = express()
+const port = 5656
 
-const app = express();
-const port = 5656;
+app.use(express.json())
 
-app.use(express.json());
+// codec: decode (incoming) = ISO string -> Date, encode (outgoing) = Date -> ISO string
+const zDateISO = z.codec(z.iso.datetime(), z.date(), {
+  decode: isoString => new Date(isoString),
+  encode: date => date.toISOString(),
+})
 
-// zDual: parse (incoming) = ISO string -> Date, serialize (outgoing) = Date -> ISO string
-const zDateISO = zDual({
-
-  parse: z.string()
-    .datetime()
-    .transform((s: string) => new Date(s))
-    .pipe(z.date())
-    .meta({
-      description: "Date in ISO string format",
-    }).optional(),
-  serialize z.date()
-    .transform((d) => d.toISOString())
-    .pipe(z.string()).optional(),
-});
-
-const ztransformOneWay = z.number().transform(String).pipe(z.string());
-
-// number dual - serialized as string, parsed as number
-const zNumber = zDual({
-  parse: z.string().transform(Number).pipe(z.number()),
-  serialize: z.number().transform(String).pipe(z.string()),
-});
-
-app.post("/users/:id", apiDoc({
-    params: {
-      id: zNumber,
-    },
-    body: z.object({
-      name: z.string(),
-    }),
-  })((req, res) => {
-    res.send({ id: req.params.id, name: req.body.name });
-  }),
-);
+// path & query values always arrive as strings
+const zNumber = z.codec(z.string(), z.number(), {
+  decode: s => Number(s),
+  encode: n => String(n),
+})
 
 app.post(
-  "/add-day",
+  '/users/:id',
   apiDoc({
-    params: {
-      id: z.string(),
-    },
-    body: z.object({
-      date: zDateISO,
-      x: zNumber,
-      oneway: ztransformOneWay,
-    }),
-    query: {
-      date: zDateISO,
-      x: zNumber,
-    },
-    returns: z.object({
-      date: zDateISO,
-      oneway: ztransformOneWay,
-    }),
+    params: { id: zNumber },
+    query: { notify: z.enum(['yes', 'no']).optional() },
+    body: z.object({ name: z.string(), birthday: zDateISO.optional() }),
+    returns: z.object({ id: z.number(), name: z.string(), createdAt: zDateISO }),
   })((req, res) => {
-    const id = req.params.id satisfies string | undefined;
-    const date = req.body.date satisfies Date | undefined;
-    const x = req.body.x satisfies number;
-    const date2 = req.query.date satisfies Date | undefined;
-    const x2 = req.query.x satisfies number;
-    const outDate = new Date(date?.getTime() ?? Date.now());
-    outDate.setUTCDate(outDate.getUTCDate() + 1);
-    res.transformSend({ date: date, oneway: x });
-  }),
-);
+    const id = req.params.id satisfies number
+    const birthday = req.body.birthday satisfies Date | undefined
+    const notify = req.query.notify satisfies 'yes' | 'no' | undefined
 
+    // validates the data against `returns` and encodes the codecs (Date -> ISO string)
+    res.tSend({ id, name: req.body.name, createdAt: new Date(0) })
+  })
+)
+
+// call it after all routes are registered and before app.listen()
 const openapi = initApiDocs(app, {
-  info: { version: "1.0.0", title: "Date API" },
+  info: { title: 'Users API', version: '1.0.0' },
   servers: [{ url: `http://localhost:${port}/` }],
-});
+})
 
-app.get("/api-docs", (req, res) => {
-  res.send(openapi);
-});
+app.get('/api-docs', (_req, res) => {
+  res.send(openapi)
+})
+app.use('/swagger-ui', swaggerUi.serve, swaggerUi.setup(openapi))
 
-app.use("/swagger-ui", swaggerUi.serve, swaggerUi.setup(openapi));
+app.listen(port)
+```
 
-app.listen(port, () => {
-  console.info(`Server listening at http://localhost:${port}`);
-  console.info(`OpenAPI docs at http://localhost:${port}/swagger-ui`);
-});
+```
+POST /users/12?notify=yes   { "name": "Ada", "birthday": "2000-01-02T00:00:00.000Z" }
+200 { "id": 12, "name": "Ada", "createdAt": "1970-01-01T00:00:00.000Z" }
+
+POST /users/abc             { "name": "Ada" }
+400 { "errors": { "params": [{ "path": "id", "errors": ["Invalid input: expected number, received NaN"] }] } }
 ```
 
 ## Package API
 
-The whole library exposes 2 main functions: `initApiDocs(...)` and `apiDoc(...)`
+The library exposes four functions: `apiDoc`, `initApiDocs`, `getApiDocInstance` and `normalizeZodError`.
 
-### initApiDocs
+### initApiDocs(app, openApiMetadata?)
 
-This function takes swagger metadata which is displayed in the documentation.
-
-`initApiDocs()` returns generated Swagger JSON which you can use to document your API.
-
-example usage:
+Walks the Express router, initializes every `apiDoc(...)` handler and returns the OpenAPI 3.0 document. The optional second argument is deep-merged into the generated document (`info`, `servers`, ...).
 
 ```typescript
-const swaggerJSON = initApiDocs(app, { info: { title: 'my application' } })
+const openapi = initApiDocs(app, { info: { title: 'my application' } })
 ```
 
-to make the application work you have to call `initApiDocs()` at the end of the routes definition
-and before you call `app.listen(...)`
+```typescript
+openapi.openapi // '3.0.0'
+openapi.info // { version: '1.0.0', title: 'my application' }
+openapi.servers // [{ url: 'http://localhost/' }]
+openapi.paths // one entry per typed route, e.g. openapi.paths['/users/{id}'].post
+openapi.components // { schemas: {} } - every schema is inlined
+```
 
-### apiDoc
-
-`apiDoc(...)` is a higher-order-function which wraps an express endpoint handler and
-and defines meta-information about inputs & outputs of each API handler.
-
-example usage:
+`components` you pass (e.g. `securitySchemes`) are merged over the default `{ schemas: {} }`:
 
 ```typescript
-app.post("/users/:id", apiDoc({
-    params: {
-      id: zNumber,
-    },
-    body: z.object({
-      name: z.string(),
-    }),
+const openapi = initApiDocs(app, {
+  info: { title: 'my application' },
+  components: { securitySchemes: { bearer: { type: 'http', scheme: 'bearer' } } },
+})
+// openapi.components -> { schemas: {}, securitySchemes: { bearer: { type: 'http', scheme: 'bearer' } } }
+```
+
+Rules:
+
+- call `initApiDocs()` **after** all routes and routers are registered and **before** `app.listen()`. A typed route registered later is not initialized and every request to it fails with `500 Error: You probably forget to call initApiDocs()`.
+- `initApiDocs()` may be called several times (the initialization is cached per route), e.g. once per mounted copy of a router.
+- routes that are not wrapped by `apiDoc()` are ignored and keep working as usual.
+- an `apiDoc()` handler passed to `app.use()` / `router.use()` is a middleware, not a route: `initApiDocs()` throws `openapi-zod-typed-express: an apiDoc() handler was registered with app.use() ...` at init.
+- a mounted sub-app (`app.use('/sub', express())`) is not walked: call `initApiDocs(subApp)` for it separately.
+
+### apiDoc(config)(handler)
+
+`apiDoc(...)` is a higher-order function which wraps an Express handler and declares the inputs & outputs of the endpoint:
+
+| key | schema | validated against |
+|-----|--------|-------------------|
+| `params` | `Record<string, ZodType>` | `req.params` |
+| `query` | `Record<string, ZodType>` | `req.query` |
+| `headers` | `z.object({...})` | `req.headers` (decoded values are merged over the original headers) |
+| `body` | any zod schema | `req.body` |
+| `returns` | any zod schema | `res.tSend(...)` |
+
+Every key is optional, an omitted key is neither validated nor documented. The handler is typed from the config:
+
+- `req.params`, `req.query`, `req.body`, `req.headers` are the **decoded** (`z.output`) types
+- `res.send(data)` expects the **wire** (`z.input`) type of `returns` and does not validate anything
+- `res.tSend(data)` expects the **decoded** (`z.output`) type of `returns`, validates it and encodes it
+
+```typescript
+app.post(
+  '/users/:id',
+  apiDoc({
+    params: { id: zNumber },
+    body: z.object({ name: z.string() }),
   })((req, res) => {
-    res.send({ id: req.params.id, name: req.body.name });
-  }),
-);
+    res.send({ id: req.params.id, name: req.body.name })
+  })
+)
+```
+
+### Validation errors
+
+An invalid request is answered with `400` and never reaches the handler:
+
+```json
+{
+  "errors": {
+    "body": [{ "path": "name", "errors": ["Invalid input: expected string, received number"] }]
+  }
+}
+```
+
+`errors` contains only the failing parts (`headers`, `params`, `query`, `body`), each one is a list of `{ path, errors }` where `path` is the dot-joined path inside the value (`''` for the root, `items.0.id` inside arrays). A codec decoder or `.transform()` that throws during request validation is reported the same way (`400`, `path: ''`, the error message).
+
+### getApiDocInstance({ errorFormatter })
+
+`apiDoc` is `getApiDocInstance()` with the default (identity) error formatter. Create your own instance to shape the error payload. The formatter receives `{ errors: { headers?, params?, query?, body? } }` (or `{ errors: { returns } }` for `tSend` failures) and whatever it returns is sent.
+
+```typescript
+import { getApiDocInstance } from 'openapi-zod-typed-express'
+
+const myApiDoc = getApiDocInstance({
+  errorFormatter: e => ({ message: 'validation failed', details: e.errors }),
+})
+
+app.post(
+  '/items',
+  myApiDoc({ body: z.object({ price: z.number() }) })((req, res) => {
+    res.send({ price: req.body.price })
+  })
+)
+```
+
+```
+POST /items   { "price": "free" }
+400 { "message": "validation failed", "details": { "body": [{ "path": "price", "errors": ["Invalid input: expected number, received string"] }] } }
+```
+
+### normalizeZodError(error)
+
+The helper used internally to flatten a `ZodError` into the `{ path, errors }[]` list shown above. Non-zod errors are mapped to their `message`.
+
+```typescript
+import { normalizeZodError } from 'openapi-zod-typed-express'
+
+const result = z.object({ user: z.object({ age: z.number() }) }).safeParse({ user: { age: 'x' } })
+
+normalizeZodError(result.error)
+// [{ path: 'user.age', errors: ['Invalid input: expected number, received string'] }]
+normalizeZodError(new Error('boom'))
+// [{ path: '', errors: ['boom'] }]
+normalizeZodError(undefined)
+// undefined
 ```
 
 ## Setup environment
 
 ### Express body parsing
 
-if you want to parse the body, you have to setup body parser express middleware.
+If you use a `body` schema you have to set up a body parser, otherwise `req.body` is `undefined` and every request fails with `400`.
 
 ```typescript
 app.use(express.json())
 ```
 
-### res.transformSend()
+### Path & query values are strings
 
-The library automatically injects the `transformSend()` function into `res`. This function takes data, validates it and applies transformaions with `apiDoc({ returns: ... })` and if the validation succeeds 200 and the data. The type of this function is automatically infered from the  `apiDoc({ returns: ... })` schema so you cant input data that cant be sent.
+Express hands over `req.params` and `req.query` as strings (`?a=1&a=2` becomes `['1', '2']`). Use `z.coerce.number()` or a codec to get typed values, and remember that the OpenAPI document describes the wire type (`string`).
 
-Normal `res.send()` just sends the data in the serialized type also infered from `apiDoc({ returns: ... })`.
+## res.tSend() vs res.send()
 
-### Custom transformation of incoming data (serializers / parsers)
+The library injects `tSend()` into `res`. It takes the **decoded** data, validates it against `apiDoc({ returns })`, encodes the codecs to their wire type and sends it with the current status code (`200` unless you called `res.status()` before – `res.status(201).tSend(...)` stays typed).
 
-#### implemented with zDual()
+`res.transformSend()` (the 1.1 name) is kept as a deprecated alias of `res.tSend()`.
 
-Data Transformation Flow:
-User -> HTTP -> serialized -> parsed -> Express Handler
-Express Handler -> parsed -> serialized -> HTTP -> User
+`tSend()` is synchronous and never throws. If the handler passes data that violates its own `returns` schema, the schema has no encoder (a unidirectional `.transform()`), or the value cannot be serialized (`BigInt`, circular structures), it responds with `500` and `{ type: 'invalid data came from app handler', error }` — a server-side contract bug, not a client error. If the response headers were already sent (e.g. after `res.write()`), the error is forwarded to `next(err)` instead.
 
-- Users interact exclusively with serialized types.
-- Express handlers interact solely with parsed types.
+`res.send()` is only typed (with the wire type of `returns`) – it neither validates nor transforms anything. Behind `res.status(...)`, `res.set(...)`, `res.type(...)` etc. the chain keeps the typed `res.tSend()` but exposes express' own untyped `send()`, so `res.status(404).send({ error })` and `res.status(204).send()` compile as they always did; if you want the 2xx wire type checked through a chain, call `res.status(201)` first and `res.send(x)` separately.
 
+```typescript
+app.get(
+  '/now',
+  apiDoc({ returns: z.object({ now: zDateISO }) })((_req, res) => {
+    res.tSend({ now: new Date(0) })
+  })
+)
 
- -->
+app.get(
+  '/broken',
+  apiDoc({ returns: z.object({ id: z.number() }) })((_req, res) => {
+    res.tSend({ id: 'not-a-number' as any })
+  })
+)
+
+app.get(
+  '/bigint',
+  apiDoc({ returns: z.object({ n: z.any() }) })((_req, res) => {
+    res.tSend({ n: BigInt(1) })
+  })
+)
+
+app.get(
+  '/missing',
+  apiDoc({ returns: z.object({ id: z.number() }) })((_req, res) => {
+    res.status(404).json({ error: 'Not found' })
+  })
+)
+```
+
+```
+GET /now      200 { "now": "1970-01-01T00:00:00.000Z" }
+GET /broken   500 { "type": "invalid data came from app handler",
+                    "error": { "errors": { "returns": [{ "path": "id", "errors": ["Invalid input: expected number, received string"] }] } } }
+GET /bigint   500 { "type": "invalid data came from app handler",
+                    "error": { "errors": { "returns": [{ "path": "", "errors": ["Do not know how to serialize a BigInt"] }] } } }
+GET /missing  404 { "error": "Not found" }
+```
+
+## Codecs (`z.codec`)
+
+Data transformation flow:
+
+```
+User -> HTTP -> wire type (z.input) --decode--> decoded type (z.output) -> Express handler
+Express handler -> decoded type (z.output) --encode--> wire type (z.input) -> HTTP -> User
+```
+
+- users interact exclusively with the wire types, handlers exclusively with the decoded types
+- `params`, `query`, `headers` and `body` are **decoded**, `tSend()` **encodes**
+- codecs can be chained like any other zod schema (`.optional()`, `.nullable()`, `.default()`, ...)
+- a unidirectional `.transform()` is fine on the request side, but it cannot be encoded, so do not use it inside `returns` together with `tSend()`
+
+```typescript
+const zNumberOrNull = zNumber.nullable().optional()
+
+app.get(
+  '/codecs',
+  apiDoc({
+    query: { n: zNumberOrNull, upper: z.string().transform(s => s.toUpperCase()).optional() },
+    returns: z.object({ n: zNumberOrNull, upper: z.string().optional() }),
+  })((req, res) => {
+    const n = req.query.n satisfies number | null | undefined
+    res.tSend({ n, upper: req.query.upper })
+  })
+)
+```
+
+```
+GET /codecs?n=5&upper=abc   200 { "n": "5", "upper": "ABC" }
+GET /codecs                 200 {}
+```
+
+## Generated OpenAPI
+
+- the document declares `openapi: '3.0.0'` and the schemas use the OpenAPI 3.0 dialect (`nullable: true`, no `$schema`, records as `additionalProperties`)
+- codecs and transforms are documented by their wire (input) side
+- `params`, `query` and `headers` become `parameters`. A query / header parameter is `required: false` whenever zod accepts an absent value (`.optional()`, `.default()`, `.optional().nullable()`, ...); path parameters are always `required: true`
+- `body` becomes `requestBody` (`application/json`), `returns` becomes the `200` response
+- `:param` path segments become `{param}`; a typed route registered on an array of paths is documented once per string path, RegExp paths are validated at runtime but not documented
+- `app.all()` / `router.all()` document the eight OpenAPI operations (`get`, `put`, `post`, `delete`, `options`, `head`, `patch`, `trace`)
+- zod types without a JSON-schema representation (`z.date()`, `z.bigint()`, `z.map()`, `z.custom()`, ...) are documented as `{}` – use a codec such as `z.codec(z.iso.datetime(), z.date(), ...)` to document the wire type
+- every schema is inlined (`components.schemas` stays empty), `components` passed to `initApiDocs()` are merged in
+
+## Limitations & gotchas
+
+- **`headers`**: only the declared headers are validated and decoded, the result is merged over `req.headers`, so undeclared headers, `req.get('host')`, `req.is()` etc. keep working.
+- **`apiDoc()` is a route handler, not an app-level middleware**: `app.use(apiDoc(...)(fn))` / `router.use(...)` make `initApiDocs()` throw at init.
+- **mounted sub-apps are skipped**: `app.use('/sub', subApp)` is not walked, call `initApiDocs(subApp)` separately.
+- **duplicate registrations**: if the same path & method is registered twice, Express serves the first handler but the document describes the last one.
+- **`z.object()` strips unknown keys** in `params`, `query`, `body` and `headers` (zod default), which also protects handlers from unexpected input.
+- **path syntaxes**: `:param` paths and routers mounted with a plain prefix are fully supported. Wildcard / optional segments (`/files/*splat`, `/opt{/:id}`) are emitted verbatim (not valid OpenAPI path templates) and a param in a router mount path (`app.use('/p/:pid', router)`) is documented as its compiled capture group (`/p/([^/]+)/...`).
+
+```typescript
+app.get(
+  '/whoami',
+  apiDoc({ headers: z.object({ 'x-user': z.string() }) })((req, res) => {
+    res.send({ user: req.headers['x-user'], host: req.get('host') })
+  })
+)
+```
+
+```
+GET /whoami (x-user: ada)   200 { "user": "ada", "host": "<the Host header, still available>" }
+```

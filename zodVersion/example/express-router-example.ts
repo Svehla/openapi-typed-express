@@ -93,7 +93,7 @@ const ListQuery = {
   q: z.string().optional(),
 } as const
 
-// Returns schemas — use codecs so `res.transformSend()` outputs strings for dates
+// Returns schemas — use codecs so `res.tSend()` outputs strings for dates
 const UserOut = z.object({
   id: z.string().uuid(),
   email: z.string().email(),
@@ -127,7 +127,7 @@ users.get(
     const filtered = q ? all.filter(u => [u.email, u.name].some(s => s.toLowerCase().includes(q))) : all
     const page = filtered.slice(offset, offset + limit)
 
-    res.transformSend({
+    res.tSend({
       data: page.map(u => ({ ...u, birthday: u.birthday ?? undefined })),
       total: filtered.length,
     })
@@ -139,8 +139,8 @@ users.get(
   '/:id',
   apiDoc({ params: IdParam, returns: UserOut })((req, res) => {
     const u = db.get(req.params.id)
-    if (!u) return res.status(404).send({ error: 'Not found' })
-    res.transformSend({ ...u, birthday: u.birthday ?? undefined })
+    if (!u) return res.status(404).json({ error: 'Not found' })
+    res.tSend({ ...u, birthday: u.birthday ?? undefined })
     return
   })
 )
@@ -160,7 +160,7 @@ users.post(
     }
     db.set(user.id, user)
     res.status(201)
-    res.transformSend({ ...user, birthday: user.birthday ?? undefined })
+    res.tSend({ ...user, birthday: user.birthday ?? undefined })
     return
   })
 )
@@ -170,7 +170,7 @@ users.patch(
   '/:id',
   apiDoc({ params: IdParam, body: UpdateUserBody, returns: UserOut })((req, res) => {
     const u = db.get(req.params.id)
-    if (!u) return res.status(404).send({ error: 'Not found' })
+    if (!u) return res.status(404).json({ error: 'Not found' })
 
     if (req.body.email !== undefined) u.email = req.body.email
     if (req.body.name !== undefined) u.name = req.body.name
@@ -178,7 +178,7 @@ users.patch(
     u.updatedAt = new Date()
 
     db.set(u.id, u)
-    res.transformSend({ ...u, birthday: u.birthday ?? undefined })
+    res.tSend({ ...u, birthday: u.birthday ?? undefined })
     return
   })
 )
@@ -187,9 +187,9 @@ users.patch(
 users.delete(
   '/:id',
   apiDoc({ params: IdParam })((req, res) => {
-    if (!db.has(req.params.id)) return res.status(404).send({ error: 'Not found' })
+    if (!db.has(req.params.id)) return res.status(404).json({ error: 'Not found' })
     db.delete(req.params.id)
-    res.status(204).send()
+    res.status(204).end()
     return
   })
 )

@@ -32,7 +32,7 @@ app.get(
     }),
   })((req, res) => {
     console.log('req.query', req.query)
-    res.transformSend({
+    res.tSend({
       age: req.query.age,
       date: req.query.date,
     })
@@ -51,7 +51,7 @@ app.get(
   })((req, res) => {
     const dates = req.query.dates
     console.log(dates)
-    res.transformSend({ name: dates[0] })
+    res.tSend({ name: dates[0] })
   })
 )
 
@@ -90,7 +90,7 @@ app.post(
 )
 
 app.post(
-  '/add-day',
+  '/add-day/:id',
   apiDoc({
     params: {
       id: z.string(),
@@ -114,7 +114,7 @@ app.post(
     const x2 = req.query.x satisfies number | undefined | null
     const outDate = new Date(date?.getTime() ?? Date.now())
     outDate.setUTCDate(outDate.getUTCDate() + 1)
-    res.transformSend({ date: outDate })
+    res.tSend({ date: outDate })
   })
 )
 

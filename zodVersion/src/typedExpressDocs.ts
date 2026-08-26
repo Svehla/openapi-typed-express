@@ -65,38 +65,83 @@ type Config = {
  *    type D2 = ND<string | number>;      // 2      (non-distributive)
  */
 
-type Present<T> = Exclude<T, undefined>
+type ParamsType<C extends Config> = C extends { params: Record<string, z.ZodTypeAny> }
+  ? z.output<z.ZodObject<C['params']>>
+  : Record<string, never>
 
-type HeadersType<C extends Config> = [Present<C['headers']>] extends [never]
-  ? {}
-  : { headers: z.output<Present<C['headers']>> }
+type QueryType<C extends Config> = C extends { query: Record<string, z.ZodTypeAny> }
+  ? z.output<z.ZodObject<C['query']>>
+  : Record<string, never>
 
-type ParamsType<C extends Config> = [Present<C['params']>] extends [never]
-  ? Record<string, never>
-  : z.output<z.ZodObject<Present<C['params']>>>
+type BodyType<C extends Config> = C extends { body: z.ZodTypeAny } ? z.output<C['body']> : unknown
 
-type QueryType<C extends Config> = [Present<C['query']>] extends [never]
-  ? Record<string, never>
-  : z.output<z.ZodObject<Present<C['query']>>>
+/** what `res.send()` accepts: the wire (encoded) type, it bypasses the returns schema */
+type ReturnsType<C extends Config> = C extends { returns: z.ZodTypeAny } ? z.input<C['returns']> : unknown
 
-type BodyType<C extends Config> = [Present<C['body']>] extends [never]
-  ? unknown
-  : z.output<Present<C['body']>>
+/** what `res.transformSend()` accepts: the decoded type, it runs the encoder before sending */
+type ReturnsTransformType<C extends Config> = C extends { returns: z.ZodTypeAny }
+  ? z.output<C['returns']>
+  : unknown
 
-type ReturnsType<C extends Config> = [Present<C['returns']>] extends [never]
-  ? unknown
-  : z.input<Present<C['returns']>>
+// `C['headers']` of a config without `headers` resolves to `unknown`, NOT `never` (the key is optional in
+// `Config`), so presence has to be tested with `extends { headers: ... }` rather than `[T] extends [never]`.
+type TypedRequest<C extends Config> = C extends { headers: z.ZodTypeAny }
+  ? Omit<Request<ParamsType<C>, any, BodyType<C>, QueryType<C>>, 'headers'> & {
+      headers: z.output<C['headers']>
+    }
+  : Request<ParamsType<C>, any, BodyType<C>, QueryType<C>>
 
-type ReturnsTransformType<C extends Config> = [Present<C['returns']>] extends [never]
-  ? unknown
-  : z.output<Present<C['returns']>>
+// express methods returning `this` must be re-declared, otherwise `res.status(201).tSend(...)` falls back
+// to the untyped express `Response` and loses `tSend`. After such a call `send` is deliberately left as
+// express' untyped `send`: a non-2xx body (`res.status(404).send('not found')`) has nothing to do with
+// the 200 `returns` schema, and that is how 1.1.0 already behaved.
+type ThisReturningKeys =
+  | 'status'
+  | 'sendStatus'
+  | 'links'
+  | 'contentType'
+  | 'type'
+  | 'format'
+  | 'attachment'
+  | 'set'
+  | 'header'
+  | 'clearCookie'
+  | 'cookie'
+  | 'location'
+  | 'vary'
+  | 'append'
+
+// `Parameters<F>` keeps only the LAST overload; `res.set({ 'X-A': 'b' })` and `res.cookie(n, v, opts)` need theirs
+type OverloadsReturning<F, R> = F extends {
+  (...a: infer A1): any
+  (...a: infer A2): any
+  (...a: infer A3): any
+}
+  ? { (...a: A1): R; (...a: A2): R; (...a: A3): R }
+  : F extends { (...a: infer A1): any; (...a: infer A2): any }
+    ? { (...a: A1): R; (...a: A2): R }
+    : F extends (...a: infer A) => any
+      ? (...a: A) => R
+      : never
+
+type TSendMethods<C extends Config> = {
+  /** validates + encodes `data` with the `returns` schema and sends it (same API as `res.tSend` of swagger-typed-express-docs) */
+  tSend: (data: ReturnsTransformType<C>) => void
+  /** @deprecated alias of `tSend`, kept for 1.x consumers */
+  transformSend: (data: ReturnsTransformType<C>) => void
+}
+
+/** the response after `res.status(...)` & co.: express' own `send`, plus the typed `tSend` */
+export type ChainedResponse<C extends Config> = Omit<Response, ThisReturningKeys> &
+  TSendMethods<C> & { [K in ThisReturningKeys]: OverloadsReturning<Response[K], ChainedResponse<C>> }
+
+export type TypedResponse<C extends Config> = Omit<Response, 'send' | ThisReturningKeys> & {
+  send: (data: ReturnsType<C>) => TypedResponse<C>
+} & TSendMethods<C> & { [K in ThisReturningKeys]: OverloadsReturning<Response[K], ChainedResponse<C>> }
 
 type TypedHandleDual<C extends Config> = (
-  req: Omit<Request<ParamsType<C>, any, BodyType<C>, QueryType<C>>, 'headers'> & HeadersType<C>,
-  res: Omit<Response, 'send'> & {
-    send: (data: ReturnsType<C>) => void
-    transformSend: (data: ReturnsTransformType<C>) => void
-  },
+  req: TypedRequest<C>,
+  res: TypedResponse<C>,
   next: NextFunction
 ) => void
 
@@ -130,6 +175,21 @@ export const getApiDocInstance =
     const bodyValidator = getZodValidator(bodySchema, { transformTypeMode: 'parse' })
     const returnsValidator = getZodValidator(returnsSchema, { transformTypeMode: 'serialize' })
 
+    // zod's safeParse does not catch exceptions thrown by a codec decoder / `.transform()`; they must
+    // become a regular 400 rather than escaping to express' default 500 error page
+    const safeValidate = (
+      validator: ReturnType<typeof getZodValidator>,
+      value: unknown
+    ): { success: true; data: unknown } | { success: false; error: unknown } => {
+      try {
+        return validator.validate(value) as any
+      } catch (error) {
+        // an async refinement in a request schema is a SERVER bug, not a 400
+        if (error instanceof z.core.$ZodAsyncError) throw error
+        return { success: false, error }
+      }
+    }
+
     // `apiDocs()` has to return a function because express runtime checks
     // if handler is a function and if not it throws new Error
     const lazyInitializeHandler = (message: symbol) => {
@@ -140,18 +200,14 @@ export const getApiDocInstance =
         throw new Error('You probably forget to call `initApiDocs()` for typed-express library')
       }
 
-      const handleRouteWithRuntimeValidations = async (
-        req: Request,
-        res: Response, // & { transformSend: (data: C['returns']) => void },
-        next: NextFunction
-      ) => {
+      const handleRouteWithRuntimeValidations = (req: Request, res: Response, next: NextFunction) => {
         // --- this function include runtime validations which are triggered each request ---
 
         // TODO: add formBody? i think its not needed in the modern rest-api
-        const headersValidationRes = headersValidator?.validate(req.headers)
-        const paramValidationRes = paramsValidator?.validate(req.params)
-        const queryValidationRes = queryValidator?.validate(req.query)
-        const bodyValidationRes = bodyValidator?.validate(req.body)
+        const headersValidationRes = safeValidate(headersValidator, req.headers)
+        const paramValidationRes = safeValidate(paramsValidator, req.params)
+        const queryValidationRes = safeValidate(queryValidator, req.query)
+        const bodyValidationRes = safeValidate(bodyValidator, req.body)
 
         // if there are errors, we need to format them and send them to the client
         if (
@@ -179,35 +235,68 @@ export const getApiDocInstance =
         }
 
         // ==== override casted (transformed) transformTypes into JS runtime objects ====
-        if (headersValidator) req.headers = headersValidationRes.data as any
+        // headers are merged, not replaced: a `z.object` schema strips every undeclared header and
+        // replacing `req.headers` with that would blind `req.get('host')`, `req.is()`, later middlewares...
+        if (headersSchema) req.headers = { ...req.headers, ...(headersValidationRes.data as any) }
         if (paramsValidator) req.params = paramValidationRes.data as any
-        // make req.equery writable, express4 works good, bug express 5 is read only... fuck it...
+        // make req.query writable, express4 works good, bug express 5 is read only... fuck it...
         Object.defineProperty(req, 'query', {
           ...Object.getOwnPropertyDescriptor(req, 'query'),
           value: req.query,
           writable: true,
+          enumerable: true,
+          configurable: true,
         })
         if (queryValidator) req.query = queryValidationRes.data as any
         if (bodyValidator) req.body = bodyValidationRes.data as any
 
-        /** transform data to the output type before sending it to the client */
-        const transformSend = async (data: any) => {
-          const transformedData = returnsValidator ? returnsValidator.validate(data) : data
-          if (transformedData.success) {
-            res.send(transformedData.data)
-          } else {
-            res.status(400).send({
+        /**
+         * transform (encode) data to the wire type before sending it to the client.
+         * A handler that returns data violating its own `returns` contract is a SERVER bug, so this
+         * is a 500 (same as swagger-typed-express-docs), never a 400.
+         * Everything is inside the try: `safeEncode` throws for a unidirectional `.transform()`,
+         * `res.send` throws for a BigInt / circular value or after `res.write()`, and any of those
+         * escaping from here would leave the request hanging (and crash the process as an unhandled
+         * rejection if this were async). Once headers went out the only sane option is `next(err)`.
+         */
+        const tSend = (data: any) => {
+          try {
+            if (res.writableEnded) {
+              // the client already got a complete response; forwarding an error now would make a
+              // generic error handler try to write again and destroy the socket mid-flight
+              console.error('res.tSend() was called after the response was already sent, ignoring it')
+              return
+            }
+            if (res.headersSent) {
+              throw new Error('res.tSend() was called after the response headers were already sent')
+            }
+            const transformedData = returnsValidator.validate(data)
+            if (transformedData.success) {
+              res.send(transformedData.data)
+              return
+            }
+            res.status(500).send({
               type: 'invalid data came from app handler',
               error: errorFormatter({
                 errors: { returns: normalizeZodError(transformedData.error) },
               }),
             })
+          } catch (err) {
+            if (res.headersSent) {
+              next(err)
+              return
+            }
+            res.status(500).send({
+              type: 'invalid data came from app handler',
+              error: errorFormatter({ errors: { returns: normalizeZodError(err) } }),
+            })
           }
         }
 
         // @ts-expect-error
-        res.transformSend = transformSend
-        // TODO: apply encoder (serializer) for transform types like `Date -> string`
+        res.tSend = tSend
+        // @ts-expect-error
+        res.transformSend = tSend
         // @ts-expect-error
         return handle(req, res, next)
       }
@@ -247,6 +336,7 @@ type ExpressRouterInternalStruct = {
 
 type ExpressRouteHandlerInternalStruct = {
   name: 'handle'
+  handle?: unknown
   route: {
     stack: {
       handle: (a?: symbol) => {
@@ -258,17 +348,32 @@ type ExpressRouteHandlerInternalStruct = {
         }
         handle: (...args: any[]) => any
       }
-      method: string
+      method: string | undefined
       // custom attribute for caching docs with multiple routes instances
       _openapiZodTypedExpress__route_cache?: any
     }[]
-    path: string
+    // express accepts `string | string[] | RegExp`
+    path: string | (string | RegExp)[] | RegExp
   }
 }
 
-type ExpressRouteInternalStruct = {
-  stack: (ExpressRouteHandlerInternalStruct | ExpressRouterInternalStruct)[]
+type ExpressMiddlewareInternalStruct = {
+  name: string
+  route: undefined
+  handle?: unknown
 }
+
+type ExpressRouteInternalStruct = {
+  stack: (ExpressRouteHandlerInternalStruct | ExpressRouterInternalStruct | ExpressMiddlewareInternalStruct)[]
+}
+
+// the only operations an OpenAPI 3.0 Path Item may contain; express' `app.all()` registers ~30 more verbs
+const OPENAPI_METHODS = ['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace']
+
+const isTypedHandler = (fn: unknown) =>
+  // biome-ignore lint/suspicious/noTsIgnore: stored meta attributes of the function
+  // @ts-ignore
+  fn?.[__openapiZodTypedHackKey__] === __openapiZodTypedHack__
 
 const resolveRouteHandlersAndExtractAPISchema = (
   route: ExpressRouteInternalStruct,
@@ -280,27 +385,25 @@ const resolveRouteHandlersAndExtractAPISchema = (
     if (r.name === 'router') {
       // === express router ===
       const stack = r as ExpressRouterInternalStruct
-      const parsedRouterRelativePath = stack.slash
-        ? '/'
-        : parseUrlFromExpressV5Matcher(stack.matchers?.[0])
+      const parsedRouterRelativePath = stack.slash ? '/' : parseUrlFromExpressV5Matcher(stack.matchers?.[0])
       const routerFullPath = mergePaths(path, parsedRouterRelativePath)
       resolveRouteHandlersAndExtractAPISchema(stack.handle, routerFullPath, urlsMethodDocsPointer)
     } else if (r.name === 'handle') {
       // === final end routes ===
-      r.route.stack.forEach(s => {
+      const route = (r as ExpressRouteHandlerInternalStruct).route
+      const routePaths = (Array.isArray(route.path) ? route.path : [route.path]).filter(
+        (p): p is string => typeof p === 'string'
+      )
+
+      route.stack.forEach(s => {
         // this check if route is annotated by openapi-typed-express-docs
-        const shouldInitTypedRoute =
-          // biome-ignore lint/suspicious/noTsIgnore: <explanation>
-          // @ts-ignore stored meta attributes of the function
-          s.handle?.[__openapiZodTypedHackKey__] === __openapiZodTypedHack__
+        const shouldInitTypedRoute = isTypedHandler(s.handle)
 
         // this is used for multiple instances of the same express Router via multiple app.use('/xxx', router)
         const isInitTypedRoute = s[_openapiZodTypedExpress__route_cache] !== undefined
 
         // typed route === route wrapped by apiDoc() high order function
         if (shouldInitTypedRoute === false && isInitTypedRoute === false) return
-
-        const endpointPath = mergePaths(path, r.route.path)
 
         // each route needs to be initialized, but if we apply one route for multiple places via app.use() we need to persist api data
         let routeMetadataDocs: any
@@ -312,18 +415,38 @@ const resolveRouteHandlersAndExtractAPISchema = (
           s[_openapiZodTypedExpress__route_cache] = routeMetadataDocs
         }
 
-        if (!urlsMethodDocsPointer[endpointPath]) {
-          urlsMethodDocsPointer[endpointPath] = {}
-        }
+        // `router.all()` leaves `method` undefined, `app.all()` registers every verb node knows
+        const methods =
+          s.method === undefined || s.method === '_all'
+            ? OPENAPI_METHODS
+            : OPENAPI_METHODS.includes(s.method)
+              ? [s.method]
+              : []
 
-        urlsMethodDocsPointer[endpointPath][s.method] = {
-          headersSchema: routeMetadataDocs.apiRouteSchema.headersSchema,
-          pathSchema: routeMetadataDocs.apiRouteSchema.paramsSchema,
-          querySchema: routeMetadataDocs.apiRouteSchema.querySchema,
-          bodySchema: routeMetadataDocs.apiRouteSchema.bodySchema,
-          returnsSchema: routeMetadataDocs.apiRouteSchema.returnsSchema,
-        }
+        routePaths.forEach(routePath => {
+          const endpointPath = mergePaths(path, routePath)
+          if (!urlsMethodDocsPointer[endpointPath]) {
+            urlsMethodDocsPointer[endpointPath] = {}
+          }
+          methods.forEach(method => {
+            urlsMethodDocsPointer[endpointPath][method] = {
+              headersSchema: routeMetadataDocs.apiRouteSchema.headersSchema,
+              pathSchema: routeMetadataDocs.apiRouteSchema.paramsSchema,
+              querySchema: routeMetadataDocs.apiRouteSchema.querySchema,
+              bodySchema: routeMetadataDocs.apiRouteSchema.bodySchema,
+              returnsSchema: routeMetadataDocs.apiRouteSchema.returnsSchema,
+            }
+          })
+        })
       })
+    } else if (isTypedHandler(r.handle)) {
+      // an apiDoc() handler passed to app.use()/router.use() is a middleware layer, not a route: it
+      // cannot be initialised here and would fail every request with a confusing error later
+      throw new Error(
+        `openapi-zod-typed-express: an apiDoc() handler was registered with app.use() / router.use() under "${
+          path || '/'
+        }". Typed handlers must be route handlers (app.get(), router.post(), ...).`
+      )
     }
   })
 
@@ -343,12 +466,12 @@ type OpenAPIShape = DeepPartial<{
   }
   servers: { url: string }[]
   paths: any
+  components: any
 }>
 
-export const initApiDocs = (
-  expressApp: { router: ExpressRouteInternalStruct },
-  customOpenAPIType: OpenAPIShape = {}
-) => {
+// `@types/express-serve-static-core` declares `Application.router` as `string`, so the parameter must
+// not be typed with the internal struct or `initApiDocs(app)` would not compile for any consumer
+export const initApiDocs = (expressApp: { router: unknown }, customOpenAPIType: OpenAPIShape = {}) => {
   const openApiTypes = deepMerge(
     {
       openapi: '3.0.0',
@@ -362,13 +485,13 @@ export const initApiDocs = (
         },
       ],
       paths: convertUrlsMethodsSchemaToOpenAPI(
-        resolveRouteHandlersAndExtractAPISchema(expressApp.router)
+        resolveRouteHandlersAndExtractAPISchema(expressApp.router as ExpressRouteInternalStruct)
       ),
+      // user supplied components (e.g. securitySchemes) are merged over these defaults
+      components: { schemas: {} },
     },
     customOpenAPIType
   )
-
-  openApiTypes.components = { schemas: {} }
 
   return openApiTypes
 }
