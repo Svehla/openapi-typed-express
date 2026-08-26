@@ -369,6 +369,34 @@ GET /cast?since=2020-01-01&active=true&limit=5  200 { "since": "2020-01-01T00:00
 GET /cast?since=nope&active=true                400 { "errors": { "query": [{ "path": "since", "errors": ["invalid Date"] }] } }
 ```
 
+### Data utils: `zToArrayIfNot` and `zMockValue`
+
+`zToArrayIfNot(item, wireType?)` accepts one value or an array and always hands an array to the handler (absent → `[]`), decoding each element with `item` — the usual shape of a repeatable query param. `wireType` is the documented type of one element (default `z.any()`). `zMockValue(schema)` is the sample generator behind `mock_apiDoc` (`{ io: 'input' }` for the wire side).
+
+```typescript
+import { zMockValue, zToArrayIfNot } from 'openapi-zod-typed-express'
+
+app.get(
+  '/ids',
+  apiDoc({
+    query: { ids: zToArrayIfNot(zNumber, z.string()) },
+    returns: z.object({ ids: z.array(z.number()) }),
+  })((req, res) => {
+    const ids = req.query.ids satisfies number[]
+    res.tSend({ ids })
+  })
+)
+
+zMockValue(z.object({ email: z.email(), tags: z.array(z.enum(['a', 'b'])) }))
+// { email: 'user@example.com', tags: ['a'] }
+```
+
+```
+GET /ids?ids=1&ids=2   200 { "ids": [1, 2] }
+GET /ids?ids=7         200 { "ids": [7] }
+GET /ids               200 { "ids": [] }
+```
+
 ## Generated OpenAPI
 
 - the document declares `openapi: '3.0.0'` and the schemas use the OpenAPI 3.0 dialect (`nullable: true`, no `$schema`, records as `additionalProperties`)
@@ -395,6 +423,10 @@ HTTP statuses, error bodies and `res.tSend()` are identical; only the schema bui
 | `T.oneOf([...])` | `z.discriminatedUnion('type', [...])` when the variants share a discriminator, otherwise `z.union` ordered most-specific first (see below) |
 | `T.cast.date` / `number` / `boolean` (+ `null_*`) | `zCast.date` / `number` / `boolean` (+ `null_*`) – not `z.coerce.*` |
 | `T.transformType(encoded, decoded, decode, encode)` | `z.codec(encoded, decoded, { decode, encode })` |
+| `T.extra.toListIfNot(x)`, `T.extra.null_toListIfNot(x)` | `zToArrayIfNot(x, wireType)`, `zNull(zToArrayIfNot(x))` |
+| `T.extra.minMaxNumber`, `minMaxString`, `ISOString` | `z.number().min().max()`, `z.string().min().max()`, `z.iso.datetime()` |
+| `tUtils.tObject_pick` / `tObject_omit` | `.pick()` / `.omit()` |
+| `tSchemaToJSValue(schema)`, `mock_apiDoc` | `zMockValue(schema)`, `mock_apiDoc` |
 | `res.tSend(data)` | `res.tSend(data)` (unchanged) |
 
 Gotchas that are zod semantics, not this library:
@@ -409,7 +441,7 @@ Gotchas that are zod semantics, not this library:
 - **`apiDoc()` is a route handler, not an app-level middleware**: `app.use(apiDoc(...)(fn))` / `router.use(...)` make `initApiDocs()` throw at init.
 - **`initApiDocs()` touches `RegExp.prototype.exec` for a moment** to recover router mount paths (express 5 keeps them only in a closure); V8 then drops its regexp fast paths process-wide — nil for express throughput, measurable only in regexp-heavy string processing of your own.
 - **mounted sub-apps are skipped**: `app.use('/sub', subApp)` is not walked (`initApiDocs(app)` warns about it), call `initApiDocs(subApp)` separately.
-- **two typed handlers on one route decode twice**: the second one sees the already decoded `req.query` / `req.body`, so a wire codec fails on it — decode in one place.
+- **two typed handlers on one route must declare different request sections**: `initApiDocs()` throws when they overlap (the second one would receive the already decoded value); with different sections (`headers` in the first, `query`/`body` in the second) chaining works. Two `returns` are a warning, the last one is documented.
 - **`returns` must be encodable**: `.default()`, `.catch()`, `z.preprocess()` and a bare `.transform()` have no encoder, `res.tSend()` answers 500 for them; keep them on the request side.
 - **duplicate registrations**: if the same path & method is registered twice, Express serves the first handler but the document describes the last one.
 - **`z.object()` strips unknown keys** in `params`, `query`, `body` and `headers` (zod default), which also protects handlers from unexpected input.

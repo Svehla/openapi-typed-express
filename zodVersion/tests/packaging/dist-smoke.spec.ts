@@ -147,7 +147,9 @@ describe('dist/index.js public surface', () => {
     'mock_apiDoc',
     'normalizeZodError',
     'zCast',
+    'zMockValue',
     'zNull',
+    'zToArrayIfNot',
   ]
 
   test('runtime exports equal the src/index.ts exports', () => {
@@ -167,10 +169,9 @@ describe('dist/index.js public surface', () => {
     expect(names).toEqual(publicNames)
   })
 
-  test('zCodecUtils is shipped in dist but is NOT part of the public API (pinned, see report)', () => {
-    expect(fs.existsSync(path.join(pkgRoot, 'dist/zCodecUtils.js'))).toBe(true)
-    expect(dist.zToArrayIfNot).toBeUndefined()
-    expect(typeof require(path.join(pkgRoot, 'dist/zCodecUtils.js')).zToArrayIfNot).toBe('function')
+  test('zToArrayIfNot / zMockValue are public (parity with T.extra.toListIfNot / tSchemaToJSValue of the sibling)', () => {
+    expect(typeof dist.zToArrayIfNot).toBe('function')
+    expect(typeof dist.zMockValue).toBe('function')
   })
 })
 

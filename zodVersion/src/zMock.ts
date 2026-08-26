@@ -91,7 +91,7 @@ const bounded = (def: any, defaultLength: number) => {
  * Builds a sample value that satisfies `schema` (best effort: refinements are not evaluated). Used by `mock_apiDoc`
  * to answer with a plausible response generated from the `returns` schema.
  */
-export const zodMockValue = (schema: z.ZodTypeAny, options: MockOptions = {}): unknown => {
+export const zMockValue = (schema: z.ZodTypeAny, options: MockOptions = {}): unknown => {
   const io = options.io ?? 'output'
   const maxDepth = options.maxDepth ?? 64
   // a recursive schema (`z.lazy`, a getter) is cut at its second visit: an optional self reference is omitted,

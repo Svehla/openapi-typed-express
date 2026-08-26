@@ -2,8 +2,7 @@ import express from 'express'
 import { queryParser } from 'express-query-parser'
 import swaggerUi from 'swagger-ui-express'
 import { z } from 'zod'
-import { apiDoc, initApiDocs } from '../src'
-import { zToArrayIfNot } from '../src/zCodecUtils'
+import { apiDoc, initApiDocs, zToArrayIfNot } from '../src'
 
 const app = express()
 const port = 5656

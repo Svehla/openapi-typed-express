@@ -8,4 +8,6 @@ export type {
 } from './typedExpressDocs'
 export { apiDoc, getApiDocInstance, initApiDocs } from './typedExpressDocs'
 export { zCast, zNull } from './zCast'
+export { zToArrayIfNot } from './zCodecUtils'
+export { zMockValue } from './zMock'
 export { normalizeZodError } from './zUtils'

@@ -2,8 +2,7 @@ import express from 'express'
 import { queryParser } from 'express-query-parser'
 import request from 'supertest'
 import { z } from 'zod'
-import { apiDoc, initApiDocs } from '../../src'
-import { zToArrayIfNot } from '../../src/zCodecUtils'
+import { apiDoc, initApiDocs, zToArrayIfNot } from '../../src'
 import {
   buildTypedApp,
   isQueryPinned,
@@ -60,21 +59,13 @@ describe('request query', () => {
         )
         app.get(
           '/chained-typed',
-          apiDoc({ query: { n: zNumberFromString } })((req, _res, next) => {
-            ;(req as any).firstSaw = req.query.n
+          // two typed handlers may be chained when they declare DIFFERENT request sections
+          apiDoc({ headers: z.object({ 'x-tag': z.string().optional() }) })((req, _res, next) => {
+            ;(req as any).firstSaw = req.headers['x-tag']
             next()
           }),
-          // the second typed handler receives the OUTPUT of the first one: `n` is already a number and `extra`
-          // was already stripped by the first z.object, so its schema must describe the decoded shape
-          apiDoc({ query: { n: z.number(), extra: z.string().optional() } })((req, res) => {
+          apiDoc({ query: { n: zNumberFromString, extra: z.string().optional() } })((req, res) => {
             res.send({ firstSaw: (req as any).firstSaw, second: req.query, hasExtra: 'extra' in req.query })
-          })
-        )
-        app.get(
-          '/chained-typed-double-decode',
-          apiDoc({ query: { n: zNumberFromString } })((_req, _res, next) => next()),
-          apiDoc({ query: { n: zNumberFromString } })((req, res) => {
-            res.send(req.query)
           })
         )
         app.get(
@@ -121,18 +112,45 @@ describe('request query', () => {
       expect(res.body).toEqual(expectedDecoded)
     })
 
-    test('two typed handlers in one route: defineProperty is re-entrant and the second sees decoded + stripped values', async () => {
-      const res = await request(app).get('/chained-typed?n=5&extra=e')
+    test('two typed handlers in one route with different sections: each decodes its own section', async () => {
+      const res = await request(app).get('/chained-typed?n=5&extra=e').set('x-tag', 't')
       expect(res.status).toBe(200)
-      expect(res.body).toEqual({ firstSaw: 5, second: { n: 5 }, hasExtra: false })
+      expect(res.body).toEqual({ firstSaw: 't', second: { n: 5, extra: 'e' }, hasExtra: true })
     })
 
-    test('GOTCHA: the same wire codec in two chained typed handlers double-decodes and fails', async () => {
-      const res = await request(app).get('/chained-typed-double-decode?n=5')
-      expect(res.status).toBe(400)
-      expect(res.body).toEqual(
-        queryError([{ path: 'n', errors: ['Invalid input: expected string, received number'] }])
+    test('two typed handlers declaring the same section fail at initApiDocs() (the second would decode twice)', () => {
+      const chained = express()
+      chained.get(
+        '/x',
+        apiDoc({ query: { n: zNumberFromString } })((_req, _res, next) => next()),
+        apiDoc({ query: { n: zNumberFromString }, body: z.object({}) })((req, res) => {
+          res.send(req.query)
+        })
       )
+      expect(() => initApiDocs(chained)).toThrow(/two apiDoc\(\) handlers of GET \/x both declare "query"/)
+    })
+
+    test('two typed handlers with `returns` on one route are only a warning (the last one is documented)', () => {
+      const warn = jest.spyOn(console, 'warn').mockImplementation(() => {})
+      try {
+        const chained = express()
+        chained.get(
+          '/x',
+          apiDoc({ returns: z.object({ a: z.string() }) })((_req, _res, next) => next()),
+          apiDoc({ returns: z.object({ b: z.string() }) })((_req, res) => {
+            res.tSend({ b: 'x' })
+          })
+        )
+        const doc = initApiDocs(chained)
+        expect(warn).toHaveBeenCalledWith(
+          expect.stringMatching(/GET \/x declare `returns`, the document uses the last one/)
+        )
+        expect(doc.paths['/x'].get.responses[200].content['application/json'].schema.properties).toEqual({
+          b: { type: 'string' },
+        })
+      } finally {
+        warn.mockRestore()
+      }
     })
 
     test("no query schema: req.query is left as express' own prototype getter (nothing is read, nothing is pinned)", async () => {

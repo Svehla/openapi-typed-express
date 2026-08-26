@@ -404,6 +404,9 @@ const resolveRouteHandlersAndExtractAPISchema = (
         (p): p is string => typeof p === 'string'
       )
 
+      // typed layers of this route, to reject two apiDoc() handlers decoding the same request section
+      const typedLayers: { method: string | undefined; sections: string[]; returns: boolean }[] = []
+
       route.stack.forEach(s => {
         if (isUnappliedApiDoc(s.handle)) {
           throw unappliedError(
@@ -428,6 +431,13 @@ const resolveRouteHandlersAndExtractAPISchema = (
           s.handle = routeMetadataDocs.handle
           s[_openapiZodTypedExpress__route_cache] = routeMetadataDocs
         }
+        typedLayers.push({
+          method: s.method,
+          sections: (['headers', 'params', 'query', 'body'] as const).filter(
+            section => routeMetadataDocs.apiRouteSchema[`${section}Schema`]
+          ),
+          returns: Boolean(routeMetadataDocs.apiRouteSchema.returnsSchema),
+        })
 
         // `router.all()` leaves `method` undefined, `app.all()` registers every verb node knows
         const methods =
@@ -453,6 +463,38 @@ const resolveRouteHandlersAndExtractAPISchema = (
           })
         })
       })
+
+      // two typed handlers of one route + method must not decode the same section: the second one would receive
+      // the already decoded value (a wire codec decodes twice and fails), so it is a boot error, not a 400 later
+      const routeLabel = routePaths.map(p => mergePaths(path, p)).join(', ') || path || '/'
+      const sameMethod = (a: string | undefined, b: string | undefined) =>
+        a === undefined || b === undefined || a === '_all' || b === '_all' || a === b
+      for (let i = 0; i < typedLayers.length; i++) {
+        for (let j = i + 1; j < typedLayers.length; j++) {
+          const a = typedLayers[i]
+          const b = typedLayers[j]
+          if (!sameMethod(a.method, b.method)) continue
+          const overlap = a.sections.filter(section => b.sections.includes(section))
+          if (overlap.length > 0) {
+            throw new Error(
+              `openapi-zod-typed-express: two apiDoc() handlers of ${(
+                a.method ?? b.method ?? 'all'
+              ).toUpperCase()} ${routeLabel} both declare ${overlap
+                .map(section => `"${section}"`)
+                .join(
+                  ', '
+                )}; the second one would receive the already decoded value. Declare each request section in one handler only.`
+            )
+          }
+          if (a.returns && b.returns) {
+            console.warn(
+              `openapi-zod-typed-express: two apiDoc() handlers of ${(
+                a.method ?? b.method ?? 'all'
+              ).toUpperCase()} ${routeLabel} declare \`returns\`, the document uses the last one`
+            )
+          }
+        }
+      }
     } else if (Array.isArray(handle?.stack)) {
       // === express router ===
       const stack = r as ExpressRouterInternalStruct

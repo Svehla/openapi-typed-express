@@ -1,6 +1,6 @@
 import type { Config, TypedHandleDual } from './typedExpressDocs'
 import { getApiDocInstance } from './typedExpressDocs'
-import { zodMockValue } from './zMock'
+import { zMockValue } from './zMock'
 import { getZodValidator } from './zUtils'
 
 /**
@@ -13,7 +13,7 @@ export const getMock_apiDocInstance = (options: Parameters<typeof getApiDocInsta
   const apiDoc = getApiDocInstance(options)
   return <C extends Config>(docs: C) =>
     (_handler: TypedHandleDual<C>) => {
-      const mock = docs.returns ? zodMockValue(docs.returns) : undefined
+      const mock = docs.returns ? zMockValue(docs.returns) : undefined
       const encoder = docs.returns ? getZodValidator(docs.returns, { transformTypeMode: 'serialize' }) : null
       return apiDoc(docs)((_req, res) => {
         if (mock === undefined) {

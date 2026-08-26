@@ -13,7 +13,9 @@ import {
   mock_apiDoc,
   normalizeZodError,
   zCast,
+  zMockValue,
   zNull,
+  zToArrayIfNot,
 } from '../../src'
 
 // codec: decode (incoming) = ISO string -> Date, encode (outgoing) = Date -> ISO string
@@ -769,5 +771,45 @@ describe('readme: mock_apiDoc', () => {
       .expect(400, {
         errors: { params: [{ path: 'id', errors: ['Invalid input: expected number, received NaN'] }] },
       })
+  })
+})
+
+describe('readme: Data utils zToArrayIfNot / zMockValue', () => {
+  const app = express()
+  app.get(
+    '/ids',
+    apiDoc({
+      query: { ids: zToArrayIfNot(zNumber, z.string()) },
+      returns: z.object({ ids: z.array(z.number()) }),
+    })((req, res) => {
+      const ids = req.query.ids satisfies number[]
+      res.tSend({ ids })
+    })
+  )
+  const openapi = initApiDocs(app)
+
+  test('documented outputs', async () => {
+    await request(app)
+      .get('/ids?ids=1&ids=2')
+      .expect(200, { ids: [1, 2] })
+    await request(app)
+      .get('/ids?ids=7')
+      .expect(200, { ids: [7] })
+    await request(app).get('/ids').expect(200, { ids: [] })
+    expect(zMockValue(z.object({ email: z.email(), tags: z.array(z.enum(['a', 'b'])) }))).toEqual({
+      email: 'user@example.com',
+      tags: ['a'],
+    })
+  })
+
+  test('the wire type of one element is documented, the param is optional', () => {
+    expect(openapi.paths['/ids'].get.parameters).toEqual([
+      {
+        in: 'query',
+        name: 'ids',
+        required: false,
+        schema: { anyOf: [{ type: 'string' }, { type: 'array', items: { type: 'string' } }] },
+      },
+    ])
   })
 })

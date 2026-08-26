@@ -2,9 +2,9 @@ import express from 'express'
 import request from 'supertest'
 import { z } from 'zod'
 import { getMock_apiDocInstance, initApiDocs, mock_apiDoc, zCast, zNull } from '../../src'
-import { zodMockValue } from '../../src/zMock'
+import { zMockValue } from '../../src/zMock'
 
-describe('zodMockValue: a sample that satisfies the schema', () => {
+describe('zMockValue: a sample that satisfies the schema', () => {
   const Tree: z.ZodTypeAny = z.lazy(() => z.object({ v: z.string(), kids: z.array(Tree).optional() }))
   const rows: [string, z.ZodTypeAny][] = [
     [
@@ -70,7 +70,7 @@ describe('zodMockValue: a sample that satisfies the schema', () => {
   ]
 
   test.each(rows)('%s', (_name, schema) => {
-    const value = zodMockValue(schema)
+    const value = zMockValue(schema)
     // the mock is the decoded (output) side, so it is checked through the encoder (identity for plain schemas)
     const result = schema.safeEncode(value)
     expect(result.success ? 'valid' : JSON.stringify(result.error.issues)).toBe('valid')
@@ -78,7 +78,7 @@ describe('zodMockValue: a sample that satisfies the schema', () => {
 
   test('exact samples', () => {
     expect(
-      zodMockValue(
+      zMockValue(
         z.object({
           e: z.email(),
           tags: z.array(z.enum(['a', 'b'])),
@@ -92,9 +92,9 @@ describe('zodMockValue: a sample that satisfies the schema', () => {
       when: '2020-01-01T00:00:00.000Z',
       n: 1,
     })
-    expect(zodMockValue(zCast.date)).toEqual(new Date(0))
-    expect(zodMockValue(zCast.date, { io: 'input' })).toBe('string')
-    expect(zodMockValue(z.string().transform(s => s.length))).toBeUndefined()
+    expect(zMockValue(zCast.date)).toEqual(new Date(0))
+    expect(zMockValue(zCast.date, { io: 'input' })).toBe('string')
+    expect(zMockValue(z.string().transform(s => s.length))).toBeUndefined()
   })
 })
 

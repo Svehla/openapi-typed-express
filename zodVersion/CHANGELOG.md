@@ -3,6 +3,10 @@
 ## 1.2.0 — 2026-08-25
 
 ### Added
+- `zToArrayIfNot(item, wireType?)` (was internal; now a codec so it also encodes inside `returns`) and `zMockValue(schema)`
+  are public — parity with `T.extra.toListIfNot` / `tSchemaToJSValue` of swagger-typed-express-docs.
+- `initApiDocs()` throws when two `apiDoc()` handlers of one route and method declare the same request section (the
+  second one would decode an already decoded value); two `returns` are reported with a `console.warn`.
 - `mock_apiDoc(config)(handler)` / `getMock_apiDocInstance({ errorFormatter })` (parity with swagger-typed-express-docs):
   validates the request and documents the route like `apiDoc`, but ignores the handler and answers with a sample value
   generated from the `returns` schema (string formats, length / number bounds, enums, arrays, unions, codecs encoded).

@@ -1,30 +1,13 @@
-import z from 'zod'
+import { z } from 'zod'
 
-// `.optional()` on the input side: since zod 4.4.0 a missing object key only passes when the schema is
-// optin-optional (`z.any()` / a union no longer accepts an ABSENT key), so "absent -> []" needs it explicitly
-export const zToArrayIfNotCodec = <T extends z.ZodTypeAny>(item: T, zBaseType = z.any() as z.ZodTypeAny) =>
-  z.codec(
-    //
-    z.union([zBaseType, z.array(zBaseType)]).optional(),
-    z.union([zBaseType, z.array(zBaseType)]),
-    {
-      decode: val => {
-        if (val === null || val === undefined) return []
-        return Array.isArray(val) ? val : [val]
-      },
-      encode: val => {
-        if (val === null || val === undefined) return []
-        return Array.isArray(val) ? val : [val]
-      },
-    }
-  )
-
-export const zToArrayIfNot = <T extends z.ZodTypeAny>(item: T, zBaseType = z.any() as z.ZodTypeAny) =>
-  z
-    .union([zBaseType, z.array(zBaseType)])
-    .optional()
-    .transform(val => {
-      if (val === null || val === undefined) return []
-      return Array.isArray(val) ? val : [val]
-    })
-    .pipe(z.array(item))
+/**
+ * A value that may arrive once (`?ids=1`) or repeated (`?ids=1&ids=2`) is always handed to the handler as an array
+ * (absent -> `[]`); the items are decoded by `item` and encoded back by `res.tSend()`. Same as `T.extra.toListIfNot`
+ * of swagger-typed-express-docs. `zBaseType` is the documented wire type of ONE element (`z.string()` for a query
+ * param, defaults to `z.any()`); `.optional()` on the input side is what makes an absent key acceptable (zod >= 4.4).
+ */
+export const zToArrayIfNot = <T extends z.ZodTypeAny>(item: T, zBaseType: z.ZodTypeAny = z.any()) =>
+  z.codec(z.union([zBaseType, z.array(zBaseType)]).optional(), z.array(item), {
+    decode: value => (value === null || value === undefined ? [] : Array.isArray(value) ? value : [value]),
+    encode: value => value,
+  })
