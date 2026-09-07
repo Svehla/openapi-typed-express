@@ -68,6 +68,15 @@ describe('example/server.ts', () => {
     expect(Object.keys(res.body.paths).sort()).toEqual(['/', '/add-day/{id}', '/users/{id}', '/x'])
   })
 
+  test('GET / (the URL the example prints on boot) answers 200', async () => {
+    // `dates` is an optional query param, so with no query the list is empty and the encoded
+    // `name` key is simply absent - the route must not answer a handler-contract 500
+    await request(app).get('/').expect(200, {})
+    await request(app)
+      .get('/?dates=2020-01-01T00:00:00.000Z')
+      .expect(200, { name: '2020-01-01T00:00:00.000Z' })
+  })
+
   test('POST /users/:id decodes the numeric param', async () => {
     await request(app).post('/users/12').send({ name: 'Ada' }).expect(200, { id: 12, name: 'Ada' })
     await request(app).post('/users/x').send({ name: 'Ada' }).expect(400)

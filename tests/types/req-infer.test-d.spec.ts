@@ -1,4 +1,4 @@
-import type { NextFunction } from 'express'
+import type { NextFunction, Request } from 'express'
 import type { IncomingHttpHeaders } from 'http'
 import { expectType } from 'tsd'
 import { z } from 'zod'
@@ -74,13 +74,17 @@ describe('req.* are the z.output (decoded) types', () => {
     })
   })
 
-  test('absent params / query → Record<string, never>; absent body → unknown', () => {
+  test("absent params / query → express' own ParamsDictionary / ParsedQs (untyped strings); absent body → unknown", () => {
     apiDoc({ returns: z.string() })(req => {
-      expectExact<typeof req.params, Record<string, never>>(true)
-      expectExact<typeof req.query, Record<string, never>>(true)
+      expectExact<typeof req.params, Request['params']>(true)
+      expectExact<typeof req.query, Request['query']>(true)
       expectExact<typeof req.body, unknown>(true)
-      // any key read from Record<string, never> is `never`
-      expectExact<typeof req.params.id, never>(true)
+      // the section is neither validated nor touched: express hands over plain strings
+      expectExact<typeof req.params.id, string>(true)
+      expectExact<typeof req.query.page, Request['query'][string]>(true)
+      // @ts-expect-error a param is a string, never a number
+      const asNumber: number = req.params.id
+      void asNumber
       // @ts-expect-error unknown body must be narrowed first
       req.body.name
     })
@@ -159,8 +163,8 @@ describe('req.* are the z.output (decoded) types', () => {
 describe('handler signature', () => {
   test('apiDoc({}) with an empty config compiles and yields the "absent" types everywhere', () => {
     apiDoc({})((req, res, next) => {
-      expectExact<typeof req.params, Record<string, never>>(true)
-      expectExact<typeof req.query, Record<string, never>>(true)
+      expectExact<typeof req.params, Request['params']>(true)
+      expectExact<typeof req.query, Request['query']>(true)
       expectExact<typeof req.body, unknown>(true)
       expectExact<Parameters<typeof res.send>[0], unknown>(true)
       expectExact<Parameters<typeof res.tSend>[0], unknown>(true)

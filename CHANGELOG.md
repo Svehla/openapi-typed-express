@@ -1,5 +1,84 @@
 # Changelog
 
+## Unreleased
+
+Fixes from a nine-part review of `src/` (see `tests/bughunt/*.spec.ts`; every entry below flips a former
+`test.failing` case). Findings rated low stay pinned as `test.failing` there and are listed under Known limitations.
+
+### Fixed — runtime validation and error reporting
+- `normalizeZodError()` never throws: symbol / missing issue-path segments are stringified and a failure inside it
+  degrades to `Unknown error` instead of escaping as an express 500 HTML page with absolute source paths.
+- Validation errors of a `z.union` include the per-variant reasons (zod 4 `invalid_union` sub-issues) under the
+  union's path instead of only `"Invalid input"`.
+- A `ZodError` thrown inside a `.transform()` / codec decoder (`otherSchema.parse(raw)`) is reported at the root
+  (`path: ''`) with the inner issues as messages, not under the inner schema's paths.
+- A decoder that throws `null` / `undefined` is reported as `[{ path: '', errors: ['Unknown error'] }]` instead of
+  an empty `errors` object.
+- `zCast.number` rejects an empty / blank string (`'invalid number cast'`) instead of decoding it to `0`.
+
+### Fixed — generated OpenAPI document
+- Chained `apiDoc()` handlers on one route are all documented (request sections merged; `returns` stays last-wins
+  with the existing warning).
+- `nullable: true` is effective in 3.0: a nullable `enum` / literal lists `null`, and a nullable union /
+  discriminated union / intersection / `.meta({ id })` reference gets a `{ type: 'string', nullable: true,
+  enum: [null] }` branch instead of a `nullable` marker without `type`.
+- A `.meta({ id })` schema used as the whole `body` / `returns` is hoisted into `components.schemas` and
+  referenced, like nested ones.
+- A `.meta({ id })` schema whose response conversion differs from its request one (e.g. it contains `z.date()`)
+  is documented as `<id>_response` on the response side; identical conversions share one component.
+- Anonymous route-named components no longer collide across routes whose labels sanitise alike
+  (`POST /a-b` vs `POST /a_b`): the second gets a `_2` counter instead of silently referencing the first route.
+- `.meta({ id })` ids equal to `Object.prototype` keys (`constructor`, `toString`, `__proto__`, ...) are registered
+  as own keys of `components.schemas` instead of producing dangling `$ref`s.
+- A route of a `strict routing` app / `Router({ strict: true })` keeps its trailing slash in the document (express
+  serves only the slashed form there); non-strict apps are unchanged.
+- `:param` → `{param}` conversion uses the path-to-regexp v8 name syntax, so unicode (`:naïve`) and `$`-prefixed
+  (`:$id`) names are converted as a whole, and a colon escaped as `\:` stays a literal colon.
+- A router mounted on an optional segment (`/opt{/:id}`) or a wildcard (`/files/*splat`) is skipped with the
+  "unsupported mount path" warning instead of being documented as a regex fragment.
+
+### Fixed — mocking
+- `mock_apiDoc`: a `returns` schema without an encoder (`.transform()`, `z.preprocess()`, `z.promise()`) answers 200
+  with the raw sample instead of 500.
+- `zMockValue`: chained zod-3 style formats (`z.string().email()`, `.uuid()`, `.datetime()`, `.uppercase()`, ...) are
+  honoured; string checks are satisfied together (`.includes()` + `.max()`, `.length()` + `.startsWith()`).
+- `zMockValue`: exclusive number bounds yield a value inside the open interval (`gt(0).lt(1)` → 0.5) and
+  `multipleOf` survives the upper bound; `z.bigint()` / `z.date()` honour their bounds; `z.set()` honours
+  `min` / `max` / `size` with distinct members.
+- `zMockValue`: numeric / mixed TypeScript enums yield a member value, not the reverse-mapping key; record keys are
+  generated from the key schema (`z.record(z.string(), ...)` now samples `{ string: ... }`).
+- `zMockValue`: the wire-side sample (`{ io: 'input' }`) of a codec is the encoded decoded-side sample, so it always
+  decodes (`zCast.date` → `'1970-01-01T00:00:00.000Z'`).
+- `zMockValue`: a required key is kept even when its sample is `undefined`; `z.nan()` → `NaN`, `z.symbol()` →
+  `Symbol.for('symbol')`, `z.file()` → an empty `File`; `z.hex()` / `z.hash()` samples and ISO `precision`.
+- `zMockValue`: an intersection of non-object values (arrays, dates, bounded primitives) satisfies both sides.
+
+### Fixed — types and packaging
+- `peerDependencies.zod` is `^4.4.3`: 4.4.0 – 4.4.2 report `.catch()` / `z.preprocess()` optionality differently
+  and fail the suite.
+- `initApiDocs(app, meta)`: `meta` is the new exported `OpenAPIMetadata` type accepting every OpenAPI 3.0 root /
+  Info / Server / Tag field and `x-...` extensions.
+- Undeclared `params` / `query` are typed as express' `ParamsDictionary` / `ParsedQs` instead of
+  `Record<string, never>`.
+
+### Fixed — docs and example
+- `example/server.ts`: `GET /` (the URL printed on boot) answers 200 instead of a 500 contract error.
+- readme: `.default()` / `.catch()` inside `returns` encode fine (only `z.preprocess()` and a bare `.transform()`
+  have no encoder); the export list is complete; `z.coerce.*` is documented as its decoded type.
+
+### Known limitations (rated low, pinned as `test.failing` in `tests/bughunt/`)
+- OpenAPI: `.catch(decoded)` on a codec emits the decoded value as `default`; tuple-with-rest `minItems` is off by
+  one; regex flags are dropped from `pattern`; `.readonly()` marks a required request property `readOnly`;
+  `z.enum([])` emits `enum: []`.
+- Routes: a router mounted on `[RegExp, '/b']` is dropped instead of documented under the string prefix; a router
+  mounted on an array of paths is documented only under the first; a sub-app mounted via `router.use()` is skipped
+  without a warning.
+- Responses: `returns: z.string()` is sent as `text/html`; `tSend(null)` through a nullable `returns` is an empty
+  body.
+- Requests: an async codec decoder in a request schema is a 400 with a zod-internal message (an async refine is a
+  500); `headers: z.string()` compiles; a typed request with a headers schema loses its type after `req.on(...)`.
+- Mocking: an intersection of two Sets / Maps is unsatisfiable in zod itself.
+
 ## 2.0.0 — 2026-08-25
 
 ### Added
@@ -117,8 +196,6 @@
   inside a closure). V8 de-optimises its regexp fast paths process-wide after any such change: measured as nil for
   express throughput, noticeable only for applications doing heavy regexp string processing of their own.
 - A parameter inside a router mount path (`app.use('/p/:pid', router)`) is documented as its regex source.
-- Express 5 optional segments (`{/:id}`) and wildcards (`*splat`) are copied verbatim into the path.
-- Recursive schemas / `.meta({ id })` emit `$ref`s that are not hoisted into `components.schemas`.
-- Some draft-only JSON-schema keywords still appear for exotic schemas (`type: null`, tuple `items[]`,
-  numeric `exclusiveMinimum`, `contentEncoding`, `examples`, `id`).
+- Express 5 optional segments (`{/:id}`) and wildcards (`*splat`) in a route path are copied verbatim into the path;
+  in a router mount path the subtree is skipped with a `console.warn` (since Unreleased).
 - `requestBody.required` is always `true`; mounted sub-apps are not scanned.

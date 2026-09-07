@@ -93,7 +93,9 @@ describe('zMockValue: a sample that satisfies the schema', () => {
       n: 1,
     })
     expect(zMockValue(zCast.date)).toEqual(new Date(0))
-    expect(zMockValue(zCast.date, { io: 'input' })).toBe('string')
+    // the wire side is the decoded sample encoded by the codec, so it always decodes back
+    expect(zMockValue(zCast.date, { io: 'input' })).toBe('1970-01-01T00:00:00.000Z')
+    expect(zMockValue(zCast.number, { io: 'input' })).toBe('0')
     expect(zMockValue(z.string().transform(s => s.length))).toBeUndefined()
   })
 })

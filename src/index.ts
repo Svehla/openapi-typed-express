@@ -3,6 +3,7 @@ export type {
   ChainedResponse,
   Config,
   OpenAPIDocument,
+  OpenAPIMetadata,
   TypedRequest,
   TypedResponse,
 } from './typedExpressDocs'

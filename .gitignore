@@ -29,3 +29,5 @@ modules.xml
 
 
 example/__generated-api__
+# scratch dirs of local tooling / agents
+.tmp-bh

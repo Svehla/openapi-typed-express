@@ -1,14 +1,14 @@
 import type { NextFunction, Request, Response } from 'express'
 import type { IncomingHttpHeaders } from 'http'
 import { z } from 'zod'
-import { parseUrlFromExpressV5Matcher } from './expressRegExUrlParser'
+import { parseUrlFromExpressV5Matcher, routeKeepsTrailingSlash } from './expressRegExUrlParser'
 import {
   type ComponentSchemas,
   convertUrlsMethodsSchemaToOpenAPI,
   type UrlsMethodDocs,
 } from './openAPIFromSchema'
-import { DeepPartial, deepMerge, mergePaths } from './utils'
-import { getZodValidator, normalizeZodError } from './zUtils'
+import { deepMerge, mergePaths } from './utils'
+import { getZodValidator, type NormalizedIssue, normalizeZodError } from './zUtils'
 
 // symbol as a key is not sent via express down to the _routes
 export const __openapiZodTypedHackKey__ = '__openapiZodTypedHackKey__'
@@ -43,11 +43,13 @@ type Has<C, K extends PropertyKey> = [K] extends [keyof C]
   : false
 type ShapeOut<S> = S extends Record<string, z.ZodTypeAny> ? z.output<z.ZodObject<S>> : Record<string, never>
 
+// an undeclared section is neither validated nor touched, so it keeps express' own type (`ParamsDictionary` of
+// plain strings, `ParsedQs` for the query) instead of a `Record<string, never>` whose keys would read as `never`
 type ParamsType<C extends Config> =
-  Has<C, 'params'> extends true ? ShapeOut<Present<C['params']>> : Record<string, never>
+  Has<C, 'params'> extends true ? ShapeOut<Present<C['params']>> : Request['params']
 
 type QueryType<C extends Config> =
-  Has<C, 'query'> extends true ? ShapeOut<Present<C['query']>> : Record<string, never>
+  Has<C, 'query'> extends true ? ShapeOut<Present<C['query']>> : Request['query']
 
 type BodyType<C extends Config> = Has<C, 'body'> extends true ? z.output<Present<C['body']>> : unknown
 
@@ -130,23 +132,43 @@ export const getApiDocInstance =
       const bodyValidator = getZodValidator(bodySchema, { transformTypeMode: 'parse' })
       const returnsValidator = getZodValidator(returnsSchema, { transformTypeMode: 'serialize' })
 
+      const unknownError = (): NormalizedIssue[] => [{ path: '', errors: ['Unknown error'] }]
+
+      // a second installed copy of zod has its own classes, so the names are checked as well
+      const isZodError = (error: unknown) =>
+        error instanceof z.core.$ZodError ||
+        ['$ZodError', 'ZodError', 'ZodRealError', '$ZodRealError'].includes((error as any)?.constructor?.name)
+
       // zod's safeParse does not catch exceptions thrown by a codec decoder / `.transform()`; they must
-      // become a regular 400 rather than escaping to express' default 500 error page
+      // become a regular 400 rather than escaping to express' default 500 error page. The issues are normalized
+      // HERE, inside the try, so that nothing on the error-building path can escape as a 500 either
       const safeValidate = (
         validator: ReturnType<typeof getZodValidator>,
         value: unknown
-      ): { success: true; data: unknown } | { success: false; error: unknown } => {
+      ): { success: true; data: unknown } | { success: false; errors: NormalizedIssue[] } => {
         try {
-          return validator.validate(value) as any
+          const result = validator.validate(value)
+          if (result.success) return result
+          return { success: false, errors: normalizeZodError(result.error) ?? unknownError() }
         } catch (error) {
           // an async refinement in a request schema is a SERVER bug, not a 400
-          // a second installed copy of zod has its own class, so the name is checked as well
           if (
             error instanceof z.core.$ZodAsyncError ||
             (error as any)?.constructor?.name === '$ZodAsyncError'
           )
             throw error
-          return { success: false, error }
+          // a ZodError thrown by a decoder (`otherSchema.parse(raw)` inside a `.transform()`) belongs to ANOTHER
+          // schema: its issue paths point into a foreign value, not into this section, so it is reported like every
+          // other throw, at the root, with the inner issues as the messages
+          if (isZodError(error)) {
+            const inner = normalizeZodError(error) ?? unknownError()
+            const messages = inner.map(e =>
+              e.path ? `${e.path}: ${e.errors.join(', ')}` : e.errors.join(', ')
+            )
+            return { success: false, errors: [{ path: '', errors: messages }] }
+          }
+          // a thrown `null` / `undefined` would otherwise read as "this section did not fail"
+          return { success: false, errors: normalizeZodError(error ?? 'Unknown error') ?? unknownError() }
         }
       }
 
@@ -196,17 +218,13 @@ export const getApiDocInstance =
             !queryValidationRes.success ||
             !bodyValidationRes.success
           ) {
-            const headersErrors = !headersValidationRes.success ? headersValidationRes.error : null
-            const paramsErrors = !paramValidationRes.success ? paramValidationRes.error : null
-            const queryErrors = !queryValidationRes.success ? queryValidationRes.error : null
-            const bodyErrors = !bodyValidationRes.success ? bodyValidationRes.error : null
-
+            // a section that passed is `undefined`: `errors` contains only the failing parts
             const errObj = {
               errors: {
-                headers: normalizeZodError(headersErrors),
-                params: normalizeZodError(paramsErrors),
-                query: normalizeZodError(queryErrors),
-                body: normalizeZodError(bodyErrors),
+                headers: headersValidationRes.success ? undefined : headersValidationRes.errors,
+                params: paramValidationRes.success ? undefined : paramValidationRes.errors,
+                query: queryValidationRes.success ? undefined : queryValidationRes.errors,
+                body: bodyValidationRes.success ? undefined : bodyValidationRes.errors,
               },
             }
 
@@ -280,7 +298,8 @@ export const getApiDocInstance =
               }
               res.status(500).send({
                 type: 'invalid data came from app handler',
-                error: errorFormatter({ errors: { returns: normalizeZodError(err) } }),
+                // a thrown `null` / `undefined` would otherwise leave `returns` out of the report
+                error: errorFormatter({ errors: { returns: normalizeZodError(err ?? 'Unknown error') } }),
               })
             }
           }
@@ -406,6 +425,8 @@ const resolveRouteHandlersAndExtractAPISchema = (
 
       // typed layers of this route, to reject two apiDoc() handlers decoding the same request section
       const typedLayers: { method: string | undefined; sections: string[]; returns: boolean }[] = []
+      // the documentation of this route (every typed layer merged), written to the pointer once the route is walked
+      const routeDocs: UrlsMethodDocs = {}
 
       route.stack.forEach(s => {
         if (isUnappliedApiDoc(s.handle)) {
@@ -448,21 +469,36 @@ const resolveRouteHandlersAndExtractAPISchema = (
               : []
 
         routePaths.forEach(routePath => {
-          const endpointPath = mergePaths(path, routePath)
-          if (!urlsMethodDocsPointer[endpointPath]) {
-            urlsMethodDocsPointer[endpointPath] = {}
+          // --- strict-routing trailing slash (bughunt fix, expressRegExUrlParser.ts owns the detection) ---
+          const endpointPath = mergePaths(path, routePath, routeKeepsTrailingSlash(r, routePath))
+          // --- end ---
+          if (!routeDocs[endpointPath]) {
+            routeDocs[endpointPath] = {}
           }
           methods.forEach(method => {
-            urlsMethodDocsPointer[endpointPath][method] = {
-              headersSchema: routeMetadataDocs.apiRouteSchema.headersSchema,
-              pathSchema: routeMetadataDocs.apiRouteSchema.paramsSchema,
-              querySchema: routeMetadataDocs.apiRouteSchema.querySchema,
-              bodySchema: routeMetadataDocs.apiRouteSchema.bodySchema,
-              returnsSchema: routeMetadataDocs.apiRouteSchema.returnsSchema,
+            // chained typed handlers of ONE route all validate the request, so their sections are merged (the
+            // overlap check below guarantees every section is declared once); `returns` is last-wins (warned below)
+            const previous = routeDocs[endpointPath][method]
+            const schema = routeMetadataDocs.apiRouteSchema
+            routeDocs[endpointPath][method] = {
+              headersSchema: schema.headersSchema ?? previous?.headersSchema,
+              pathSchema: schema.paramsSchema ?? previous?.pathSchema,
+              querySchema: schema.querySchema ?? previous?.querySchema,
+              bodySchema: schema.bodySchema ?? previous?.bodySchema,
+              returnsSchema: schema.returnsSchema ?? previous?.returnsSchema,
             }
           })
         })
       })
+
+      // a path & method registered by ANOTHER route (a duplicate registration) is replaced, not merged: express
+      // serves the first one, the document describes the last one
+      for (const [endpointPath, methods] of Object.entries(routeDocs)) {
+        if (!urlsMethodDocsPointer[endpointPath]) {
+          urlsMethodDocsPointer[endpointPath] = {}
+        }
+        Object.assign(urlsMethodDocsPointer[endpointPath], methods)
+      }
 
       // two typed handlers of one route + method must not decode the same section: the second one would receive
       // the already decoded value (a wire codec decodes twice and fails), so it is a boot error, not a 400 later
@@ -539,21 +575,30 @@ const resolveRouteHandlersAndExtractAPISchema = (
   return urlsMethodDocsPointer
 }
 
-type OpenAPIShape = DeepPartial<{
-  openapi: '3.0.0'
-  info: {
-    description: string
-    version: string
-    title: string
-    termsOfService: string
-    contact: {
-      email: string
-    }
+/**
+ * The optional metadata `initApiDocs()` deep-merges into the generated document: the OpenAPI 3.0 root, Info and
+ * Server objects with their standard fields, plus `x-…` specification extensions (the index signatures), since the
+ * runtime merges every key unchanged.
+ */
+export type OpenAPIMetadata = {
+  openapi?: string
+  info?: {
+    title?: string
+    version?: string
+    description?: string
+    termsOfService?: string
+    contact?: { name?: string; url?: string; email?: string; [key: string]: any }
+    license?: { name?: string; url?: string; [key: string]: any }
+    [key: string]: any
   }
-  servers: { url: string }[]
-  paths: any
-  components: any
-}>
+  servers?: { url?: string; description?: string; variables?: Record<string, any>; [key: string]: any }[]
+  paths?: Record<string, any>
+  components?: Record<string, any>
+  tags?: { name?: string; description?: string; externalDocs?: any; [key: string]: any }[]
+  security?: Record<string, string[]>[]
+  externalDocs?: { url?: string; description?: string; [key: string]: any }
+  [key: string]: any
+}
 
 /** the generated OpenAPI 3.0 document */
 export type OpenAPIDocument = {
@@ -569,7 +614,7 @@ export type OpenAPIDocument = {
 // not be typed with the internal struct or `initApiDocs(app)` would not compile for any consumer
 export const initApiDocs = (
   expressApp: { router: unknown },
-  customOpenAPIType: OpenAPIShape = {}
+  customOpenAPIType: OpenAPIMetadata = {}
 ): OpenAPIDocument => {
   const router = (expressApp as any)?.router
   if (!router || !Array.isArray(router.stack)) {
@@ -596,7 +641,7 @@ export const initApiDocs = (
 
   // the user's object is cloned: the returned document must not alias it (mutating the document, or the next
   // initApiDocs() call, would otherwise corrupt the caller's config)
-  let custom: OpenAPIShape = customOpenAPIType
+  let custom: OpenAPIMetadata = customOpenAPIType
   try {
     custom = structuredClone(customOpenAPIType)
   } catch {
