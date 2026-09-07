@@ -1,7 +1,7 @@
 /**
  * Bug-hunt findings for the TYPE level and the PACKAGE. Tests only: nothing under src/ is touched.
  *
- * ts-jest type-checks this file, so a `// @ts-expect-error` line asserts that the line does NOT compile today.
+ * `npm run ts:check-tests` (tsc) type-checks this file, so a `// @ts-expect-error` line asserts that the line does NOT compile today.
  * Every `BUG:` marker encodes the CURRENT (wrong) behaviour next to a description of the intended one: once the
  * bug is fixed the directive becomes unused (or the exact-type assertion flips) and this file stops compiling,
  * which is the signal to turn the marker into a regular assertion. Runtime facts that hold today are asserted

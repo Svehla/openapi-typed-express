@@ -10,11 +10,11 @@
  *  - the prose is right and the runtime is wrong -> the test asserts the documented behaviour directly
  */
 
+import { transformSync } from '@swc/core'
 import express from 'express'
 import fs from 'fs'
 import path from 'path'
 import request from 'supertest'
-import ts from 'typescript'
 import { z } from 'zod'
 import { apiDoc, initApiDocs } from '../../src'
 
@@ -221,13 +221,10 @@ describe('CHANGELOG.md: "Known limitations (unchanged, pinned by tests)"', () =>
 const bootExample = (file: string) => {
   const exampleDir = path.join(pkgRoot, 'example')
   const source = fs.readFileSync(path.join(exampleDir, file), 'utf8')
-  const js = ts.transpileModule(source, {
-    compilerOptions: {
-      module: ts.ModuleKind.CommonJS,
-      target: ts.ScriptTarget.ES2020,
-      esModuleInterop: true,
-    },
-  }).outputText
+  const js = transformSync(source, {
+    jsc: { parser: { syntax: 'typescript' }, target: 'es2020' },
+    module: { type: 'commonjs' },
+  }).code
 
   let captured: express.Express | null = null
   const proto = express.application as unknown as { listen: unknown }

@@ -1,0 +1,11 @@
+{
+  // type-checks the tests and the example (ts-jest used to do it as part of `jest`)
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": ".",
+    "declaration": false,
+    "types": ["jest", "node"]
+  },
+  "include": ["src/**/*", "tests/**/*", "example/**/*"]
+}

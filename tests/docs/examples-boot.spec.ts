@@ -1,27 +1,25 @@
 /**
- * Boots `example/*.ts` without a network listener: the file is transpiled with `ts.transpileModule`
+ * Boots `example/*.ts` without a network listener: the file is transpiled with `@swc/core`
  * (no type-check), `express.application.listen` is stubbed to capture the app, and the captured app is
  * driven with supertest. A separate test type-checks the examples with `tsc`.
  */
+
+import { transformSync } from '@swc/core'
 import { spawnSync } from 'child_process'
 import express from 'express'
 import fs from 'fs'
 import path from 'path'
 import request from 'supertest'
-import ts from 'typescript'
 
 const pkgRoot = path.resolve(__dirname, '../..')
 const exampleDir = path.join(pkgRoot, 'example')
 
 const bootExample = (file: string) => {
   const source = fs.readFileSync(path.join(exampleDir, file), 'utf8')
-  const js = ts.transpileModule(source, {
-    compilerOptions: {
-      module: ts.ModuleKind.CommonJS,
-      target: ts.ScriptTarget.ES2020,
-      esModuleInterop: true,
-    },
-  }).outputText
+  const js = transformSync(source, {
+    jsc: { parser: { syntax: 'typescript' }, target: 'es2020' },
+    module: { type: 'commonjs' },
+  }).code
 
   let captured: express.Express | null = null
   const proto = express.application as any
@@ -138,14 +136,15 @@ describe('example/*.ts type-check', () => {
     const result = spawnSync(
       path.join(pkgRoot, 'node_modules/.bin/tsc'),
       [
+        '--ignoreConfig',
         '--noEmit',
         '--strict',
         '--esModuleInterop',
         '--skipLibCheck',
         '--module',
-        'commonjs',
+        'nodenext',
         '--moduleResolution',
-        'node',
+        'nodenext',
         '--target',
         'es2020',
         '--lib',

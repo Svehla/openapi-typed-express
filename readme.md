@@ -440,6 +440,8 @@ Gotchas that are zod semantics, not this library:
 
 ## Limitations & gotchas
 
+Open defects rated low are pinned as `test.failing` cases and listed in [`BACKLOG.md`](./BACKLOG.md).
+
 - **`headers`**: only the declared headers are validated and decoded, the result is merged over `req.headers`, so undeclared headers, `req.get('host')`, `req.is()` etc. keep working.
 - **`apiDoc()` is a route handler, not an app-level middleware**: `app.use(apiDoc(...)(fn))` / `router.use(...)` make `initApiDocs()` throw at init.
 - **`initApiDocs()` touches `RegExp.prototype.exec` for a moment** to recover router mount paths (express 5 keeps them only in a closure); V8 then drops its regexp fast paths process-wide — nil for express throughput, measurable only in regexp-heavy string processing of your own.

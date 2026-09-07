@@ -132,7 +132,7 @@ describe('schema kinds -> emitted OpenAPI schema (request body position)', () =>
     ],
     ['literal multi with null -> enum without type', z.literal(['a', null]), { enum: ['a', null] }],
     ['enum', z.enum(['a', 'b']), { type: 'string', enum: ['a', 'b'] }],
-    ['enum (empty)', z.enum([]), { type: 'string', enum: [] }],
+    ['enum (empty) -> not: {} (zod 4.5; 4.4 emitted an invalid `enum: []`)', z.enum([]), { not: {} }],
     ['nativeEnum (string values)', z.nativeEnum({ A: 'a', B: 'b' }), { type: 'string', enum: ['a', 'b'] }],
     ['nativeEnum (numeric values)', z.nativeEnum({ A: 0, B: 1 }), { type: 'number', enum: [0, 1] }],
 
@@ -154,9 +154,9 @@ describe('schema kinds -> emitted OpenAPI schema (request body position)', () =>
       { type: 'array', items: { anyOf: [{ type: 'string' }, { type: 'number' }] }, minItems: 2, maxItems: 2 },
     ],
     [
-      'tuple with rest -> items anyOf(prefix + rest), minItems only (zod 4.4)',
+      'tuple with rest -> items anyOf(prefix + rest), minItems = fixed elements (zod 4.5; 4.4 said 2)',
       z.tuple([z.string()], z.number()),
-      { type: 'array', items: { anyOf: [{ type: 'string' }, { type: 'number' }] }, minItems: 2 },
+      { type: 'array', items: { anyOf: [{ type: 'string' }, { type: 'number' }] }, minItems: 1 },
     ],
 
     // ----- objects -----
@@ -273,24 +273,14 @@ describe('schema kinds -> emitted OpenAPI schema (request body position)', () =>
       },
     ],
     [
-      'intersection -> allOf',
+      'intersection of objects -> one merged object (zod 4.5; 4.4 emitted allOf)',
       z.intersection(z.object({ a: z.string() }), z.object({ b: z.number() })),
-      {
-        allOf: [
-          { type: 'object', properties: { a: { type: 'string' } }, required: ['a'] },
-          { type: 'object', properties: { b: { type: 'number' } }, required: ['b'] },
-        ],
-      },
+      { type: 'object', properties: { a: { type: 'string' }, b: { type: 'number' } }, required: ['a', 'b'] },
     ],
     [
       'object().and()',
       z.object({ a: z.string() }).and(z.object({ b: z.number() })),
-      {
-        allOf: [
-          { type: 'object', properties: { a: { type: 'string' } }, required: ['a'] },
-          { type: 'object', properties: { b: { type: 'number' } }, required: ['b'] },
-        ],
-      },
+      { type: 'object', properties: { a: { type: 'string' }, b: { type: 'number' } }, required: ['a', 'b'] },
     ],
 
     // ----- wrappers -----

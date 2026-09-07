@@ -243,7 +243,8 @@ const namedSchemasOf = (converted: any, rootId: string | undefined) => {
   const named: Record<string, any> = Object.create(null)
   const { definitions, ...rest } = converted
   if (isObject(definitions)) for (const id of Object.keys(definitions)) named[id] = definitions[id]
-  if (rootId !== undefined) named[rootId] = rest
+  // zod 4.5 already moves a root `.meta({ id })` schema into `definitions` (the root is a plain `$ref` to it)
+  if (rootId !== undefined && named[rootId] === undefined) named[rootId] = rest
   return { named, rest }
 }
 
@@ -299,9 +300,6 @@ const hoistDefinitions = (
   if (!isObject(converted.definitions) && rootId === undefined && !containsRef(converted, ROOT_REF))
     return converted
   const { named, rest } = namedSchemasOf(converted, rootId)
-  // a root that zod already turned into a plain reference (its id lives in `definitions`) is not registered twice
-  if (rootId !== undefined && typeof rest.$ref === 'string' && Object.keys(rest).length === 1)
-    delete named[rootId]
   const rootIsRecursive =
     Object.values(named).some(s => containsRef(s, ROOT_REF)) || containsRef(rest, ROOT_REF)
   const rootIsHoisted = rootId !== undefined && named[rootId] !== undefined
@@ -323,7 +321,9 @@ const hoistDefinitions = (
     }
     const map: Record<string, string> = Object.create(null)
     for (const id of Object.keys(named)) {
-      map[id === rootId ? ROOT_REF : `${DEFINITION_PREFIX}${id}`] = `${COMPONENT_PREFIX}${nameOf(id)}`
+      map[`${DEFINITION_PREFIX}${id}`] = `${COMPONENT_PREFIX}${nameOf(id)}`
+      // the root is referenced as `#` (zod 4.4, a recursive root) or as `#/definitions/<id>` (zod 4.5)
+      if (id === rootId) map[ROOT_REF] = `${COMPONENT_PREFIX}${nameOf(id)}`
     }
     if (rootIsRecursive && !rootIsHoisted) {
       anonymous.add(baseName)
@@ -351,7 +351,11 @@ const componentBaseName = (label: string, position: string) =>
 
 // zod's own notion of "may be absent" (`.optional()`, `.default()`, `.optional().nullable()`, lazies...),
 // the same flag `z.object` uses for its `required` list; looking only at the outermost wrapper missed most of them
-const isRequired = (schema: z.ZodTypeAny) => (schema as any)._zod?.optin !== 'optional'
+// zod 4.5 reports `.default()` / `.prefault()` as `'defaulted'` (4.4 said `'optional'`); both accept an absent key
+const isRequired = (schema: z.ZodTypeAny) => {
+  const optin = (schema as any)._zod?.optin
+  return optin !== 'optional' && optin !== 'defaulted'
+}
 
 export const generateOpenAPIPath = (
   schemas: GenerateOpenAPIPathArg,

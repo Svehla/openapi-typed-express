@@ -168,7 +168,6 @@ describe('OpenAPI 3.0 dialect — guaranteed today', () => {
       [
         '$ref',
         'additionalProperties',
-        'allOf',
         'anyOf',
         'default',
         'deprecated',

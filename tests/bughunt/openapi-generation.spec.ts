@@ -91,6 +91,7 @@ describe('nullable: true + enum without null does not admit null in OpenAPI 3.0'
   })
 })
 
+// fixed upstream by zod 4.5 (was a `test.failing` against zod 4.4)
 describe('`default` must conform to the wire type (OAS 3.0: "the value MUST conform to the defined type")', () => {
   // Emitted now:  zCast.number.catch(5)  -> { type: 'string', default: 5 }
   //               zCast.boolean.catch(true) -> { type: 'string', enum: ['true', 'false'], default: true }
@@ -98,7 +99,7 @@ describe('`default` must conform to the wire type (OAS 3.0: "the value MUST conf
   // Contradicts:  OAS 3.0.3 Schema Object `default`: "Unlike JSON Schema, the value MUST conform to the defined type
   //               for the Schema Object defined at the same level". Readme: "codecs and transforms are documented by
   //               their wire (input) side"; the catch value is the DECODED value.
-  test.failing('.catch(decoded) on a codec documents the encoded value (or nothing), never the decoded one', () => {
+  test('.catch(decoded) on a codec documents the encoded value (or nothing), never the decoded one', () => {
     const num = docOf(zCast.number.catch(5))
     expect(num.type).toBe('string')
     expect([undefined, '5']).toContain(num.default)
@@ -109,11 +110,12 @@ describe('`default` must conform to the wire type (OAS 3.0: "the value MUST conf
   })
 })
 
+// fixed upstream by zod 4.5 (was a `test.failing` against zod 4.4)
 describe('tuple with a rest element', () => {
   // Emitted now:  z.tuple([z.string()], z.number()) -> { type: 'array', items: { anyOf: [...] }, minItems: 2 }
   // Should be:    minItems: 1 — the rest element may be absent (runtime accepts ['a'])
   // Contradicts:  the document must describe what the runtime accepts; `minItems: 2` rejects a valid request body
-  test.failing('minItems equals the number of fixed elements (the rest may be empty)', () => {
+  test('minItems equals the number of fixed elements (the rest may be empty)', () => {
     const schema = z.tuple([z.string()], z.number())
     expect(schema.safeParse(['a']).success).toBe(true)
     expect(docOf(schema).minItems).toBe(1)
@@ -151,12 +153,13 @@ describe('readOnly in a request body', () => {
   })
 })
 
+// fixed upstream by zod 4.5 (was a `test.failing` against zod 4.4)
 describe('empty enum', () => {
   // Emitted now:  z.enum([]) -> { type: 'string', enum: [] }
   // Should be:    a valid "nothing matches" schema, e.g. { not: {} } (what z.never() emits)
   // Contradicts:  OAS 3.0 / JSON Schema draft-4 meta-schema: `enum` "MUST have at least one element"
   //               (swagger-parser: "enum must NOT have fewer than 1 items")
-  test.failing('z.enum([]) does not emit `enum: []`', () => {
+  test('z.enum([]) does not emit `enum: []`', () => {
     expect(docOf(z.enum([]))).not.toMatchObject({ enum: [] })
   })
 })
