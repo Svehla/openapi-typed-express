@@ -18,6 +18,8 @@ Fixes from a nine-part review of `src/` (see `tests/bughunt/*.spec.ts`; every en
   as a `$ref` into `definitions` (handled: hoisted like before). zod's own JSON schema now lists a `.catch()` key as
   required; the library keeps documenting what the runtime accepts (`required: false`).
 - The consumer type-check fixtures and the example type-check run `tsc --ignoreConfig` with `nodenext` resolution.
+- `openapi-typescript` (peer `typescript@^5`, uses the JS compiler API) is no longer a devDependency: `npm run
+  ts:generate-api` runs it through `npx` with its own TypeScript 5, so `npm ci` resolves next to TypeScript 7.
 
 ### Fixed — runtime validation and error reporting
 - `normalizeZodError()` never throws: symbol / missing issue-path segments are stringified and a failure inside it

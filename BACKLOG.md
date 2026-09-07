@@ -78,8 +78,8 @@ grep -rn 'test\.failing' tests            # the live list
 - readme: the migration table presents `T.extra.toListIfNot` → `zToArrayIfNot` and `T.extra.ISOString` →
   `z.iso.datetime()` as equivalents although the old ones were stricter (required field; millisecond `Z` form).
 - readme perf numbers ("7× a plain `JSON.stringify`, ~17 ms for 20 000 items") measured 2.3× / 59 ms here.
-- `npm_scripts/generate-ts-types.ts` needs the example server on `:5656` and dies with an unhandled `fetch`
-  rejection otherwise; undocumented.
+- `npm_scripts/generate-ts-types.ts` needs the example server on `:5656` (`npm run dev`) and network access for
+  `npx` (openapi-typescript + its own TypeScript 5); undocumented in the readme.
 - `package-lock.json` is stale relative to `package.json` (root version, engines); a deliberate `npm install`
   resync commit would clean it up.
 
