@@ -113,12 +113,8 @@ describe('containers keep their structure around the `{}` node', () => {
     [
       'intersection side',
       z.intersection(z.object({ a: z.string() }), z.object({ d })),
-      {
-        allOf: [
-          { type: 'object', properties: { a: { type: 'string' } }, required: ['a'] },
-          { type: 'object', properties: { d: {} }, required: ['d'] },
-        ],
-      },
+      // zod 4.5 merges an intersection of two objects into one object schema (4.4 emitted `allOf`)
+      { type: 'object', properties: { a: { type: 'string' }, d: {} }, required: ['a', 'd'] },
     ],
     [
       'deeply nested',

@@ -277,14 +277,15 @@ describe('public type surface as seen by a consumer of dist/index.d.ts', () => {
     spawnSync(
       path.join(pkgRoot, 'node_modules/.bin/tsc'),
       [
+        '--ignoreConfig',
         '--noEmit',
         '--strict',
         '--esModuleInterop',
         '--skipLibCheck',
         '--module',
-        'commonjs',
+        'nodenext',
         '--moduleResolution',
-        'node',
+        'nodenext',
         '--target',
         'es2020',
         '--lib',

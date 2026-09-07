@@ -5,7 +5,33 @@
 Fixes from a nine-part review of `src/` (see `tests/bughunt/*.spec.ts`; every entry below flips a former
 `test.failing` case). Findings rated low stay pinned as `test.failing` there and are listed under Known limitations.
 
+### Changed — toolchain and dependencies (all latest)
+- TypeScript 7.0 (the native compiler). It ships no JavaScript compiler API, so `ts-jest` and `tsd`'s
+  `@tsd/typescript` cannot use it: tests are transpiled by `@swc/jest` and type-checked by
+  `npm run ts:check-tests` (`tsc -p tsconfig.tests.json`), which `npm test` runs before jest — the type-level
+  suites (`tests/types/*.test-d.spec.ts`, every `@ts-expect-error`) keep their guarantees. `tsconfig.json` moved
+  from the removed `moduleResolution: node10` to `module` / `moduleResolution: nodenext` (still CommonJS output).
+- zod 4.5, jest 30.5, biome 2.5.12, `@types/node` 26, tsx 4.23.13. zod 4.5 changes the JSON-schema output the
+  document is derived from: an intersection of two objects is one merged object (was `allOf`), a tuple with a rest
+  element has `minItems` = number of fixed elements, `z.enum([])` is `{ not: {} }`, `.default()` reports
+  `optin: 'defaulted'` (handled: such a parameter stays `required: false`), a root `.meta({ id })` schema is emitted
+  as a `$ref` into `definitions` (handled: hoisted like before). zod's own JSON schema now lists a `.catch()` key as
+  required; the library keeps documenting what the runtime accepts (`required: false`).
+- The consumer type-check fixtures and the example type-check run `tsc --ignoreConfig` with `nodenext` resolution.
+- `openapi-typescript` (peer `typescript@^5`, uses the JS compiler API) is no longer a devDependency: `npm run
+  ts:generate-api` runs it through `npx` with its own TypeScript 5, so `npm ci` resolves next to TypeScript 7.
+
+### Added — the document is validated as OpenAPI 3.0, not only pinned
+- `tests/openapi/oas-validity.spec.ts`: a kitchen-sink app (every schema kind in every position, routers, named /
+  recursive / colliding schemas) is validated by swagger-parser against the official OAS 3.0 JSON schema with every
+  `$ref` resolved; the wire samples zod decodes are accepted by the emitted schemas (ajv, draft-04 + `nullable`) and
+  values zod rejects are rejected by them. The shipped examples' `/api-docs` go through the same validator.
+- `npm run check:oas-consumer` feeds the kitchen-sink document to openapi-typescript 7 and type-checks its output
+  (needs network for `npx`, so it is not part of `npm test`).
+
 ### Fixed — runtime validation and error reporting
+- An object key with `.catch()` is documented as not required (zod 4.5 lists it as required in its own JSON schema
+  although an absent key is accepted): object `required` lists follow the same rule as query / header parameters.
 - `normalizeZodError()` never throws: symbol / missing issue-path segments are stringified and a failure inside it
   degrades to `Unknown error` instead of escaping as an express 500 HTML page with absolute source paths.
 - Validation errors of a `z.union` include the per-variant reasons (zod 4 `invalid_union` sub-issues) under the
@@ -67,9 +93,8 @@ Fixes from a nine-part review of `src/` (see `tests/bughunt/*.spec.ts`; every en
   have no encoder); the export list is complete; `z.coerce.*` is documented as its decoded type.
 
 ### Known limitations (rated low, pinned as `test.failing` in `tests/bughunt/`)
-- OpenAPI: `.catch(decoded)` on a codec emits the decoded value as `default`; tuple-with-rest `minItems` is off by
-  one; regex flags are dropped from `pattern`; `.readonly()` marks a required request property `readOnly`;
-  `z.enum([])` emits `enum: []`.
+- OpenAPI: regex flags are dropped from `pattern`; `.readonly()` marks a required request property `readOnly`.
+  (`.catch()` default, tuple `minItems` and `z.enum([])` were fixed upstream by zod 4.5.)
 - Routes: a router mounted on `[RegExp, '/b']` is dropped instead of documented under the string prefix; a router
   mounted on an array of paths is documented only under the first; a sub-app mounted via `router.use()` is skipped
   without a warning.

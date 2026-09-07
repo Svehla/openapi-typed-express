@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.5.10/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.5.12/schema.json",
 
   "formatter": {
     "indentStyle": "space",
@@ -76,6 +76,12 @@
     }
   },
   "files": {
-    "includes": ["**", "!**/build", "!**/dist", "!deprecated_tSchemaVersion"]
+    "includes": [
+      "**",
+      "!**/build",
+      "!**/dist",
+      "!deprecated_tSchemaVersion",
+      "!example/__generated-api__"
+    ]
   }
 }

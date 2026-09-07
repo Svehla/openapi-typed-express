@@ -4,7 +4,7 @@ import { apiDoc } from '../../src'
 import type { ChainedResponse, TypedResponse } from '../../src/typedExpressDocs'
 
 /**
- * Same mechanism as handlers.infer.test-d.spec.ts: ts-jest type-checks this file, `expectType` from tsd
+ * Same mechanism as handlers.infer.test-d.spec.ts: `npm run ts:check-tests` (tsc) type-checks this file, `expectType` from tsd
  * asserts assignability, `@ts-expect-error` asserts a compile error.
  *
  * `expectType` under plain tsc is only an assignability check (`string` passes `string | undefined`),

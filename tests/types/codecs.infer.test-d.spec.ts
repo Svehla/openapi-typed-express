@@ -2,7 +2,7 @@ import { expectType } from 'tsd'
 import { z } from 'zod'
 import { apiDoc, zToArrayIfNot } from '../../src'
 
-/** same mechanism as res-send.infer.test-d.spec.ts: ts-jest type-checks this file, `@ts-expect-error` asserts a compile error */
+/** same mechanism as res-send.infer.test-d.spec.ts: `npm run ts:check-tests` (tsc) type-checks this file, `@ts-expect-error` asserts a compile error */
 type Equals<A, B> = (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false
 const expectExact = <A, B>(_ok: Equals<A, B>) => {}
 

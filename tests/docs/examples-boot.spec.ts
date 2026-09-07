@@ -1,27 +1,26 @@
 /**
- * Boots `example/*.ts` without a network listener: the file is transpiled with `ts.transpileModule`
+ * Boots `example/*.ts` without a network listener: the file is transpiled with `@swc/core`
  * (no type-check), `express.application.listen` is stubbed to capture the app, and the captured app is
  * driven with supertest. A separate test type-checks the examples with `tsc`.
  */
+
+import SwaggerParser from '@apidevtools/swagger-parser'
+import { transformSync } from '@swc/core'
 import { spawnSync } from 'child_process'
 import express from 'express'
 import fs from 'fs'
 import path from 'path'
 import request from 'supertest'
-import ts from 'typescript'
 
 const pkgRoot = path.resolve(__dirname, '../..')
 const exampleDir = path.join(pkgRoot, 'example')
 
 const bootExample = (file: string) => {
   const source = fs.readFileSync(path.join(exampleDir, file), 'utf8')
-  const js = ts.transpileModule(source, {
-    compilerOptions: {
-      module: ts.ModuleKind.CommonJS,
-      target: ts.ScriptTarget.ES2020,
-      esModuleInterop: true,
-    },
-  }).outputText
+  const js = transformSync(source, {
+    jsc: { parser: { syntax: 'typescript' }, target: 'es2020' },
+    module: { type: 'commonjs' },
+  }).code
 
   let captured: express.Express | null = null
   const proto = express.application as any
@@ -138,14 +137,15 @@ describe('example/*.ts type-check', () => {
     const result = spawnSync(
       path.join(pkgRoot, 'node_modules/.bin/tsc'),
       [
+        '--ignoreConfig',
         '--noEmit',
         '--strict',
         '--esModuleInterop',
         '--skipLibCheck',
         '--module',
-        'commonjs',
+        'nodenext',
         '--moduleResolution',
-        'node',
+        'nodenext',
         '--target',
         'es2020',
         '--lib',
@@ -158,4 +158,17 @@ describe('example/*.ts type-check', () => {
     expect(result.stdout + result.stderr).toBe('')
     expect(result.status).toBe(0)
   }, 60_000)
+})
+
+describe('example/*.ts serve a valid OpenAPI 3.0 document', () => {
+  // the shipped examples are held to the same validation as the kitchen-sink app of tests/openapi/oas-validity.spec.ts
+  test.each(['server.ts', 'express-router-example.ts'])(
+    '%s: /api-docs validates against the official OAS 3.0 schema with every $ref resolved',
+    async file => {
+      const app = bootExample(file)
+      const res = await request(app).get('/api-docs').expect(200)
+      const api: any = await SwaggerParser.validate(structuredClone(res.body))
+      expect(Object.keys(api.paths).length).toBeGreaterThan(0)
+    }
+  )
 })

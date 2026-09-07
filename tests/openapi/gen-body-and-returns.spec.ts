@@ -65,12 +65,8 @@ describe('request body documentation for any zod schema', () => {
     [
       'intersection',
       z.object({ a: z.string() }).and(z.object({ b: z.string() })),
-      {
-        allOf: [
-          { type: 'object', properties: { a: { type: 'string' } }, required: ['a'] },
-          { type: 'object', properties: { b: { type: 'string' } }, required: ['b'] },
-        ],
-      },
+      // zod 4.5 merges an intersection of two objects into one object schema (4.4 emitted `allOf`)
+      { type: 'object', properties: { a: { type: 'string' }, b: { type: 'string' } }, required: ['a', 'b'] },
     ],
     [
       'tuple (single items object since zod 4.4)',

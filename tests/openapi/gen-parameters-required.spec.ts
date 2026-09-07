@@ -3,8 +3,8 @@ import { generateOpenAPIPath } from '../../src/openAPIFromSchema'
 import { emptyArg, headerParamOf, pathParamOf, queryParamOf } from './gen-helpers'
 
 /**
- * `required` for query/header parameters is `schema._zod.optin !== 'optional'` — the same flag zod's
- * own `z.object` uses for its `required` list in input mode, so it sees through nullable / default /
+ * `required` for query/header parameters is `schema._zod.optin` not being 'optional' / 'defaulted' (zod 4.5
+ * reports `.default()` as 'defaulted') — the flag zod's own `z.object` uses for its `required` list in input mode, so it sees through nullable / default /
  * readonly / pipe / lazy / union wrappers. Path parameters are always `required: true` (OpenAPI 3.0 rule).
  */
 
@@ -96,8 +96,11 @@ describe('query / header parameter `required` flag', () => {
     expect(schema.safeParse(undefined).success).toBe(acceptsUndefined)
   })
 
-  test.each(rows)("%s — agrees with zod's own object `required` semantics", (_name, schema, required) => {
-    expect(zodRequired(schema)).toBe(required)
+  test.each(rows)("%s — agrees with zod's own object `required` semantics", (name, schema, required) => {
+    // zod 4.5 lists a `.catch()` key as required in its own JSON schema although an absent key is accepted at
+    // runtime (`optin` is still 'optional'); the library documents what the runtime accepts
+    const zodSays = name.startsWith('.catch()') ? true : required
+    expect(zodRequired(schema)).toBe(zodSays)
   })
 
   // pinned regressions of the pre-1.2 implementation (`def.type !== 'optional'` looked only at the outermost wrapper)
