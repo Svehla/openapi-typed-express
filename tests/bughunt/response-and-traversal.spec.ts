@@ -34,13 +34,11 @@ describe('initApiDocs: router mount paths', () => {
     expect(Object.keys(openapi.paths).sort()).toEqual(['/a/x', '/b/x'])
   })
 
-  // NOW: `app.use('/sub', subApp)` is detected through express' `mounted_app` wrapper and reported with a
-  // console.warn, but `router.use('/sub', subApp)` registers the sub-application function itself as the layer
-  // handle (name `app`, no `stack`), so it is classified as a plain middleware: no warning, the typed routes
-  // inside are neither initialised nor documented and every request to them answers 500.
-  // SHOULD: CHANGELOG 2.0.0 "a mounted sub-application ... [is] reported with a `console.warn`" — the way the
+  // FIXED: a sub-application is recognised structurally (an application function next to the `mounted_app`
+  // wrapper), so `router.use('/sub', subApp)` gets the same boot-time warning as `app.use('/sub', subApp)`.
+  // RULE: CHANGELOG 2.0.0 "a mounted sub-application ... [is] reported with a `console.warn`" — the way the
   // sub-app is mounted must not decide whether the boot-time hint is printed.
-  test.failing('a sub-application mounted through router.use() is reported with the same console.warn as app.use()', async () => {
+  test('a sub-application mounted through router.use() is reported with the same console.warn as app.use()', async () => {
     const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {})
     try {
       const app = express()
@@ -83,25 +81,23 @@ describe('res.tSend: wire format of non-object returns', () => {
     return app
   }
 
-  // NOW: `tSend` hands the encoded value to express' `res.send`, which sends a string as `text/html` verbatim
-  // (a handler echoing user input is a reflected-XSS vector), while the generated document describes the 200
-  // response as `application/json` with `{ type: 'string' }`. Pinned as known behaviour in
-  // tests/runtime/res-transform-send.spec.ts ("string returns is sent by express as text/html").
-  // SHOULD: readme "Generated OpenAPI": "`returns` becomes the `200` response" (documented as
+  // FIXED: `tSend` sends through `res.json`, so a string `returns` is the JSON-encoded string with
+  // `application/json` (express' `res.send(string)` used to send it verbatim as `text/html`, a reflected-XSS
+  // vector for a handler echoing user input).
+  // RULE: readme "Generated OpenAPI": "`returns` becomes the `200` response" (documented as
   // `application/json`) — the wire value of a string `returns` is the JSON-encoded string.
-  test.failing('a string `returns` is sent as JSON (application/json), as the document advertises', async () => {
+  test('a string `returns` is sent as JSON (application/json), as the document advertises', async () => {
     const app = buildApp()
     const res = await withTimeout(request(app).get('/string')).expect(200)
     expect(res.headers['content-type']).toMatch(/^application\/json/)
     expect(res.text).toBe(JSON.stringify('<script>alert(1)</script>'))
   })
 
-  // NOW: express' `res.send(null)` answers an EMPTY body without a content-type, so a JSON client of the
-  // documented `nullable` response fails to parse it. Pinned as known behaviour in
-  // tests/runtime/res-transform-send.spec.ts ("nullable returns with null is a 200 with an EMPTY body").
-  // SHOULD: the document declares a nullable JSON object (`nullable: true`); the wire value of `null` is the JSON
+  // FIXED: `tSend` sends `null` through `res.json` (express' `res.send(null)` used to answer an empty body
+  // without a content-type, which a JSON client of the documented `nullable` response could not parse).
+  // RULE: the document declares a nullable JSON object (`nullable: true`); the wire value of `null` is the JSON
   // literal `null`.
-  test.failing('null through a nullable `returns` is the JSON literal null, not an empty body', async () => {
+  test('null through a nullable `returns` is the JSON literal null, not an empty body', async () => {
     const app = buildApp()
     const res = await withTimeout(request(app).get('/nullable')).expect(200)
     expect(res.headers['content-type']).toMatch(/^application\/json/)

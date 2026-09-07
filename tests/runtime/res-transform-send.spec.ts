@@ -451,11 +451,11 @@ describe('schemas zod cannot represent in JSON Schema (z.date(), z.bigint())', (
 describe('res.tSend – scalar / null / undefined returns', () => {
   const app = buildApp()
 
-  test('string returns is sent by express as text/html, not as a JSON string', async () => {
+  test('string returns is sent as a JSON string (application/json, as the document advertises)', async () => {
     const res = await withTimeout(request(app).get('/scalar-string')).expect(200)
-    expect(res.text).toBe('hello')
-    // pinned: the OpenAPI document advertises application/json, express `res.send(string)` does not
-    expect(res.headers['content-type']).toMatch(/^text\/html/)
+    expect(res.headers['content-type']).toMatch(/^application\/json/)
+    expect(res.text).toBe('"hello"')
+    expect(res.body).toBe('hello')
   })
 
   test('number returns is JSON', async () => {
@@ -470,21 +470,20 @@ describe('res.tSend – scalar / null / undefined returns', () => {
     expect(res.body).toBe(false)
   })
 
-  test('top-level codec returns encodes to a bare string (sent as text/html)', async () => {
+  test('top-level codec returns encodes to a JSON string', async () => {
     const res = await withTimeout(request(app).get('/scalar-date-codec')).expect(200)
-    expect(res.text).toBe(EPOCH_ISO)
-    expect(res.headers['content-type']).toMatch(/^text\/html/)
+    expect(res.headers['content-type']).toMatch(/^application\/json/)
+    expect(res.body).toBe(EPOCH_ISO)
   })
 
   test('nullable returns with a value', async () => {
     await withTimeout(request(app).get('/nullable-value')).expect(200, { id: 'a' })
   })
 
-  test('nullable returns with null is a 200 with an EMPTY body (not the JSON literal null)', async () => {
+  test('nullable returns with null is a 200 with the JSON literal null', async () => {
     const res = await withTimeout(request(app).get('/nullable-null')).expect(200)
-    // pinned: express `res.send(null)` sends '' with no content-type; a JSON client cannot parse this
-    expect(res.text).toBe('')
-    expect(res.headers['content-type']).toBeUndefined()
+    expect(res.headers['content-type']).toMatch(/^application\/json/)
+    expect(res.text).toBe('null')
   })
 
   test('optional returns with undefined is a 200 with an empty body', async () => {
