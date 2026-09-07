@@ -91,7 +91,7 @@ describe('zCast / zNull (parity with T.cast.* / T.null_x of swagger-typed-expres
         in: 'query',
         name: 'nb',
         required: false,
-        schema: { type: 'string', enum: ['true', 'false'], nullable: true },
+        schema: { type: 'string', enum: ['true', 'false', null], nullable: true },
       },
     ])
     const returns = openapi.paths['/q'].get.responses[200].content['application/json'].schema

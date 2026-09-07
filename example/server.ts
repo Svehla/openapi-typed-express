@@ -44,8 +44,9 @@ app.get(
     query: {
       dates: zToArrayIfNot(zDateISO),
     },
+    // `dates` is optional, so the list may be empty -> the encoded key is optional as well
     returns: z.object({
-      name: zDateISO,
+      name: zDateISO.optional(),
     }),
   })((req, res) => {
     const dates = req.query.dates

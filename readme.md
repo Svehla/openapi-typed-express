@@ -26,7 +26,7 @@ Every code block in this readme is executed by `tests/docs/readme-examples.spec.
 npm install openapi-zod-typed-express zod express
 ```
 
-`express` (`>=5 <6`) and `zod` (`^4.4`) are peer dependencies; node `>=20`. zod 4.4 is the floor because the runtime object-key semantics (a missing key needs `.optional()`) and the documented schema shapes are those of 4.4. TypeScript users also need `@types/express` (v5).
+`express` (`>=5 <6`) and `zod` (`^4.4.3`) are peer dependencies; node `>=20`. zod 4.4.3 is the floor because the runtime object-key semantics (a missing key needs `.optional()`, and `.catch()` / `z.preprocess()` count as optional only since 4.4.3) and the documented schema shapes are those of 4.4.3. TypeScript users also need `@types/express` (v5).
 
 ## Example usage
 
@@ -96,7 +96,7 @@ POST /users/abc             { "name": "Ada" }
 
 ## Package API
 
-The library exposes `apiDoc`, `initApiDocs`, `getApiDocInstance`, `normalizeZodError`, the mocking pair `mock_apiDoc` / `getMock_apiDocInstance`, and the schema helpers `zCast` and `zNull`.
+The library exposes `apiDoc`, `initApiDocs`, `getApiDocInstance`, `normalizeZodError`, the mocking pair `mock_apiDoc` / `getMock_apiDocInstance`, and the schema helpers `zCast`, `zNull`, `zToArrayIfNot` and `zMockValue`.
 
 ### initApiDocs(app, openApiMetadata?)
 
@@ -255,7 +255,7 @@ app.use(express.json())
 
 ### Path & query values are strings
 
-Express hands over `req.params` and `req.query` as strings (`?a=1&a=2` becomes `['1', '2']`). Use `z.coerce.number()` or a codec to get typed values, and remember that the OpenAPI document describes the wire type (`string`).
+Express hands over `req.params` and `req.query` as strings (`?a=1&a=2` becomes `['1', '2']`). Use a codec (or `zCast.*`) to get typed values while the document keeps the wire type (`string`); `z.coerce.number()` decodes the same way but is documented as `type: number`, which is not what actually travels over the wire.
 
 ## res.tSend() vs res.send()
 
@@ -406,11 +406,11 @@ GET /ids               200 { "ids": [] }
 - codecs and transforms are documented by their wire (input) side
 - `params`, `query` and `headers` become `parameters`. A query / header parameter is `required: false` whenever zod accepts an absent value (`.optional()`, `.default()`, `.optional().nullable()`, ...); path parameters are always `required: true`. A `{param}` of the route path that is not declared in `params` is documented as a required `string` (OpenAPI requires every path parameter to be declared)
 - `body` becomes `requestBody` (`application/json`), `returns` becomes the `200` response
-- `:param` path segments become `{param}`; a typed route registered on an array of paths is documented once per string path, RegExp paths are validated at runtime but not documented
+- `:param` path segments become `{param}` (path-to-regexp v8 names, so unicode and `$`-prefixed names work; a colon escaped as `\:` stays literal); a trailing slash is dropped unless the app or router uses `strict routing`, where express serves only the slashed form; a typed route registered on an array of paths is documented once per string path, RegExp paths are validated at runtime but not documented
 - `app.all()` / `router.all()` document the eight OpenAPI operations (`get`, `put`, `post`, `delete`, `options`, `head`, `patch`, `trace`)
 - zod types without a JSON-schema representation (`z.date()`, `z.bigint()`, `z.map()`, `z.custom()`, ...) are documented as `{}` and reported with a `console.warn` at `initApiDocs()`; a bare `z.date()` inside `returns` is documented as the ISO `string` it becomes on the wire. Use a codec such as `zCast.date` to get a typed `Date` on both sides
-- recursive schemas and `.meta({ id })` schemas are hoisted into `components.schemas` and referenced as `#/components/schemas/<id>` (anonymous recursive schemas are named after the route, e.g. `POST_tree_body`); everything else is inlined. `components` passed to `initApiDocs()` are merged in
-- non-3.0 keywords zod emits are rewritten: `examples` → `example`, `contentEncoding` dropped, `z.literal(null)` → `nullable`, a `required` key without a property is materialised
+- recursive schemas and `.meta({ id })` schemas are hoisted into `components.schemas` and referenced as `#/components/schemas/<id>` (anonymous recursive schemas are named after the route, e.g. `POST_tree_body`, with a `_2` counter when two routes sanitise to the same name; a schema whose response conversion differs from its request one, e.g. one containing `z.date()`, is registered a second time as `<id>_response`); everything else is inlined. `components` passed to `initApiDocs()` are merged in
+- non-3.0 keywords zod emits are rewritten: `examples` → `example`, `contentEncoding` dropped, `z.literal(null)` → `nullable`, a `required` key without a property is materialised; `nullable` is made effective (a nullable `enum` lists `null`, a nullable union gets a `{ type: 'string', nullable: true, enum: [null] }` branch)
 
 ## Migrating from `swagger-typed-express-docs`
 
@@ -445,10 +445,11 @@ Gotchas that are zod semantics, not this library:
 - **`initApiDocs()` touches `RegExp.prototype.exec` for a moment** to recover router mount paths (express 5 keeps them only in a closure); V8 then drops its regexp fast paths process-wide — nil for express throughput, measurable only in regexp-heavy string processing of your own.
 - **mounted sub-apps are skipped**: `app.use('/sub', subApp)` is not walked (`initApiDocs(app)` warns about it), call `initApiDocs(subApp)` separately.
 - **two typed handlers on one route must declare different request sections**: `initApiDocs()` throws when they overlap (the second one would receive the already decoded value); with different sections (`headers` in the first, `query`/`body` in the second) chaining works. Two `returns` are a warning, the last one is documented.
-- **`returns` must be encodable**: `.default()`, `.catch()`, `z.preprocess()` and a bare `.transform()` have no encoder, `res.tSend()` answers 500 for them; keep them on the request side.
+- **`returns` must be encodable**: `z.preprocess()` and a bare `.transform()` have no encoder, `res.tSend()` answers 500 for them; keep them on the request side.
+- **defaults and fallbacks in `returns` are fine**: zod encodes through them (their inner schema does the encoding), so `res.tSend()` answers 200; the fallback only applies while decoding, never on the way out.
 - **duplicate registrations**: if the same path & method is registered twice, Express serves the first handler but the document describes the last one.
 - **`z.object()` strips unknown keys** in `params`, `query`, `body` and `headers` (zod default), which also protects handlers from unexpected input.
-- **path syntaxes**: `:param` paths and routers mounted with a plain prefix are fully supported. Wildcard / optional segments (`/files/*splat`, `/opt{/:id}`) are emitted verbatim (not valid OpenAPI path templates) and a param in a router mount path (`app.use('/p/:pid', router)`) is documented as its compiled capture group (`/p/([^/]+)/...`).
+- **path syntaxes**: `:param` paths and routers mounted with a plain prefix are fully supported. Wildcard / optional segments in a route path (`/files/*splat`, `/opt{/:id}`) are emitted verbatim (not valid OpenAPI path templates); in a router mount path (`app.use('/opt{/:id}', router)`) the subtree is skipped with a `console.warn`. A param in a router mount path (`app.use('/p/:pid', router)`) is documented as its compiled capture group (`/p/([^/]+)/...`).
 
 ```typescript
 app.get(

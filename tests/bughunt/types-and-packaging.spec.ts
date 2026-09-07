@@ -23,41 +23,49 @@ const pkgRoot = path.resolve(__dirname, '../..')
 const pkg = JSON.parse(fs.readFileSync(path.join(pkgRoot, 'package.json'), 'utf8'))
 
 // --------------------------------------------------------------------------------------------------------------
-// BUG 1 (medium) — src/typedExpressDocs.ts `OpenAPIShape` (the 2nd parameter of `initApiDocs`)
+// BUG 1 (medium) — src/typedExpressDocs.ts `OpenAPIShape` (the 2nd parameter of `initApiDocs`) — FIXED
 //
-// NOW: the parameter is a hand-written DeepPartial of { openapi: '3.0.0', info: { description, version, title,
+// WAS: the parameter was a hand-written DeepPartial of { openapi: '3.0.0', info: { description, version, title,
 //      termsOfService, contact: { email } }, servers: { url }[], paths, components }. Every other field of an
-//      OpenAPI 3.0 document is an excess-property compile error: `servers[].description`, `tags`, `security`,
+//      OpenAPI 3.0 document was an excess-property compile error: `servers[].description`, `tags`, `security`,
 //      `externalDocs`, `info.license`, `info.contact.name` / `.url`, any `x-…` extension, and `openapi: '3.0.3'`.
-// SHOULD: compile. The runtime deep-merges every key unchanged (src/utils.ts deepMerge, tests/utils.spec.ts) and
-//      the RETURNED `OpenAPIDocument` type already declares `info` / `servers` / the root with `[key: string]: any`,
-//      so the input type is narrower than both the runtime and the output type.
+// NOW: the parameter is `OpenAPIMetadata`: the OpenAPI 3.0 root / Info / Server / Contact / License / Tag fields
+//      plus index signatures for `x-…` extensions, i.e. what the runtime deep-merges (src/utils.ts deepMerge) and
+//      what the RETURNED `OpenAPIDocument` already declares.
 // readme "### initApiDocs(app, openApiMetadata?)": "The optional second argument is deep-merged into the generated
 //      document (`info`, `servers`, ...)" and "`components` you pass (e.g. `securitySchemes`) are merged".
 // --------------------------------------------------------------------------------------------------------------
-describe('initApiDocs(app, custom): the input type rejects standard OpenAPI 3.0 fields the runtime merges', () => {
+describe('initApiDocs(app, custom): the input type accepts the standard OpenAPI 3.0 fields the runtime merges', () => {
   const app = express()
 
-  test('BUG: standard Server / Info / root fields do not compile', () => {
-    // @ts-expect-error BUG: OpenAPI 3.0 Server Object has `description` (and `variables`); the type only knows `url`
-    initApiDocs(app, { servers: [{ url: 'http://x/', description: 'production' }] })
-    // @ts-expect-error BUG: `tags` is a root-level OpenAPI field
-    initApiDocs(app, { tags: [{ name: 'users' }] })
-    // @ts-expect-error BUG: `security` (used together with the documented `components.securitySchemes`) is a root field
+  test('standard Server / Info / root fields compile', () => {
+    // OpenAPI 3.0 Server Object has `description` (and `variables`)
+    initApiDocs(app, {
+      servers: [{ url: 'http://x/', description: 'production', variables: { v: { default: '1' } } }],
+    })
+    // `tags` is a root-level OpenAPI field
+    initApiDocs(app, { tags: [{ name: 'users', description: 'user management' }] })
+    // `security` (used together with the documented `components.securitySchemes`) is a root field
     initApiDocs(app, { security: [{ bearer: [] }] })
-    // @ts-expect-error BUG: `externalDocs` is a root-level OpenAPI field
+    // `externalDocs` is a root-level OpenAPI field
     initApiDocs(app, { externalDocs: { url: 'http://x/docs' } })
-    // @ts-expect-error BUG: Info Object has `license`
+    // Info Object has `license`
     initApiDocs(app, { info: { title: 't', license: { name: 'MIT' } } })
-    // @ts-expect-error BUG: Contact Object has `name` and `url`, not only `email`
-    initApiDocs(app, { info: { contact: { name: 'ops', url: 'http://x/' } } })
-    // @ts-expect-error BUG: `x-…` specification extensions are valid everywhere (Swagger UI / Redoc read `x-logo`)
-    initApiDocs(app, { info: { 'x-logo': { url: 'http://x/logo.png' } } })
-    // @ts-expect-error BUG: every 3.0.x patch version is a valid 3.0 document (3.0.3 is what most tooling emits)
+    // Contact Object has `name` and `url`, not only `email`
+    initApiDocs(app, { info: { contact: { name: 'ops', url: 'http://x/', email: 'ops@x' } } })
+    // `x-…` specification extensions are valid everywhere (Swagger UI / Redoc read `x-logo`)
+    initApiDocs(app, { info: { 'x-logo': { url: 'http://x/logo.png' } }, 'x-root': 1 })
+    // every 3.0.x patch version is a valid 3.0 document (3.0.3 is what most tooling emits)
     initApiDocs(app, { openapi: '3.0.3' })
+    // the documented shapes still compile
+    initApiDocs(app, {
+      info: { title: 'my application' },
+      components: { securitySchemes: { bearer: { type: 'http' } } },
+    })
+    initApiDocs(app, { info: undefined, paths: undefined })
   })
 
-  test('the runtime merges all of them (the type is what is wrong)', () => {
+  test('the runtime merges all of them', () => {
     const custom = {
       openapi: '3.0.3',
       servers: [{ url: 'http://x/', description: 'production' }],
@@ -71,14 +79,15 @@ describe('initApiDocs(app, custom): the input type rejects standard OpenAPI 3.0 
         'x-logo': { url: 'l' },
       },
     }
-    const doc = initApiDocs(app, custom as any)
+    // no `as any` needed any more: `custom` is a plain `OpenAPIMetadata`
+    const doc = initApiDocs(app, custom)
     expect(doc.openapi).toBe('3.0.3')
     expect(doc.servers).toEqual([{ url: 'http://x/', description: 'production' }])
     expect(doc.tags).toEqual([{ name: 'users' }])
     expect(doc.security).toEqual([{ bearer: [] }])
     expect(doc.externalDocs).toEqual({ url: 'http://x/docs' })
     expect(doc.info).toEqual({ version: '1.0.0', ...custom.info })
-    // the OUTPUT type already allows what the INPUT type rejects
+    // the OUTPUT type allows the same fields
     const description: any = doc.servers[0].description
     const license: any = doc.info.license
     void [description, license]
@@ -87,28 +96,28 @@ describe('initApiDocs(app, custom): the input type rejects standard OpenAPI 3.0 
 
 // --------------------------------------------------------------------------------------------------------------
 // BUG 2 (medium) — src/typedExpressDocs.ts `ParamsType` / `QueryType` (`Record<string, never>` when the section
-// is not declared)
+// is not declared) — FIXED
 //
-// NOW: on `app.get('/users/:id', apiDoc({ body }))` the type of `req.params` is `Record<string, never>`, so
-//      `req.params.id` is `never`: `const n: number = req.params.id` COMPILES (never is assignable to anything),
-//      while `req.params.id.trim()` is a compile error. Same for `req.query.page` without a `query` schema.
+// WAS: on `app.get('/users/:id', apiDoc({ body }))` the type of `req.params` was `Record<string, never>`, so
+//      `req.params.id` was `never`: `const n: number = req.params.id` COMPILED (never is assignable to anything),
+//      while `req.params.id.trim()` was a compile error. Same for `req.query.page` without a `query` schema.
 // RUNTIME: the section is "neither validated nor touched" (readme, CHANGELOG), so `req.params.id === '12'` and
-//      `req.query.page === '3'` — express' plain strings. The type contradicts the runtime value in the unsafe
-//      direction (wrong code compiles).
-// SHOULD: an undeclared section keeps express' own type (`ParamsDictionary` / `ParsedQs`, i.e. "untyped" as the
-//      CHANGELOG puts it: "A route may leave `params` undeclared (it is then untyped)"), or at least a type whose
-//      values are `string`, never `never`.
+//      `req.query.page === '3'` — express' plain strings. The type contradicted the runtime value in the unsafe
+//      direction (wrong code compiled).
+// NOW: an undeclared section keeps express' own type (`ParamsDictionary` / `ParsedQs`, i.e. "untyped" as the
+//      CHANGELOG puts it: "A route may leave `params` undeclared (it is then untyped)").
 // readme "### apiDoc(config)(handler)": "Every key is optional, an omitted key is neither validated nor documented";
 //      "### Path & query values are strings": "Express hands over `req.params` and `req.query` as strings".
 // --------------------------------------------------------------------------------------------------------------
-describe('undeclared params / query: the runtime value is a string, the type says the key cannot exist', () => {
+describe('undeclared params / query: the runtime value is a string and so is the type', () => {
   const app = express()
   app.get(
     '/users/:id',
     apiDoc({ query: { q: z.string().optional() } })((req, res) => {
-      // BUG: `never` — once this is fixed to express' `ParamsDictionary` (string) the exact assertion flips
-      expectExact<typeof req.params.id, never>(true)
-      // BUG: wrong code compiles: a `never` is assignable to `number` although the runtime value is the string '12'
+      // express' `ParamsDictionary`: every key is a `string`
+      expectExact<typeof req.params, express.Request['params']>(true)
+      expectExact<typeof req.params.id, string>(true)
+      // @ts-expect-error a string is not a number (this used to compile when the key was `never`)
       const asNumber: number = req.params.id
       void asNumber
       res.send({ params: req.params, typeofId: typeof req.params.id })
@@ -117,8 +126,10 @@ describe('undeclared params / query: the runtime value is a string, the type say
   app.get(
     '/search/:id',
     apiDoc({ params: { id: z.string() } })((req, res) => {
-      // BUG: same for an undeclared query: runtime `req.query.page === '3'`, type `never`
-      expectExact<typeof req.query.page, never>(true)
+      // express' `ParsedQs`: `string | string[] | ParsedQs | ParsedQs[] | undefined` (`?a=1&a=2` is `['1', '2']`)
+      expectExact<typeof req.query, express.Request['query']>(true)
+      expectExact<typeof req.query.page, express.Request['query'][string]>(true)
+      // @ts-expect-error a query value is not a boolean (this used to compile when the key was `never`)
       const asBoolean: boolean = req.query.page
       void asBoolean
       res.send({ query: req.query, typeofPage: typeof req.query.page })
@@ -219,6 +230,7 @@ describe('typed request with a headers schema loses its type behind a `this`-ret
 //      library derives both the object-key acceptance and the OpenAPI `required` flag from `optin`.
 // SHOULD: the peer floor is the version the code was written against (`^4.4.3`), or the code implements the
 //      `.catch()` / `.preprocess()` optionality itself so that the floor really is 4.4.0.
+// FIXED: `peerDependencies.zod` is `^4.4.3` (readme "## Installation" and tests/packaging/dist-smoke.spec.ts follow).
 // readme "## Installation": "zod 4.4 is the floor because the runtime object-key semantics (a missing key needs
 //      `.optional()`) and the documented schema shapes are those of 4.4" — they are those of 4.4.3.
 // CHANGELOG 2.0.0: "Tests re-pinned to the zod 4.4 output", "`.catch()` (optin optional since zod 4.4)".
@@ -236,7 +248,7 @@ describe('peerDependencies.zod', () => {
     return true
   }
 
-  test.failing('the declared floor is the zod version whose `.catch()` / `.preprocess()` optionality the suite pins (4.4.3)', () => {
+  test('the declared floor is the zod version whose `.catch()` / `.preprocess()` optionality the suite pins (4.4.3)', () => {
     const floor = floorOf(pkg.peerDependencies.zod)
     expect(atLeast(floor, [4, 4, 3])).toBe(true)
   })

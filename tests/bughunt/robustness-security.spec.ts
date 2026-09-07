@@ -13,13 +13,12 @@ import { apiDoc, initApiDocs } from '../../src'
 // -------------------------------------------------------------------------------------------------
 // 1. a `.meta({ id })` whose id is an Object.prototype key is silently dropped from components.schemas
 //
-// NOW:    `registerComponent()` (src/openAPIFromSchema.ts:167) reads `components[name]`, which walks the
-//         PROTOTYPE CHAIN of the plain `{}` registry. For `constructor` / `toString` / `valueOf` /
-//         `hasOwnProperty` that read returns the inherited member, so `existing !== undefined` is true, the
-//         function warns "two different schemas are registered as components.schemas.<id>, the first one is
-//         kept" (nothing was registered) and RETURNS WITHOUT REGISTERING. The emitted document keeps
-//         `$ref: '#/components/schemas/constructor'` while `components.schemas` stays `{}` — a dangling
-//         reference, i.e. an invalid OpenAPI document (swagger-parser / openapi-typescript reject it).
+// FIXED:  `registerComponent()` used to read `components[name]` through the PROTOTYPE CHAIN of the plain `{}`
+//         registry: for `constructor` / `toString` / `valueOf` / `hasOwnProperty` it found the inherited member,
+//         warned about a duplicate and returned without registering, leaving a dangling `$ref`. The registry is
+//         now checked with an own-property test and written with `Object.defineProperty`; a `__proto__` id, whose
+//         definition zod loses entirely (`defs[id] = ...` sets the prototype of its map), is captured from the
+//         `override` hook and re-injected as an own `definitions.__proto__` key before hoisting.
 // SHOULD: the schema is hoisted under its id like any other one, with no warning.
 // CONTRADICTS: readme "recursive schemas and `.meta({ id })` schemas are hoisted into `components.schemas`
 //         and referenced as `#/components/schemas/<id>`" (Generated OpenAPI section).
@@ -44,7 +43,7 @@ describe('components.schemas registry vs Object.prototype keys', () => {
     }
   }
 
-  test.failing.each([['constructor'], ['toString'], ['valueOf'], ['hasOwnProperty']])(
+  test.each([['constructor'], ['toString'], ['valueOf'], ['hasOwnProperty']])(
     'a schema registered as .meta({ id: "%s" }) is hoisted instead of leaving a dangling $ref',
     id => {
       const { doc, warnings } = buildDocWithMetaId(id)
@@ -57,43 +56,41 @@ describe('components.schemas registry vs Object.prototype keys', () => {
     }
   )
 
-  test.failing('a schema registered as .meta({ id: "__proto__" }) never leaks a #/definitions/ ref', () => {
+  test('a schema registered as .meta({ id: "__proto__" }) never leaks a #/definitions/ ref', () => {
     const { doc } = buildDocWithMetaId('__proto__')
     // zod hands the definition over in a map built with `defs[id] = ...`, so for `__proto__` the key is the
-    // prototype, `Object.keys()` sees nothing, `hoistDefinitions()` finds nothing to rewrite and DROPS the
-    // whole `definitions` block while the body keeps pointing at `#/definitions/__proto__`. `#/definitions`
-    // is not an OpenAPI 3.0 location, so the produced document references a node that does not exist at all.
+    // prototype and the whole `definitions` block is lost while the body keeps pointing at `#/definitions/__proto__`.
+    // The library recovers the node from the `override` hook and hoists it under an own `__proto__` key.
     expect(JSON.stringify(doc)).not.toContain('#/definitions/')
     expect(Object.prototype.hasOwnProperty.call(doc.components.schemas, '__proto__')).toBe(true)
   })
 })
 
 // -------------------------------------------------------------------------------------------------
-// 2. normalizeZodError() throws on a zod issue whose path contains a symbol
+// 2. normalizeZodError() threw on a zod issue whose path contains a symbol — FIXED
 //
-// NOW:    `iss.path.join('.')` (src/zUtils.ts:14) throws `TypeError: Cannot convert a Symbol value to a
+// WAS:    `iss.path.join('.')` (src/zUtils.ts) threw `TypeError: Cannot convert a Symbol value to a
 //         string`. zod puts symbols in `issue.path` for symbol-keyed records, so a perfectly legal ZodError
-//         makes the documented helper throw.
-// SHOULD: the helper flattens every ZodError; a symbol path segment is stringified (`Symbol(k)`).
-// CONTRADICTS: readme "### normalizeZodError(error) — The helper used internally to flatten a `ZodError`
+//         made the documented helper throw.
+// NOW:    the helper flattens every ZodError; a symbol path segment is stringified (`Symbol(k)`) and the
+//         helper never throws (see tests/bughunt/helpers.spec.ts for the direct assertion).
+// readme "### normalizeZodError(error) — The helper used internally to flatten a `ZodError`
 //         into the `{ path, errors }[]` list shown above."
-// FIX:    `iss.path.map(String).join('.')`.
 // -------------------------------------------------------------------------------------------------
 describe('normalizeZodError() on a symbol issue path', () => {
   // -----------------------------------------------------------------------------------------------
-  // 3. ...and because the 400 branch calls it OUTSIDE of `safeValidate`'s try/catch, that TypeError
-  //    escapes the typed handler.
+  // 3. ...and because the 400 branch called it OUTSIDE of `safeValidate`'s try/catch, that TypeError
+  //    escaped the typed handler — FIXED
   //
-  // NOW:    the request is answered with `500 text/html`, express' default error page, whose <pre> block
-  //         contains the full stack trace INCLUDING ABSOLUTE FILESYSTEM PATHS of the installed library
+  // WAS:    the request was answered with `500 text/html`, express' default error page, whose <pre> block
+  //         contained the full stack trace INCLUDING ABSOLUTE FILESYSTEM PATHS of the installed library
   //         (".../src/zUtils.ts:16:28", ".../src/typedExpressDocs.ts:93:66", ".../node_modules/router/...").
-  //         That is an information leak to a plain HTTP client on a request-validation failure.
-  //         (src/typedExpressDocs.ts:190-197 — `normalizeZodError()` is called while building `errObj`.)
-  // SHOULD: an invalid request is a 400 JSON validation error like every other one.
-  // CONTRADICTS: readme "### Validation errors — An invalid request is answered with `400` and never
-  //         reaches the handler".
+  //         That was an information leak to a plain HTTP client on a request-validation failure.
+  // NOW:    `safeValidate()` normalizes the issues INSIDE its try/catch (src/typedExpressDocs.ts), so the
+  //         error-building path cannot escape as a 500: an invalid request is a 400 JSON validation error.
+  // readme "### Validation errors — An invalid request is answered with `400` and never reaches the handler".
   // -----------------------------------------------------------------------------------------------
-  test.failing('a request whose validation error carries a symbol path is a 400, not a 500 leaking source paths', async () => {
+  test('a request whose validation error carries a symbol path is a 400, not a 500 leaking source paths', async () => {
     const app = express()
     app.use(express.json())
     app.post(
@@ -119,19 +116,19 @@ describe('normalizeZodError() on a symbol issue path', () => {
 })
 
 // -------------------------------------------------------------------------------------------------
-// 4. a decoder that throws `null` / `undefined` makes the failing section disappear from the 400 body
+// 4. a decoder that throws `null` / `undefined` made the failing section disappear from the 400 body — FIXED
 //
-// NOW:    `safeValidate()` correctly turns the throw into a failed validation, but
-//         `normalizeZodError()` starts with `if (obj == null) return undefined` (src/zUtils.ts:9), which
-//         conflates "this section did not fail" with "this section failed by throwing null". The client
-//         gets `400 {"errors":{}}` — a rejection with no indication of WHAT was rejected, while `throw 0`
-//         / `throw false` / `throw {}` are all reported as `[{ path: '', errors: ['Unknown error'] }]`.
-// SHOULD: the failing section is present, with the root path, like every other thrown value.
-// CONTRADICTS: readme "### Validation errors — `errors` contains only the failing parts (`headers`,
-//         `params`, `query`, `body`) ... A codec decoder or `.transform()` that throws during request
-//         validation is reported the same way (`400`, `path: ''`, the error message)."
-// FIX:    keep the `null`-means-nothing shortcut for the caller-side argument only (the four sections pass
-//         `null` explicitly when they succeed) and use a distinct sentinel for a thrown value.
+// WAS:    `safeValidate()` correctly turned the throw into a failed validation, but
+//         `normalizeZodError()` starts with `if (obj == null) return undefined` (src/zUtils.ts), which
+//         conflated "this section did not fail" with "this section failed by throwing null". The client
+//         got `400 {"errors":{}}` — a rejection with no indication of WHAT was rejected, while `throw 0`
+//         / `throw false` / `throw {}` were all reported as `[{ path: '', errors: ['Unknown error'] }]`.
+// NOW:    `safeValidate()` substitutes `'Unknown error'` for a thrown nullish value before normalizing it, so
+//         the failing section is present with the root path like every other thrown value; the
+//         `null`-means-nothing shortcut of the public helper is unchanged.
+// readme "### Validation errors — `errors` contains only the failing parts (`headers`, `params`, `query`,
+//         `body`) ... A codec decoder or `.transform()` that throws during request validation is reported the
+//         same way (`400`, `path: ''`, the error message)."
 // -------------------------------------------------------------------------------------------------
 describe('a request decoder that throws a nullish value', () => {
   const appThrowing = (thrown: unknown) => {
@@ -153,7 +150,7 @@ describe('a request decoder that throws a nullish value', () => {
     return app
   }
 
-  test.failing.each([
+  test.each([
     ['null', null],
     ['undefined', undefined],
   ])(

@@ -18,9 +18,13 @@ export const trimSlash = (path: string) => removeFirstSlash(removeLastSlash(path
 
 /**
  * TODO: add smart path merging with non double slashes
+ *
+ * `keepTrailingSlash` restores the trailing slash trimmed from `path2`: under strict routing express serves
+ * ONLY the slashed form of `/x/`, so the document has to keep it (see `routeKeepsTrailingSlash`)
  */
-export const mergePaths = (path1: string, path2: string) => {
-  return `/${[trimSlash(path1), trimSlash(path2)].filter(Boolean).join('/')}`
+export const mergePaths = (path1: string, path2: string, keepTrailingSlash = false) => {
+  const merged = `/${[trimSlash(path1), trimSlash(path2)].filter(Boolean).join('/')}`
+  return keepTrailingSlash && !merged.endsWith('/') ? `${merged}/` : merged
 }
 
 // we can optional generic use for apis where we have to integrate inconsistent responses

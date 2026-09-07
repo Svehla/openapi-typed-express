@@ -145,14 +145,27 @@ describe('request validation error responses', () => {
         ],
       ],
       [
-        'primitive union failure -> one generic issue at the key',
+        'primitive union failure -> the generic issue at the key plus the reason of every variant (zod 4 `iss.errors`)',
         { union: true },
-        [{ path: 'union', errors: ['Invalid input'] }],
+        [
+          {
+            path: 'union',
+            errors: [
+              'Invalid input',
+              'Invalid input: expected string, received boolean',
+              'Invalid input: expected number, received boolean',
+            ],
+          },
+        ],
       ],
       [
-        'object union failure -> one generic issue at the key, no per-branch detail',
+        'object union failure -> the generic issue at the key plus the per-branch issues under their own paths',
         { objUnion: { c: 1 } },
-        [{ path: 'objUnion', errors: ['Invalid input'] }],
+        [
+          { path: 'objUnion', errors: ['Invalid input'] },
+          { path: 'objUnion.a', errors: ['Invalid input: expected string, received undefined'] },
+          { path: 'objUnion.b', errors: ['Invalid input: expected string, received undefined'] },
+        ],
       ],
       [
         'discriminatedUnion bad discriminator -> path points at the discriminator',

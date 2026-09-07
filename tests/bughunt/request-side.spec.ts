@@ -5,20 +5,21 @@ import { apiDoc, initApiDocs } from '../../src'
 import { buildTypedApp } from '../runtime/req-helpers'
 
 /**
- * Every test here is `test.failing`: it asserts the INTENDED behaviour (readme / JSDoc contract) and is therefore
- * green while the bug exists. Once a bug is fixed the test turns red and must be flipped to a plain `test`.
+ * Every test here asserts the INTENDED behaviour (readme / JSDoc contract). A `test.failing` is green while its bug
+ * exists and must be flipped to a plain `test` once fixed; the plain `test`s are the fixed ones (regression tests).
  */
 describe('bug hunt: request side', () => {
   describe('two chained typed handlers on one route (different request sections)', () => {
     /**
-     * WHAT HAPPENS NOW: `resolveRouteHandlersAndExtractAPISchema()` (src/typedExpressDocs.ts, the
-     * `urlsMethodDocsPointer[endpointPath][method] = { ... }` assignment) overwrites the whole path-item entry for
-     * every typed layer of the route, so the document only describes the LAST typed handler. The `headers`
-     * parameter and the `returns` schema declared by the first handler disappear from the OpenAPI document,
-     * although they are validated / used at runtime.
-     * WHAT SHOULD HAPPEN: the sections of every chained typed handler are documented (they are all enforced on
-     * the request); `returns` is documented when exactly one handler declares it.
-     * CONTRADICTS: readme "Limitations & gotchas": "two typed handlers on one route must declare different
+     * WHAT HAPPENED: `resolveRouteHandlersAndExtractAPISchema()` (src/typedExpressDocs.ts) overwrote the whole
+     * path-item entry for every typed layer of the route, so the document only described the LAST typed handler.
+     * The `headers` parameter and the `returns` schema declared by the first handler disappeared from the OpenAPI
+     * document, although they were validated / used at runtime.
+     * NOW (fixed): the sections of every chained typed handler of ONE route are merged (each section is declared
+     * once, the overlap guard throws otherwise); `returns` stays last-wins, with the existing warning. A duplicate
+     * registration of the same path & method by ANOTHER route still replaces the entry (the readme's "the document
+     * describes the last one").
+     * readme "Limitations & gotchas": "two typed handlers on one route must declare different
      * request sections ... with different sections (`headers` in the first, `query`/`body` in the second)
      * chaining works. Two `returns` are a warning, the last one is documented" and the `apiDoc(config)(handler)`
      * table: "Every key is optional, an omitted key is neither validated nor documented" (a declared key is).
@@ -43,7 +44,7 @@ describe('bug hunt: request side', () => {
       expect(Object.keys(res.body.errors)).toEqual(['headers'])
     })
 
-    test.failing('the `headers` declared by the FIRST typed handler are documented next to the query of the second', () => {
+    test('the `headers` declared by the FIRST typed handler are documented next to the query of the second', () => {
       const parameters = openapi.paths['/chain'].post.parameters
       expect(parameters).toEqual(
         expect.arrayContaining([
@@ -53,7 +54,7 @@ describe('bug hunt: request side', () => {
       )
     })
 
-    test.failing('a `returns` declared only by the first typed handler is documented as the 200 response', () => {
+    test('a `returns` declared only by the first typed handler is documented as the 200 response', () => {
       const schema = openapi.paths['/chain'].post.responses['200']?.content?.['application/json']?.schema
       expect(schema).toEqual(
         expect.objectContaining({ type: 'object', properties: { a: { type: 'string' } } })
@@ -63,13 +64,13 @@ describe('bug hunt: request side', () => {
 
   describe('a ZodError thrown inside a .transform() / codec decoder', () => {
     /**
-     * WHAT HAPPENS NOW: a decoder that calls `otherSchema.parse(...)` (a common way to parse a JSON-encoded query
-     * value) throws a ZodError; `safeValidate()` catches it and `normalizeZodError()` recognises it as a
-     * `$ZodError`, so its issues are reported with the paths of the INNER schema (`path: 'a'`) — a path that does
+     * WHAT HAPPENED: a decoder that calls `otherSchema.parse(...)` (a common way to parse a JSON-encoded query
+     * value) throws a ZodError; `safeValidate()` caught it and `normalizeZodError()` recognised it as a
+     * `$ZodError`, so its issues were reported with the paths of the INNER schema (`path: 'a'`) — a path that does
      * not exist in the request section (`?json=...` has no `a`, and `a` is not even a declared query key).
-     * WHAT SHOULD HAPPEN: a throw during decoding is reported like every other thrown error (`path: ''`), or at
-     * least under the key that was being decoded (`json`, `json.a`); never under a foreign path.
-     * CONTRADICTS: readme "Validation errors": "`path` is the dot-joined path inside the value" and "A codec
+     * NOW (fixed): a ZodError thrown by a decoder is reported like every other thrown error, at the root
+     * (`path: ''`), with the inner issues as the messages (`a: Invalid input: expected number, received string`).
+     * readme "Validation errors": "`path` is the dot-joined path inside the value" and "A codec
      * decoder or `.transform()` that throws during request validation is reported the same way (`400`,
      * `path: ''`, the error message)".
      */
@@ -99,7 +100,7 @@ describe('bug hunt: request side', () => {
 
     const firstSegment = (path: string) => path.split('.')[0]
 
-    test.failing('query: the reported path is the root or the declared key, not a path of the inner schema', async () => {
+    test('query: the reported path is the root or the declared key, not a path of the inner schema', async () => {
       const res = await request(app).get('/q?json={"a":"x"}')
       expect(res.status).toBe(400)
       expect(Object.keys(res.body.errors)).toEqual(['query'])
@@ -108,7 +109,7 @@ describe('bug hunt: request side', () => {
       }
     })
 
-    test.failing('body: the reported path is the root or the declared key, not a path of the inner schema', async () => {
+    test('body: the reported path is the root or the declared key, not a path of the inner schema', async () => {
       const res = await request(app).post('/b').send({ json: '{"a":"x"}' })
       expect(res.status).toBe(400)
       expect(Object.keys(res.body.errors)).toEqual(['body'])

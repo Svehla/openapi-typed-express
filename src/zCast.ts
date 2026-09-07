@@ -23,7 +23,8 @@ const zCastDate = z.codec(z.string(), z.date(), {
 // wire: string, decoded: number (same as `T.cast.number`)
 const zCastNumber = z.codec(z.string(), z.number(), {
   decode: (value, ctx) => {
-    const num = Number(value)
+    // `Number('')` / `Number('  ')` are 0, not NaN: a blank value (`?limit=`) is not a number
+    const num = value.trim() === '' ? Number.NaN : Number(value)
     return Number.isNaN(num) ? invalid(ctx, 'invalid number cast', value) : num
   },
   encode: num => String(num),

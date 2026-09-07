@@ -45,20 +45,10 @@ type ExpressRouterParam = {
 }[]
 
 /**
- * Extract the mount path from an Express 5 router layer matcher function.
- *
  * Express 5 uses path-to-regexp v8 which stores the path only inside a closure.
- * We intercept RegExp.prototype.exec to capture the compiled regexp, then parse
- * its source to recover the original path string.
- *
- * The generated source format is: ^(?:\/path\/here)(?:\/$)?(?=\/|$)
- *
- * Returns `null` when the mount path cannot be recovered (a RegExp mount path, an optional segment, an
- * unknown express internals shape): the caller must not document that subtree at a guessed path.
+ * We intercept RegExp.prototype.exec to capture the compiled regexp of a layer matcher.
  */
-export const parseUrlFromExpressV5Matcher = (
-  matcherFn: ((input: string) => any) | undefined
-): string | null => {
+const captureCompiledRegexpSource = (matcherFn: ((input: string) => any) | undefined): string | null => {
   if (typeof matcherFn !== 'function') return null
   let capturedRegexp: RegExp | null = null
   const origExec = RegExp.prototype.exec
@@ -81,7 +71,63 @@ export const parseUrlFromExpressV5Matcher = (
 
   if (!capturedRegexp) return null
 
-  const source: string = (capturedRegexp as RegExp).source
+  return (capturedRegexp as RegExp).source
+}
+
+// the compiled form of a `:param` segment of a mount path; documented as-is (see readme "Limitations & gotchas")
+const V5_PARAM_GROUP_SOURCE = '([^\\/]+)'
+const V5_PARAM_GROUP_PATH = '([^/]+)'
+// the characters path-to-regexp escapes when it emits LITERAL text of the path (`/v1.0` -> `\/v1\.0`)
+const ESCAPED_LITERAL_CHARACTERS = new Set('.+*?^{}()[]|/\\$'.split(''))
+// unescaped, these are path-to-regexp's own regex SYNTAX (the `|` of an optional group, the `([\s\S]+)` of a
+// wildcard, ...); literal text of the mount path never reaches the source unescaped
+const REGEXP_SYNTAX_CHARACTERS = new Set('.+*?^{}()[]|$'.split(''))
+
+/**
+ * Turn the body of a compiled mount-path regexp back into the mount path text.
+ *
+ * `null` when it contains anything but escaped literals and compiled `:param` groups: an optional segment
+ * compiles to an ALTERNATION (`\/opt\/([^\/]+)|\/opt`) and a wildcard to a character class (`([\s\S]+)`),
+ * neither of which is one path — un-escaping them blindly produced nonsense document keys like
+ * `/opt/([^/]+)|/opt` and the corrupted class `([sS]+)`.
+ */
+const decodeMountPathRegexpSource = (source: string): string | null => {
+  let path = ''
+  let index = 0
+  while (index < source.length) {
+    if (source.startsWith(V5_PARAM_GROUP_SOURCE, index)) {
+      path += V5_PARAM_GROUP_PATH
+      index += V5_PARAM_GROUP_SOURCE.length
+      continue
+    }
+    const character = source[index]
+    if (character === '\\') {
+      const escaped = source[index + 1]
+      if (escaped === undefined || !ESCAPED_LITERAL_CHARACTERS.has(escaped)) return null
+      path += escaped
+      index += 2
+      continue
+    }
+    if (REGEXP_SYNTAX_CHARACTERS.has(character)) return null
+    path += character
+    index += 1
+  }
+  return path
+}
+
+/**
+ * Extract the mount path from an Express 5 router layer matcher function.
+ *
+ * The generated source format is: ^(?:\/path\/here)(?:\/$)?(?=\/|$)
+ *
+ * Returns `null` when the mount path cannot be recovered (a RegExp mount path, an optional segment, a
+ * wildcard, an unknown express internals shape): the caller must not document that subtree at a guessed path.
+ */
+export const parseUrlFromExpressV5Matcher = (
+  matcherFn: ((input: string) => any) | undefined
+): string | null => {
+  const source = captureCompiledRegexpSource(matcherFn)
+  if (source === null) return null
 
   // path-to-regexp v8 format: ^(?:\/path)(?:\/$)?(?=\/|$)
   const V5_PREFIX = '^(?:'
@@ -89,9 +135,30 @@ export const parseUrlFromExpressV5Matcher = (
 
   if (!source.startsWith(V5_PREFIX) || !source.endsWith(V5_SUFFIX)) return null
 
-  const inner = source.slice(V5_PREFIX.length, source.length - V5_SUFFIX.length)
-  // path-to-regexp escapes every regex-special character of the mount path (`/v1.0` -> `\/v1\.0`), undo all of them
-  return inner.replace(/\\(.)/g, '$1')
+  return decodeMountPathRegexpSource(source.slice(V5_PREFIX.length, source.length - V5_SUFFIX.length))
+}
+
+// a non-strict route regexp keeps the trailing slash optional (`^(?:\/y)(?:\/$)?$`, both forms are served);
+// a `strict routing` app / `Router({ strict: true })` compiles the path without that group (`^(?:\/y\/)$`)
+const OPTIONAL_TRAILING_SLASH_SOURCE = '(?:\\/$)?'
+
+/**
+ * Does the trailing slash of `routePath` have to be kept in the documented path?
+ *
+ * Only under strict routing: express then serves ONLY the slashed form (`GET /y` of `app.get('/y/')` is a
+ * 404), so dropping the slash would document a path the app does not have. The answer is read back from the
+ * layer's compiled regexp, so neither `app.get('strict routing')` nor the `Router({ strict })` option has to
+ * be threaded through the walk.
+ */
+export const routeKeepsTrailingSlash = (
+  // the express route layer (`{ matchers: ((input: string) => any)[] }`), typed loosely like the rest of the walk
+  layer: any,
+  routePath: string
+): boolean => {
+  // `/` is served by both a strict and a non-strict router, there is no slash-less form to confuse it with
+  if (routePath.length < 2 || !routePath.endsWith('/')) return false
+  const source = captureCompiledRegexpSource(layer?.matchers?.[0])
+  return source !== null && !source.includes(OPTIONAL_TRAILING_SLASH_SOURCE)
 }
 
 export const parseUrlFromExpressRegexp = (regexpString: string, params: ExpressRouterParam = []) => {

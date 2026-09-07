@@ -72,16 +72,18 @@ describe('package.json & tarball', () => {
   }, 60_000)
 
   test('peerDependencies match what the code imports and the installed versions', () => {
-    expect(pkg.peerDependencies).toEqual({ express: '>=5.0.0 <6.0.0', zod: '^4.4.0' })
+    expect(pkg.peerDependencies).toEqual({ express: '>=5.0.0 <6.0.0', zod: '^4.4.3' })
     expect(pkg.engines).toEqual({ node: '>=20' })
     expect(pkg.dependencies).toBeUndefined()
 
     const expressVersion: string = require('express/package.json').version
     const zodVersion: string = require('zod/package.json').version
     expect(expressVersion.split('.')[0]).toBe('5')
-    const [zodMajor, zodMinor] = zodVersion.split('.').map(Number)
+    const [zodMajor, zodMinor, zodPatch] = zodVersion.split('.').map(Number)
     expect(zodMajor).toBe(4)
     expect(zodMinor).toBeGreaterThanOrEqual(4)
+    // 4.4.3 is the peer floor: `.catch()` / `z.preprocess()` only became `optin: 'optional'` there
+    if (zodMinor === 4) expect(zodPatch).toBeGreaterThanOrEqual(3)
 
     // features that appeared in zod 4.1 and that the library relies on at runtime
     expect(typeof z.codec).toBe('function')

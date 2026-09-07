@@ -314,8 +314,16 @@ describe('schema kinds -> emitted OpenAPI schema (request body position)', () =>
     ],
     ['nullable any', z.any().nullable(), { nullable: true }],
     ['nullable null', z.null().nullable(), { type: 'string', nullable: true, enum: [null] }],
-    ['nullable enum', z.enum(['a', 'b']).nullable(), { type: 'string', enum: ['a', 'b'], nullable: true }],
-    ['nullable literal', z.literal('a').nullable(), { type: 'string', enum: ['a'], nullable: true }],
+    [
+      'nullable enum -> null listed in the enum',
+      z.enum(['a', 'b']).nullable(),
+      { type: 'string', enum: ['a', 'b', null], nullable: true },
+    ],
+    [
+      'nullable literal -> null listed in the enum',
+      z.literal('a').nullable(),
+      { type: 'string', enum: ['a', null], nullable: true },
+    ],
     [
       'nullable array',
       z.array(z.string()).nullable(),
@@ -327,9 +335,9 @@ describe('schema kinds -> emitted OpenAPI schema (request body position)', () =>
       { type: 'object', additionalProperties: { type: 'number' }, nullable: true },
     ],
     [
-      'nullable union -> anyOf + nullable',
+      'nullable union -> anyOf with the null branch (OAS 3.0 nullable needs a type)',
       z.union([z.string(), z.number()]).nullable(),
-      { anyOf: [{ type: 'string' }, { type: 'number' }], nullable: true },
+      { anyOf: [{ type: 'string' }, { type: 'number' }, { type: 'string', nullable: true, enum: [null] }] },
     ],
     [
       'readonly object',
@@ -427,7 +435,7 @@ describe('schema kinds -> emitted OpenAPI schema (request body position)', () =>
     [
       'meta id at root -> no `id` keyword (zod 4.4)',
       z.string().meta({ id: 'GenKindsRootId' }),
-      { type: 'string' },
+      { $ref: '#/components/schemas/GenKindsRootId' },
     ],
     [
       'meta on object + nested meta',

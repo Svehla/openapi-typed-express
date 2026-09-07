@@ -7,9 +7,10 @@ import { docOf, emptyArg, returnsDocOf } from '../openapi/gen-helpers'
 /**
  * Bug hunt: zod 4 -> OpenAPI 3.0 conversion (`src/openAPIFromSchema.ts`).
  *
- * Every test here asserts the CORRECT behaviour and is marked `test.failing`: it stays green while the bug
- * exists and turns red (=> flip it to `test`) once the bug is fixed. The comment above each test says what
- * is emitted today, what should be emitted, and which spec / readme rule is contradicted.
+ * Every test here asserts the CORRECT behaviour. A `test.failing` one pins a bug that is still present (it stays
+ * green while the bug exists and turns red, => flip it to `test`, once fixed); a plain `test` one pins a bug that
+ * has been FIXED. The comment above each test says what is (or was) emitted, what should be emitted, and which
+ * spec / readme rule is contradicted.
  *
  * Spec references are the OpenAPI 3.0.3 Schema Object (https://spec.openapis.org/oas/v3.0.3#schema-object),
  * the dialect the readme promises ("Generated OpenAPI": `nullable: true` dialect, `openapi: '3.0.0'`).
@@ -37,14 +38,16 @@ const acceptsNullOas30 = (s: any): boolean =>
 const Shared = z.object({ x: z.string() }).meta({ id: 'BugHuntShared' })
 
 describe('nullable: true is ineffective in OpenAPI 3.0 when the Schema Object has no `type`', () => {
-  // Emitted now:  { nullable: true, anyOf: [{ type: 'string' }, { type: 'number' }] }
-  //               { nullable: true, oneOf: [...] }, { nullable: true, allOf: [...] }, { nullable: true, allOf: [{ $ref }] }
-  // Should be:    a form that really admits null in 3.0, e.g. an extra `{ type: 'string', nullable: true, enum: [null] }`
-  //               branch (the workaround zod itself emits for a `z.null()` union member).
-  // Contradicts:  OAS 3.0.3 Schema Object, `nullable`: "adds null to the allowed type specified by the type keyword,
-  //               only if type is explicitly defined within the same Schema Object". The runtime accepts `null`
-  //               for all of these (readme: `zNull(x)` is "documented as nullable: true").
-  test.failing.each([
+  // Emitted before: { nullable: true, anyOf: [{ type: 'string' }, { type: 'number' }] }
+  //                 { nullable: true, oneOf: [...] }, { nullable: true, allOf: [...] }, { nullable: true, allOf: [{ $ref }] }
+  // Emitted NOW:    the ineffective marker is replaced by the `{ type: 'string', nullable: true, enum: [null] }` branch
+  //                 zod itself emits for a `z.null()` union member: appended to the `anyOf` / `oneOf`
+  //                 ({ anyOf: [{ type: 'string' }, { type: 'number' }, <null branch>] }); an `allOf` / a `$ref` is wrapped
+  //                 as { anyOf: [<schema>, <null branch>] } (a `oneOf` carrying a `discriminator` would be wrapped too).
+  // Rule:           OAS 3.0.3 Schema Object, `nullable`: "adds null to the allowed type specified by the type keyword,
+  //                 only if type is explicitly defined within the same Schema Object". The runtime accepts `null`
+  //                 for all of these (readme: `zNull(x)` is "documented as nullable: true").
+  test.each([
     ['z.union(...).nullable()', z.union([z.string(), z.number()]).nullable()],
     [
       'zNull(z.union([...objects]))  (readme migration of T.null_x + T.oneOf)',
@@ -68,13 +71,14 @@ describe('nullable: true is ineffective in OpenAPI 3.0 when the Schema Object ha
 })
 
 describe('nullable: true + enum without null does not admit null in OpenAPI 3.0', () => {
-  // Emitted now:  { nullable: true, type: 'string', enum: ['a', 'b'] }
-  // Should be:    { nullable: true, type: 'string', enum: ['a', 'b', null] } (zod uses exactly this
-  //               `enum: [null]` form for z.null(); ajv's OpenAPI `nullable` keyword rejects null otherwise)
-  // Contradicts:  OAS 3.0.3 `nullable`: "Other Schema Object constraints retain their defined behavior, and therefore
-  //               may disallow the use of null as a value" — `enum` is such a constraint. The runtime accepts null;
-  //               readme documents `zCast.null_boolean` / `zNull(z.enum)` as "nullable: true".
-  test.failing.each([
+  // Emitted before: { nullable: true, type: 'string', enum: ['a', 'b'] }
+  // Emitted NOW:    { nullable: true, type: 'string', enum: ['a', 'b', null] } — null is appended to the enum of every
+  //                 nullable Schema Object that has a `type` (zod uses exactly this `enum: [null]` form for z.null();
+  //                 ajv's OpenAPI `nullable` keyword rejects null otherwise)
+  // Rule:           OAS 3.0.3 `nullable`: "Other Schema Object constraints retain their defined behavior, and therefore
+  //                 may disallow the use of null as a value" — `enum` is such a constraint. The runtime accepts null;
+  //                 readme documents `zCast.null_boolean` / `zNull(z.enum)` as "nullable: true".
+  test.each([
     ['z.enum([...]).nullable()', z.enum(['a', 'b']).nullable()],
     ['zNull(z.enum([...]))', zNull(z.enum(['a', 'b']))],
     ['z.literal("a").nullable()', z.literal('a').nullable()],
@@ -158,14 +162,15 @@ describe('empty enum', () => {
 })
 
 describe('components.schemas hoisting', () => {
-  // Emitted now:  routes `POST /a-b` and `POST /a_b` (two DIFFERENT anonymous recursive schemas) both get the
-  //               component name `POST_a_b_body_schema0`; the second is dropped with a console.warn and the
-  //               second route's `$ref` points at the FIRST route's schema
-  // Should be:    distinct component names (the base name must not collapse different labels) so that each route
-  //               references its own schema
-  // Contradicts:  readme "Generated OpenAPI": "anonymous recursive schemas are named after the route"; the second
-  //               route's document describes another route's body
-  test.failing('two routes whose labels sanitise to the same base name keep separate anonymous components', () => {
+  // Emitted before: routes `POST /a-b` and `POST /a_b` (two DIFFERENT anonymous recursive schemas) both got the
+  //                 component name `POST_a_b_body_schema0`; the second was dropped with a console.warn and the
+  //                 second route's `$ref` pointed at the FIRST route's schema
+  // Emitted NOW:    a route-named (anonymous) component that would replace a different schema gets a counter on its
+  //                 base name (`POST_a_b_body_2_schema0`), so each route references its own schema; identical
+  //                 schemas still share the name
+  // Rule:           readme "Generated OpenAPI": "anonymous recursive schemas are named after the route"; a route's
+  //                 document must never describe another route's body
+  test('two routes whose labels sanitise to the same base name keep separate anonymous components', () => {
     const warn = silenceWarn()
     try {
       const A: z.ZodTypeAny = z.lazy(() => z.object({ a: z.string(), kids: z.array(A) }))
@@ -194,15 +199,16 @@ describe('components.schemas hoisting', () => {
     }
   })
 
-  // Emitted now:  const Ev = z.object({ at: z.date() }).meta({ id: 'Ev' }) used in `body` AND `returns`:
-  //               ONE component `Ev`, converted for whichever position was documented first (body -> `at: {}`,
-  //               returns -> `at: { type: 'string', format: 'date-time' }`), the other position warns and reuses it.
-  //               So either the response claims `at: {}` or the request claims an ISO string that the runtime rejects.
-  // Should be:    both readme rules hold at once: the request side documents `{}` and the response side documents
-  //               the ISO `string` (e.g. a position-suffixed component when the two conversions differ)
-  // Contradicts:  readme "Generated OpenAPI": "a bare z.date() inside returns is documented as the ISO string it
-  //               becomes on the wire" / "z.date() ... documented as {}" — one of the two is violated
-  test.failing('a .meta({ id }) schema containing z.date() is documented per position on both sides', () => {
+  // Emitted before: const Ev = z.object({ at: z.date() }).meta({ id: 'Ev' }) used in `body` AND `returns`:
+  //                 ONE component `Ev`, converted for whichever position was documented first (body -> `at: {}`,
+  //                 returns -> `at: { type: 'string', format: 'date-time' }`), the other position warned and reused it.
+  // Emitted NOW:    the response conversion of a `.meta({ id })` schema is compared with its request conversion;
+  //                 when they differ (transitively: a schema referencing a differing one differs too) the response
+  //                 side is registered as `<id>_response` (`Ev` with `at: {}`, `Ev_response` with the ISO string).
+  //                 Identical conversions keep sharing the single component `<id>`.
+  // Rule:           readme "Generated OpenAPI": "a bare z.date() inside returns is documented as the ISO string it
+  //                 becomes on the wire" / "z.date() ... documented as {}" — both hold at once
+  test('a .meta({ id }) schema containing z.date() is documented per position on both sides', () => {
     const warn = silenceWarn()
     try {
       const Ev = z.object({ at: z.date() }).meta({ id: 'BugHuntEvDate' })

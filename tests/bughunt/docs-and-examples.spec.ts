@@ -1,8 +1,8 @@
 /**
  * Bug hunt: documentation vs reality.
  *
- * Every test in this file is `test.failing(...)`: it asserts the CORRECT / documented behaviour and is
- * therefore GREEN only while the bug it pins is still present.
+ * Tests here assert the CORRECT / documented behaviour. A `test.failing(...)` one is therefore GREEN only
+ * while the bug it pins is still present; a plain `test(...)` one pins a bug that has been FIXED.
  *
  * Two shapes are used, depending on where the defect lives:
  *  - the runtime is right and the prose is wrong -> the test proves the real behaviour with a normal
@@ -54,17 +54,17 @@ describe('readme.md: "Limitations & gotchas"', () => {
     return await request(app).get('/x')
   }
 
-  test.failing('`.default()` inside `returns` encodes fine, so the readme must not list it as un-encodable', async () => {
+  test('`.default()` inside `returns` encodes fine, so the readme must not list it as un-encodable', async () => {
     // reality: zod encodes a ZodDefault, tSend() answers 200 with the encoded value
     const res = await tSendStatusOf(z.object({ role: z.string().default('user') }), { role: 'admin' })
     expect(res.status).toBe(200)
     expect(res.body).toEqual({ role: 'admin' })
 
-    // readme.md:448 nevertheless promises a 500 for `.default()`
+    // ... and the readme bullet must not promise a 500 for it
     expect(readmeLine('**`returns` must be encodable**')).not.toContain('`.default()`')
   })
 
-  test.failing('`.catch()` inside `returns` encodes fine, so the readme must not list it as un-encodable', async () => {
+  test('`.catch()` inside `returns` encodes fine, so the readme must not list it as un-encodable', async () => {
     const res = await tSendStatusOf(z.object({ n: z.number().catch(0) }), { n: 5 })
     expect(res.status).toBe(200)
     expect(res.body).toEqual({ n: 5 })
@@ -115,21 +115,21 @@ describe('readme.md: "Generated OpenAPI" — components.schemas hoisting', () =>
     expect(openapi.components.schemas.BugHuntTopLevelUser).toBeDefined()
   })
 
-  test.failing('a `.meta({ id })` schema used as the whole `body` is referenced as #/components/schemas/<id>', () => {
+  test('a `.meta({ id })` schema used as the whole `body` is referenced as #/components/schemas/<id>', () => {
     const openapi = document()
     expect(openapi.paths['/top'].post.requestBody.content['application/json'].schema).toEqual({
       $ref: '#/components/schemas/BugHuntTopLevelUser',
     })
   })
 
-  test.failing('a `.meta({ id })` schema used as the whole `returns` is referenced as #/components/schemas/<id>', () => {
+  test('a `.meta({ id })` schema used as the whole `returns` is referenced as #/components/schemas/<id>', () => {
     const openapi = document()
     expect(openapi.paths['/top'].post.responses[200].content['application/json'].schema).toEqual({
       $ref: '#/components/schemas/BugHuntTopLevelUser',
     })
   })
 
-  test.failing('a `.meta({ id })` schema is never inlined AND $ref-ed in the same document', () => {
+  test('a `.meta({ id })` schema is never inlined AND $ref-ed in the same document', () => {
     const openapi = document()
     const inlined = JSON.stringify(openapi.components.schemas.BugHuntTopLevelUser)
     const wholeDocument = JSON.stringify(openapi)
@@ -139,7 +139,7 @@ describe('readme.md: "Generated OpenAPI" — components.schemas hoisting', () =>
 })
 
 describe('readme.md: "Package API"', () => {
-  test.failing('the "The library exposes ..." sentence names every public export of src/index.ts', () => {
+  test('the "The library exposes ..." sentence names every public export of src/index.ts', () => {
     const publicNames = Object.keys(require('../../src')).sort()
     expect(publicNames.length).toBeGreaterThan(0)
     const sentence = readmeLine('The library exposes')
@@ -153,7 +153,7 @@ describe('readme.md: "Package API"', () => {
 // ---------------------------------------------------------------------------------------------------
 
 describe('CHANGELOG.md: "Known limitations (unchanged, pinned by tests)"', () => {
-  test.failing('does not claim recursive / `.meta({ id })` schemas are left un-hoisted (they are hoisted)', () => {
+  test('does not claim recursive / `.meta({ id })` schemas are left un-hoisted (they are hoisted)', () => {
     // reality (and the "Fixed" section of the very same release): they ARE hoisted
     const Tree: z.ZodType = z.lazy(() => z.object({ v: z.string(), kids: z.array(Tree) }))
     const app = express()
@@ -179,7 +179,7 @@ describe('CHANGELOG.md: "Known limitations (unchanged, pinned by tests)"', () =>
     expect(changelogKnownLimitations()).not.toContain('not hoisted into `components.schemas`')
   })
 
-  test.failing('does not claim draft-only JSON-schema keywords still leak into the document', () => {
+  test('does not claim draft-only JSON-schema keywords still leak into the document', () => {
     const app = express()
     app.use(express.json())
     app.post(
@@ -279,7 +279,7 @@ describe('example/server.ts: GET /', () => {
       .expect(200, { name: '2020-01-01T00:00:00.000Z' })
   })
 
-  test.failing('GET / (the URL the example prints on boot) does not answer a 500 handler-contract error', async () => {
+  test('GET / (the URL the example prints on boot) does not answer a 500 handler-contract error', async () => {
     const res = await request(app).get('/')
     expect(res.status).not.toBe(500)
     expect(res.body?.type).not.toBe('invalid data came from app handler')

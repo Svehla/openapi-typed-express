@@ -4,25 +4,26 @@ import { normalizeZodError, zCast } from '../../src'
 /**
  * Bug hunt: `src/zUtils.ts` (normalizeZodError) and `src/zCast.ts` (zCast.number).
  *
- * Every test here is `test.failing`: it asserts the behaviour the readme promises and is GREEN exactly as
- * long as the bug is alive. Flip it to `test(...)` when the helper is fixed.
+ * Every test here asserts the behaviour the readme promises. A `test.failing` is GREEN exactly as long as its bug
+ * is alive; the plain `test`s below are the fixed ones (regression tests now).
  */
 
 describe('normalizeZodError (src/zUtils.ts)', () => {
   /**
-   * NOW: `normalizeZodError` maps a zod4 union / discriminated-union failure to the union issue's own
+   * WAS: `normalizeZodError` mapped a zod4 union / discriminated-union failure to the union issue's own
    * message only (`[{ path: 'x', errors: ['Invalid input'] }]`). A zod 4 `invalid_union` issue carries the
-   * real reasons in `iss.errors` (an array of sub-issue arrays, one per variant) and those are dropped, so
-   * the client is told *that* the value is wrong but never *why* — for a `z.union` body the whole 400 payload
-   * is the string "Invalid input".
-   * SHOULD: flatten the nested sub-issues too, so at least one concrete reason survives.
+   * real reasons in `iss.errors` (an array of sub-issue arrays, one per variant) and those were dropped, so
+   * the client was told *that* the value is wrong but never *why* — for a `z.union` body the whole 400 payload
+   * was the string "Invalid input".
+   * NOW (fixed): the nested sub-issues are flattened under the union's path (a sub-issue at the union's own path
+   * joins the union entry, a deeper one gets its own `{ path, errors }` entry, duplicates are listed once).
    * CONTRADICTS: readme "### normalizeZodError(error)" - "The helper used internally to FLATTEN a `ZodError`
    * into the `{ path, errors }[]` list shown above" (a union issue is exactly a nested issue tree), and
    * readme line 17 "runtime validation of every HTTP request with user-friendly error messages".
    * The readme even recommends `z.union` as the migration target of `T.oneOf` ("Migrating from
    * swagger-typed-express-docs" table).
    */
-  test.failing('flattens the sub-issues of a zod 4 union issue instead of dropping them', () => {
+  test('flattens the sub-issues of a zod 4 union issue instead of dropping them', () => {
     const schema = z.object({ x: z.union([z.string(), z.number()]) })
     const error = schema.safeParse({ x: true }).error
 
@@ -37,16 +38,16 @@ describe('normalizeZodError (src/zUtils.ts)', () => {
   })
 
   /**
-   * NOW: `iss.path.join('.')` (src/zUtils.ts:14) crashes with
-   * `TypeError: Cannot convert a Symbol value to a string` whenever an issue path holds a symbol segment —
-   * `z.record(z.symbol(), ...)` produces exactly that. The same line also throws
-   * `Cannot read properties of undefined (reading 'join')` for an issue without a `path`.
-   * SHOULD: never throw for a valid `ZodError`; the segment must be stringified like every other one.
+   * WAS: `iss.path.join('.')` crashed with `TypeError: Cannot convert a Symbol value to a string` whenever an
+   * issue path held a symbol segment — `z.record(z.symbol(), ...)` produces exactly that. The same line also
+   * threw `Cannot read properties of undefined (reading 'join')` for an issue without a `path`.
+   * NOW (fixed): every segment is stringified (`Symbol(sym-key)`), a missing `path` is the root, and the helper
+   * never throws (a failure inside it degrades to `[{ path: '', errors: ['Unknown error'] }]`).
    * CONTRADICTS: readme "### normalizeZodError(error)" — the helper is public API and is documented to
    * return `{ path, errors }[]` for a `ZodError`, not to throw. Inside the library it runs on the 400 / 500
    * error path, where a throw turns a client error into a crashed request.
    */
-  test.failing('does not throw when an issue path contains a non-string (symbol) segment', () => {
+  test('does not throw when an issue path contains a non-string (symbol) segment', () => {
     const value: Record<symbol, unknown> = {}
     value[Symbol('sym-key')] = 'not a number'
     const error = z.record(z.symbol(), z.number()).safeParse(value).error
@@ -61,20 +62,20 @@ describe('normalizeZodError (src/zUtils.ts)', () => {
 
 describe('zCast.number (src/zCast.ts)', () => {
   /**
-   * NOW: the decoder is `Number(value)` guarded by `Number.isNaN` (src/zCast.ts:26-27), and `Number('')`,
-   * `Number(' ')`, `Number('\n')` are `0`, not `NaN`. An empty or blank query value (`?limit=`, a form field
-   * the user left empty) is silently decoded to the number `0` instead of being rejected, so the handler
-   * gets a value the client never sent — with `zToArrayIfNot(zCast.number)` `?ids=` even becomes `[0]`.
+   * WAS: the decoder was `Number(value)` guarded by `Number.isNaN`, and `Number('')`, `Number(' ')`,
+   * `Number('\n')` are `0`, not `NaN`. An empty or blank query value (`?limit=`, a form field the user left
+   * empty) was silently decoded to the number `0` instead of being rejected, so the handler got a value the
+   * client never sent — with `zToArrayIfNot(zCast.number)` `?ids=` even became `[0]`.
    * The sibling casts of the very same table reject a blank string (`zCast.date` -> 'invalid Date',
-   * `zCast.boolean` -> 'Invalid option'), so this is inconsistent inside `zCast` itself.
-   * SHOULD: a string that is not a number is a 400 ('invalid number cast'), like every other non-numeric input.
+   * `zCast.boolean` -> 'Invalid option'), so this was inconsistent inside `zCast` itself.
+   * NOW (fixed): a blank string is a 400 ('invalid number cast'), like every other non-numeric input.
    * CONTRADICTS: readme "### Ready-made codecs: `zCast` and `zNull`" table - "`zCast.number` | wire
    * (documented) `string` | decoded `number`" together with the documented failure mode of the family
    * (`GET /cast?since=nope` -> `400 ... ["invalid Date"]`); a blank string is not a number.
    * NOTE: `T.cast.number` of swagger-typed-express-docs had the identical `Number()` + isNaN guard, so this
    * is inherited behaviour — but the readme sells `zCast` as a *cast that validates*, not as raw `Number()`.
    */
-  test.failing('rejects an empty / blank string instead of decoding it to 0', () => {
+  test('rejects an empty / blank string instead of decoding it to 0', () => {
     for (const wire of ['', ' ', '\n\t']) {
       const result = zCast.number.safeDecode(wire)
       expect(result.success).toBe(false)

@@ -246,11 +246,15 @@ describe('request body', () => {
       ['union: first branch', '/union', { a: 'x', extra: 1 }, 200, { a: 'x' }],
       ['union: second branch', '/union', { b: 2 }, 200, { b: 2 }],
       [
-        'union: no branch -> single root issue',
+        'union: no branch -> root issue plus the per-variant reasons under their own paths',
         '/union',
         { c: 3 },
         400,
-        bodyError([{ path: '', errors: ['Invalid input'] }]),
+        bodyError([
+          { path: '', errors: ['Invalid input'] },
+          { path: 'a', errors: ['Invalid input: expected string, received undefined'] },
+          { path: 'b', errors: ['Invalid input: expected number, received undefined'] },
+        ]),
       ],
       [
         'discriminatedUnion: branch b decodes its codec',
@@ -301,11 +305,13 @@ describe('request body', () => {
         ]),
       ],
       [
-        'array body against an object schema is rejected',
+        'array body against an object schema is rejected (both variants fail the same way: the reason is listed once)',
         '/union',
         [1, 2],
         400,
-        bodyError([{ path: '', errors: ['Invalid input'] }]),
+        bodyError([
+          { path: '', errors: ['Invalid input', 'Invalid input: expected object, received array'] },
+        ]),
       ],
       ['optional body: present', '/optional', { a: 'x' }, 200, { body: { a: 'x' } }],
       ['record body: values decoded', '/record', { one: '1', two: '2' }, 200, { one: 1, two: 2 }],
