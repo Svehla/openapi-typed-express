@@ -76,6 +76,6 @@
     }
   },
   "files": {
-    "includes": ["**", "!**/build", "!**/dist"]
+    "includes": ["**", "!**/build", "!**/dist", "!deprecated_tSchemaVersion"]
   }
 }
