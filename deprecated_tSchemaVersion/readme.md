@@ -1,11 +1,16 @@
-# swagger-typed-express-docs
+# swagger-typed-express-docs (deprecated)
 
-> **This library is part of a monorepo at [github.com/Svehla/openapi-typed-express](https://github.com/Svehla/openapi-typed-express)**
+> **⚠️ This package is deprecated and no longer maintained.**
 >
-> | Package | Validation | npm |
-> |---------|-----------|-----|
-> | [`tSchemaVersion`](https://github.com/Svehla/openapi-typed-express/tree/main/tSchemaVersion) *(this package)* | built-in `T.*` schema builder | `swagger-typed-express-docs` |
-> | [`zodVersion`](https://github.com/Svehla/openapi-typed-express/tree/main/zodVersion) | [Zod](https://zod.dev) | `openapi-zod-typed-express` |
+> Use the Zod-based successor instead:
+> [`openapi-zod-typed-express`](https://www.npmjs.com/package/openapi-zod-typed-express)
+> — it lives at the [root of this repository](https://github.com/Svehla/openapi-typed-express).
+>
+> The last snapshot before this package was moved under `deprecated_` is
+> [`tSchemaVersion` @ `c09ed0b`](https://github.com/Svehla/openapi-typed-express/tree/c09ed0b05e39505ba9ac2cb0b2547b4bf3fe936c/tSchemaVersion).
+> The published npm package
+> [`swagger-typed-express-docs`](https://www.npmjs.com/package/swagger-typed-express-docs)
+> keeps working but will not receive updates.
 
 swagger-typed-express-docs keep you simple document your endpoints with just one single source of truth which
 
