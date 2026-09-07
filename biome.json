@@ -76,6 +76,12 @@
     }
   },
   "files": {
-    "includes": ["**", "!**/build", "!**/dist", "!deprecated_tSchemaVersion"]
+    "includes": [
+      "**",
+      "!**/build",
+      "!**/dist",
+      "!deprecated_tSchemaVersion",
+      "!example/__generated-api__"
+    ]
   }
 }
