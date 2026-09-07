@@ -4,6 +4,7 @@
  * driven with supertest. A separate test type-checks the examples with `tsc`.
  */
 
+import SwaggerParser from '@apidevtools/swagger-parser'
 import { transformSync } from '@swc/core'
 import { spawnSync } from 'child_process'
 import express from 'express'
@@ -157,4 +158,17 @@ describe('example/*.ts type-check', () => {
     expect(result.stdout + result.stderr).toBe('')
     expect(result.status).toBe(0)
   }, 60_000)
+})
+
+describe('example/*.ts serve a valid OpenAPI 3.0 document', () => {
+  // the shipped examples are held to the same validation as the kitchen-sink app of tests/openapi/oas-validity.spec.ts
+  test.each(['server.ts', 'express-router-example.ts'])(
+    '%s: /api-docs validates against the official OAS 3.0 schema with every $ref resolved',
+    async file => {
+      const app = bootExample(file)
+      const res = await request(app).get('/api-docs').expect(200)
+      const api: any = await SwaggerParser.validate(structuredClone(res.body))
+      expect(Object.keys(api.paths).length).toBeGreaterThan(0)
+    }
+  )
 })

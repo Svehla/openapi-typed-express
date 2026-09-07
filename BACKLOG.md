@@ -85,6 +85,10 @@ grep -rn 'test\.failing' tests            # the live list
 
 ## Toolchain notes
 
+- OpenAPI validity is checked, not only pinned: `tests/openapi/oas-validity.spec.ts` (swagger-parser + ajv) and
+  `npm run check:oas-consumer` (openapi-typescript 7). Extend `tests/openapi/oas-kitchen-sink.ts` when a new schema
+  kind or express feature is supported; the validation follows automatically.
+
 - TypeScript 7 has no JavaScript compiler API. `ts-jest` cannot run on it; tests are transpiled by `@swc/jest`
   and type-checked by `npm run ts:check-tests`. Anything that needs the TS API at runtime must spawn the `tsc`
   binary (`--ignoreConfig` when passing files on the command line) or use `@swc/core`.

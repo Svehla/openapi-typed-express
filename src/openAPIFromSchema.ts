@@ -58,6 +58,17 @@ const toOpenApi3Schema = (
           return
         }
         if (kind && !EMPTY_IS_FINE.has(kind) && Object.keys(ctx.jsonSchema).length === 0) degraded.add(kind)
+        // zod's own `required` list disagrees with its runtime for some wrappers (zod 4.5 lists a `.catch()` key as
+        // required although an absent key is accepted): the document describes what the runtime accepts, with the
+        // same rule query / header parameters use
+        if (kind === 'object' && Array.isArray(ctx.jsonSchema.required)) {
+          const shape = (ctx.zodSchema as any)._zod?.def?.shape
+          if (isObject(shape)) {
+            const required = Object.keys(shape).filter(key => isRequired(shape[key]))
+            if (required.length > 0) ctx.jsonSchema.required = required
+            else delete ctx.jsonSchema.required
+          }
+        }
       },
     })
     if (protoDefinition !== undefined && containsRef(json, `${DEFINITION_PREFIX}__proto__`)) {

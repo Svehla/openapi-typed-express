@@ -21,7 +21,17 @@ Fixes from a nine-part review of `src/` (see `tests/bughunt/*.spec.ts`; every en
 - `openapi-typescript` (peer `typescript@^5`, uses the JS compiler API) is no longer a devDependency: `npm run
   ts:generate-api` runs it through `npx` with its own TypeScript 5, so `npm ci` resolves next to TypeScript 7.
 
+### Added — the document is validated as OpenAPI 3.0, not only pinned
+- `tests/openapi/oas-validity.spec.ts`: a kitchen-sink app (every schema kind in every position, routers, named /
+  recursive / colliding schemas) is validated by swagger-parser against the official OAS 3.0 JSON schema with every
+  `$ref` resolved; the wire samples zod decodes are accepted by the emitted schemas (ajv, draft-04 + `nullable`) and
+  values zod rejects are rejected by them. The shipped examples' `/api-docs` go through the same validator.
+- `npm run check:oas-consumer` feeds the kitchen-sink document to openapi-typescript 7 and type-checks its output
+  (needs network for `npx`, so it is not part of `npm test`).
+
 ### Fixed — runtime validation and error reporting
+- An object key with `.catch()` is documented as not required (zod 4.5 lists it as required in its own JSON schema
+  although an absent key is accepted): object `required` lists follow the same rule as query / header parameters.
 - `normalizeZodError()` never throws: symbol / missing issue-path segments are stringified and a failure inside it
   degrades to `Unknown error` instead of escaping as an express 500 HTML page with absolute source paths.
 - Validation errors of a `z.union` include the per-variant reasons (zod 4 `invalid_union` sub-issues) under the
