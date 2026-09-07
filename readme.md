@@ -54,7 +54,36 @@ npm install openapi-zod-typed-express zod express
 
 ## Quick start
 
-[Full runnable examples](https://github.com/Svehla/openapi-typed-express/tree/main/example) — `npm run dev` starts one with Swagger UI on <http://localhost:5656/swagger-ui>.
+The smallest useful route:
+
+```typescript
+import express from 'express'
+import { z } from 'zod'
+import { apiDoc, initApiDocs } from 'openapi-zod-typed-express'
+
+const app = express()
+
+app.get(
+  '/hello/:name',
+  apiDoc({
+    params: { name: z.string() },
+    returns: z.object({ greeting: z.string() }),
+  })((req, res) => {
+    res.tSend({ greeting: `Hello, ${req.params.name}!` })
+  })
+)
+
+const openapi = initApiDocs(app) // after all routes are registered, before app.listen()
+```
+
+```
+GET /hello/Ada   200 { "greeting": "Hello, Ada!" }
+
+openapi.paths['/hello/{name}'].get.parameters
+// [{ in: 'path', name: 'name', required: true, schema: { type: 'string' } }]
+```
+
+A fuller one with codecs, query and body validation, Swagger UI and the error payload — [full runnable examples](https://github.com/Svehla/openapi-typed-express/tree/main/example) — `npm run dev` starts one with Swagger UI on <http://localhost:5656/swagger-ui>.
 
 ```typescript
 import express from 'express'

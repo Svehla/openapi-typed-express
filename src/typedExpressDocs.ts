@@ -282,7 +282,11 @@ export const getApiDocInstance =
               }
               const transformedData = returnsValidator.validate(data)
               if (transformedData.success) {
-                res.send(transformedData.data)
+                // the document promises `application/json`: `res.json` keeps a string / number / boolean / null
+                // JSON-encoded (express' `res.send` would send a bare string as text/html and null as an empty
+                // body) and respects a content-type the handler set before; `undefined` stays an empty body
+                if (transformedData.data === undefined) res.send()
+                else res.json(transformedData.data)
                 return
               }
               res.status(500).send({
@@ -384,6 +388,15 @@ type ExpressRouteInternalStruct = {
 
 // the only operations an OpenAPI 3.0 Path Item may contain; express' `app.all()` registers ~30 more verbs
 const OPENAPI_METHODS = ['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace']
+
+// an express application registered as a layer handle (`router.use('/sub', subApp)`): a function carrying the app
+// API, unlike a Router (which has a `stack`) or a plain middleware
+const isExpressApp = (handle: any): boolean =>
+  typeof handle === 'function' &&
+  typeof handle.set === 'function' &&
+  typeof handle.handle === 'function' &&
+  handle.settings !== undefined &&
+  !Array.isArray(handle.stack)
 
 const isTypedHandler = (fn: unknown) =>
   // biome-ignore lint/suspicious/noTsIgnore: stored meta attributes of the function
@@ -553,9 +566,11 @@ const resolveRouteHandlersAndExtractAPISchema = (
         urlsMethodDocsPointer,
         misusedTypedHandlers
       )
-    } else if (handle?.name === 'mounted_app') {
+    } else if (handle?.name === 'mounted_app' || isExpressApp(handle)) {
       // express keeps no pointer from the layer to the sub-application, so it cannot be walked: its typed routes
-      // would answer 500 ("forget to call initApiDocs") unless the sub-app is initialised on its own
+      // would answer 500 ("forget to call initApiDocs") unless the sub-app is initialised on its own.
+      // `app.use('/sub', subApp)` wraps the sub-app in express' `mounted_app` function, `router.use('/sub', subApp)`
+      // registers the application function itself
       const mount = layerMountPath(r) ?? '<regexp>'
       console.warn(
         `openapi-zod-typed-express: a sub-application mounted under "${mergePaths(

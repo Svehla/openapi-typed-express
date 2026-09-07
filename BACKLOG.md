@@ -27,14 +27,6 @@ grep -rn 'test\.failing' tests            # the live list
 - A router mounted on an array of paths is documented only under the first; `[RegExp, '/b']` drops the subtree
   entirely (`layerMountPath` reads `matchers[0]` only). `tests/bughunt/response-and-traversal.spec.ts`,
   `tests/bughunt/url-parser.spec.ts`
-- A sub-application mounted through `router.use('/sub', subApp)` is skipped without the `console.warn` that
-  `app.use()` gets (only express' `mounted_app` wrapper is recognised). `tests/bughunt/response-and-traversal.spec.ts`
-
-### Responses
-- `returns: z.string()` is sent by express as `text/html` while documented as `application/json` (reflected-XSS
-  vector when echoing input). `tests/bughunt/response-and-traversal.spec.ts`, `tests/runtime/res-transform-send.spec.ts`
-- `tSend(null)` through a nullable `returns` is an empty body with no content-type instead of the JSON literal
-  `null`. `tests/bughunt/response-and-traversal.spec.ts`
 
 ### Requests
 - An async codec decoder inside a request schema is answered as a 400 carrying a zod-internal TypeError message

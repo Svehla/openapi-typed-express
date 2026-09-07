@@ -1,6 +1,21 @@
 # Changelog
 
-## Unreleased
+## 2.1.0 — 2026-09-07
+
+### Changed
+- `res.tSend()` sends through `res.json()`: a string `returns` is the JSON-encoded string with `application/json`
+  (express' `res.send(string)` used to send it verbatim as `text/html`, a reflected-XSS vector when echoing input)
+  and `null` through a nullable `returns` is the JSON literal `null` instead of an empty body. A content-type the
+  handler set before is kept; `undefined` still sends an empty body.
+
+### Fixed
+- A sub-application mounted through `router.use('/sub', subApp)` gets the same boot-time `console.warn` as
+  `app.use('/sub', subApp)` (it was silently skipped; its typed routes answered 500).
+
+### Docs
+- readme: a minimal route before the full example; `.nvmrc`.
+
+## 2.0.1 — 2026-09-07
 
 Fixes from a nine-part review of `src/` (see `tests/bughunt/*.spec.ts`; every entry below flips a former
 `test.failing` case). Findings rated low stay pinned as `test.failing` there and are listed under Known limitations.
@@ -96,10 +111,7 @@ Fixes from a nine-part review of `src/` (see `tests/bughunt/*.spec.ts`; every en
 - OpenAPI: regex flags are dropped from `pattern`; `.readonly()` marks a required request property `readOnly`.
   (`.catch()` default, tuple `minItems` and `z.enum([])` were fixed upstream by zod 4.5.)
 - Routes: a router mounted on `[RegExp, '/b']` is dropped instead of documented under the string prefix; a router
-  mounted on an array of paths is documented only under the first; a sub-app mounted via `router.use()` is skipped
-  without a warning.
-- Responses: `returns: z.string()` is sent as `text/html`; `tSend(null)` through a nullable `returns` is an empty
-  body.
+  mounted on an array of paths is documented only under the first.
 - Requests: an async codec decoder in a request schema is a 400 with a zod-internal message (an async refine is a
   500); `headers: z.string()` compiles; a typed request with a headers schema loses its type after `req.on(...)`.
 - Mocking: an intersection of two Sets / Maps is unsatisfiable in zod itself.

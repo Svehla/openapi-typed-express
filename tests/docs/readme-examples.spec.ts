@@ -30,6 +30,32 @@ const zNumber = z.codec(z.string(), z.number(), {
   encode: n => String(n),
 })
 
+describe('readme: Quick start (minimal)', () => {
+  const app = express()
+
+  app.get(
+    '/hello/:name',
+    apiDoc({
+      params: { name: z.string() },
+      returns: z.object({ greeting: z.string() }),
+    })((req, res) => {
+      res.tSend({ greeting: `Hello, ${req.params.name}!` })
+    })
+  )
+
+  const openapi = initApiDocs(app) // after all routes are registered, before app.listen()
+
+  test('GET /hello/Ada -> 200', async () => {
+    await request(app).get('/hello/Ada').expect(200, { greeting: 'Hello, Ada!' })
+  })
+
+  test('the path parameter is documented', () => {
+    expect(openapi.paths['/hello/{name}'].get.parameters).toEqual([
+      { in: 'path', name: 'name', required: true, schema: { type: 'string' } },
+    ])
+  })
+})
+
 describe('readme: Example usage', () => {
   const app = express()
   const port = 5656
