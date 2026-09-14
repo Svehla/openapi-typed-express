@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 2.1.0 — 2026-09-14
 
 ### Added — `registerComponents(schemasById)`
 - Registers existing schema instances as `components.schemas` entries in place (zod's `globalRegistry.add`, existing
@@ -9,6 +9,8 @@
   document becomes `$ref: '#/components/schemas/<id>'` instead of an inline copy. Keys are validated against the
   OpenAPI component-key pattern (`^[a-zA-Z0-9.\-_]+$`), non-schema values and re-registration under another id
   throw at registration.
+
+## 2.0.1 — 2026-09-07
 
 Fixes from a nine-part review of `src/` (see `tests/bughunt/*.spec.ts`; every entry below flips a former
 `test.failing` case). Findings rated low stay pinned as `test.failing` there and are listed under Known limitations.
