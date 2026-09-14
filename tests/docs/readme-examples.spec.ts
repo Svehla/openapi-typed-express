@@ -12,6 +12,7 @@ import {
   initApiDocs,
   mock_apiDoc,
   normalizeZodError,
+  registerComponents,
   zCast,
   zMockValue,
   zNull,
@@ -187,6 +188,45 @@ describe('readme: initApiDocs', () => {
     expect(initApiDocs(app).paths).toEqual({})
     expect(Object.keys(initApiDocs(sub).paths)).toEqual(['/x'])
     await request(app).get('/sub/x').expect(200, { ok: true })
+  })
+})
+
+describe('readme: registerComponents', () => {
+  const app = express()
+  const zUser = z.object({ id: z.string(), name: z.string() })
+  const zPost = z.object({ id: z.string(), author: zUser })
+  registerComponents({ User: zUser, Post: zPost })
+
+  app.get(
+    '/me',
+    apiDoc({ returns: zUser })((_req, res) => res.tSend({ id: '1', name: 'a' }))
+  )
+  app.get(
+    '/posts',
+    apiDoc({ returns: z.array(zPost) })((_req, res) => res.tSend([]))
+  )
+
+  const openapi = initApiDocs(app)
+
+  test('a registered schema is one component, every use is a $ref', () => {
+    expect(openapi.paths['/me'].get.responses[200].content['application/json'].schema).toEqual({
+      $ref: '#/components/schemas/User',
+    })
+    expect(openapi.paths['/posts'].get.responses[200].content['application/json'].schema).toEqual({
+      type: 'array',
+      items: { $ref: '#/components/schemas/Post' },
+    })
+    expect(openapi.components.schemas.Post.properties.author).toEqual({ $ref: '#/components/schemas/User' })
+    expect(Object.keys(openapi.components.schemas).sort()).toEqual(['Post', 'User'])
+  })
+
+  test('the runtime is unaffected', async () => {
+    await request(app).get('/me').expect(200, { id: '1', name: 'a' })
+  })
+
+  test('const { User } = registerComponents({ User }) keeps the instance', () => {
+    const { User } = registerComponents({ User: zUser })
+    expect(User).toBe(zUser)
   })
 })
 

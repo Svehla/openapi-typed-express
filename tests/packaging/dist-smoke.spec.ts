@@ -148,6 +148,7 @@ describe('dist/index.js public surface', () => {
     'initApiDocs',
     'mock_apiDoc',
     'normalizeZodError',
+    'registerComponents',
     'zCast',
     'zMockValue',
     'zNull',

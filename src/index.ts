@@ -1,4 +1,5 @@
 export { getMock_apiDocInstance, mock_apiDoc } from './mockApiDoc'
+export { registerComponents } from './registerComponents'
 export type {
   ChainedResponse,
   Config,

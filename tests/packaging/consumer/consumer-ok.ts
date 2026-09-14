@@ -3,7 +3,15 @@
 import express from 'express'
 import type { IncomingHttpHeaders } from 'http'
 import { z } from 'zod'
-import { apiDoc, getApiDocInstance, initApiDocs, normalizeZodError, zCast, zNull } from '../../../dist'
+import {
+  apiDoc,
+  getApiDocInstance,
+  initApiDocs,
+  normalizeZodError,
+  registerComponents,
+  zCast,
+  zNull,
+} from '../../../dist'
 
 const app = express()
 
@@ -95,3 +103,8 @@ const openapi: { openapi?: string; paths?: Record<string, unknown> } = initApiDo
 const normalized: { path: string; errors: string[] }[] | undefined = normalizeZodError(new Error('x'))
 
 export { normalized, openapi }
+
+// registerComponents keeps the instances and their inferred types
+const { ConsumerUser } = registerComponents({ ConsumerUser: z.object({ id: z.string() }) })
+const consumerUser: z.infer<typeof ConsumerUser> = { id: 'a' }
+void consumerUser

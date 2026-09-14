@@ -7,13 +7,13 @@ yarn-debug.log*
 yarn-error.log*
 
 # output
-dist 
+dist
 
 # Optional npm cache directory
 .npm
 
 # Dependency directories
-/node_modules
+node_modules
 
 ### Vim ###
 *.sw[a-p]

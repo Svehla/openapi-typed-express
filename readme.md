@@ -22,6 +22,7 @@ How it works:
 - [Quick start](#quick-start)
 - [API](#api)
   - [initApiDocs(app, openApiMetadata?)](#initapidocsapp-openapimetadata)
+  - [registerComponents(schemasById)](#registercomponentsschemasbyid)
   - [apiDoc(config)(handler)](#apidocconfighandler)
   - [Validation errors](#validation-errors)
   - [getApiDocInstance({ errorFormatter })](#getapidocinstance-errorformatter-)
@@ -120,7 +121,7 @@ POST /users/abc             { "name": "Ada" }
 
 ## API
 
-The library exposes `apiDoc`, `initApiDocs`, `getApiDocInstance`, `normalizeZodError`, the mocking pair `mock_apiDoc` / `getMock_apiDocInstance`, and the schema helpers `zCast`, `zNull`, `zToArrayIfNot` and `zMockValue`. Types: `Config`, `TypedRequest`, `TypedResponse`, `ChainedResponse`, `OpenAPIDocument`, `OpenAPIMetadata`.
+The library exposes `apiDoc`, `initApiDocs`, `registerComponents`, `getApiDocInstance`, `normalizeZodError`, the mocking pair `mock_apiDoc` / `getMock_apiDocInstance`, and the schema helpers `zCast`, `zNull`, `zToArrayIfNot` and `zMockValue`. Types: `Config`, `TypedRequest`, `TypedResponse`, `ChainedResponse`, `OpenAPIDocument`, `OpenAPIMetadata`.
 
 ### initApiDocs(app, openApiMetadata?)
 
@@ -155,6 +156,38 @@ Rules:
 - routes that are not wrapped by `apiDoc()` are ignored and keep working as usual.
 - an `apiDoc()` handler passed to `app.use()` / `router.use()` is a middleware, not a route: `initApiDocs()` throws `openapi-zod-typed-express: an apiDoc() handler was registered with app.use() ...` at init.
 - a mounted sub-app (`app.use('/sub', express())`) is not walked: call `initApiDocs(subApp)` for it separately.
+
+### registerComponents(schemasById)
+
+By default every schema is inlined wherever it is used, so a schema shared by many routes (a 30-variant event union, a big entity) is repeated in each of them and the document — and the types generated from it — grow with every route. A schema registered under an id is documented **once** under `components.schemas.<id>` and every use becomes `$ref: '#/components/schemas/<id>'`.
+
+```typescript
+import { registerComponents } from 'openapi-zod-typed-express'
+
+const zUser = z.object({ id: z.string(), name: z.string() })
+const zPost = z.object({ id: z.string(), author: zUser })
+registerComponents({ User: zUser, Post: zPost })
+
+app.get('/me', apiDoc({ returns: zUser })((_req, res) => res.tSend({ id: '1', name: 'a' })))
+app.get('/posts', apiDoc({ returns: z.array(zPost) })((_req, res) => res.tSend([])))
+
+const openapi = initApiDocs(app)
+openapi.paths['/me'].get.responses[200].content['application/json'].schema
+// { $ref: '#/components/schemas/User' }
+openapi.paths['/posts'].get.responses[200].content['application/json'].schema
+// { type: 'array', items: { $ref: '#/components/schemas/Post' } }
+openapi.components.schemas.Post.properties.author
+// { $ref: '#/components/schemas/User' }
+```
+
+This is zod's own `.meta({ id })` registration, with one difference: `.meta()` returns a **clone** and registers only the clone, so a schema that already exists (imported from another module, spread into a union via `.options`, produced by a factory) has to be re-assigned to get its id. `registerComponents()` registers the given instances in place and keeps the metadata they already carry (`.describe()`, `.meta({ example })`). It returns its argument, so `const { User } = registerComponents({ User: z.object(...) })` also works.
+
+Rules:
+
+- an id must be unique per schema instance: two *different* instances under one id make the conversion of a route containing both fail (that schema is documented as `{}` with a `console.warn`, the app still boots). Registering the same instance twice under the same id is a no-op; under another id it throws.
+- derived schemas are new instances and are **not** registered: `zUser.extend(...)`, `.omit()`, `.pick()`, `.partial()`, `.optional()`, `.nullable()`, `z.array(zUser)` document the derived shape inline (with `$ref`s to registered schemas inside). `.optional()` / `.nullable()` on a registered schema still reference it (a nullable `$ref` becomes `oneOf: [{ $ref }, <null>]`, see [Generated OpenAPI](#generated-openapi)).
+- a key must match the OpenAPI component-key pattern `^[a-zA-Z0-9.\-_]+$`; anything else throws at registration (a `.meta({ id })` is not validated and would produce an invalid document).
+- a schema whose response conversion differs from its request one (it contains a bare `z.date()`) gets a second `<id>_response` component, see below.
 
 ### apiDoc(config)(handler)
 
@@ -451,7 +484,7 @@ Schema details:
 - codecs and transforms are documented by their wire (input) side
 - object keys are `required` exactly when the runtime rejects an absent key — the same rule as the parameters above
 - zod types without a JSON-schema representation (`z.date()`, `z.bigint()`, `z.map()`, `z.custom()`, ...) are documented as `{}` and reported with a `console.warn` at `initApiDocs()`; a bare `z.date()` inside `returns` is documented as the ISO `string` it becomes on the wire. Use a codec such as `zCast.date` to get a typed `Date` on both sides
-- recursive schemas and `.meta({ id })` schemas are hoisted into `components.schemas` and referenced as `#/components/schemas/<id>` (anonymous recursive schemas are named after the route, e.g. `POST_tree_body`, with a `_2` counter when two routes sanitise to the same name; a schema whose response conversion differs from its request one, e.g. one containing `z.date()`, is registered a second time as `<id>_response`); everything else is inlined. `components` passed to `initApiDocs()` are merged in
+- recursive schemas and registered schemas (`registerComponents()` / `.meta({ id })`) are hoisted into `components.schemas` and referenced as `#/components/schemas/<id>` (anonymous recursive schemas are named after the route, e.g. `POST_tree_body`, with a `_2` counter when two routes sanitise to the same name; a schema whose response conversion differs from its request one, e.g. one containing `z.date()`, is registered a second time as `<id>_response`); everything else is inlined. `components` passed to `initApiDocs()` are merged in
 - non-3.0 keywords zod emits are rewritten: `examples` → `example`, `contentEncoding` dropped, `z.literal(null)` → `nullable`, a `required` key without a property is materialised; `nullable` is made effective (a nullable `enum` lists `null`, a nullable union gets a `{ type: 'string', nullable: true, enum: [null] }` branch)
 
 ## Migrating from `swagger-typed-express-docs`

@@ -65,7 +65,8 @@ grep -rn 'test\.failing' tests            # the live list
 - `errorFormatter` returning a Promise sends `{}` with 400; a throwing formatter escapes `tSend` to `next(err)`.
 - `structuredClone` fallback in `initApiDocs()`: metadata that is not cloneable (contains a function) is aliased
   into the returned document.
-- `.meta({ id: 'User Model/x' })` produces a component key with a space / slash (spec: `^[a-zA-Z0-9.\-_]+$`).
+- `.meta({ id: 'User Model/x' })` produces a component key with a space / slash (spec: `^[a-zA-Z0-9.\-_]+$`);
+  `registerComponents()` validates its keys, the `.meta()` path does not.
 - Object-valued query params get no `style` / `explode`; `.meta({ examples: { a: { value } } })` (the OpenAPI
   object form) is dropped; a `headers` key named `authorization` / `accept` / `content-type` is emitted although
   OAS says tooling SHALL ignore it.

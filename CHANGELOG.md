@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Added — `registerComponents(schemasById)`
+- Registers existing schema instances as `components.schemas` entries in place (zod's `globalRegistry.add`, existing
+  metadata such as `.describe()` kept): the same effect as `.meta({ id })` without its clone, so imported / factory-
+  built / union-member schemas get an id without being re-assigned. Every use of a registered schema across the
+  document becomes `$ref: '#/components/schemas/<id>'` instead of an inline copy. Keys are validated against the
+  OpenAPI component-key pattern (`^[a-zA-Z0-9.\-_]+$`), non-schema values and re-registration under another id
+  throw at registration.
+
 Fixes from a nine-part review of `src/` (see `tests/bughunt/*.spec.ts`; every entry below flips a former
 `test.failing` case). Findings rated low stay pinned as `test.failing` there and are listed under Known limitations.
 
